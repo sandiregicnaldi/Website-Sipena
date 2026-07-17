@@ -1,0 +1,128 @@
+/* ═══════════════════════════════════════════════
+   BOOKS PAGE — Vidio style dark mode
+═══════════════════════════════════════════════ */
+.books-page {
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  padding-bottom: 4rem;
+}
+
+.page-header {
+  background-color: #111419;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: white;
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+  color: #a0a0a0;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.books-content {
+  padding: 0 1.5rem 3rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Toolbar styling for light mode */
+.toolbar {
+  display: flex;
+  justify-content: flex-end; /* Align actions to the right since search is gone */
+  align-items: center;
+  background-color: #ffffff; /* White background */
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Soft shadow */
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+/* Removed search box styles */
+
+.toolbar-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  transition: var(--transition-fast);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.dropdown-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Pagination for dark mode */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 4rem;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background-color: #1e293b;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #e2e8f0;
+  font-weight: 500;
+  transition: var(--transition-fast);
+}
+
+.page-btn:not(:disabled):hover {
+  border-color: var(--accent-color);
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.page-btn.active {
+  background-color: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-dots {
+  color: #64748b;
+}
+
+@media (max-width: 576px) {
+  .page-title { font-size: 2rem; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar .search-box { max-width: 100%; }
+  .toolbar-actions { flex-direction: column; }
+  .dropdown-btn { width: 100%; justify-content: space-between; }
+}

@@ -1,0 +1,262 @@
+/* ═══════════════════════════════════════════════
+   HEADER — Vidio.com style (Single row, Dark Navy)
+═══════════════════════════════════════════════ */
+.header {
+  width: 100%;
+  background-color: var(--footer-bg); /* #0f172a to match footer */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px; /* Kembalikan ke tinggi yang ideal/kompak */
+}
+
+/* ── LEFT: Logo & Nav ─────────────────────────── */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem; /* Tambah gap sedikit agar jarak logo ke menu pas */
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.brand-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: white;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.brand-subtitle {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.logo-link {
+  display: flex;
+  align-items: center;
+}
+
+.main-nav {
+  display: flex;
+}
+
+.nav-list {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-item {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #a0a0a0;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  position: relative;
+  padding: 1.25rem 0; /* Tall enough to center and catch clicks */
+}
+
+.nav-item:hover, .nav-item.active {
+  color: #ffffff;
+}
+
+/* ── RIGHT: Search & Actions ──────────────────── */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* Search Bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: #20242b;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  width: 240px;
+}
+
+.search-bar:focus-within {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: #2a2f38;
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 0.85rem;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: #707070;
+}
+
+.search-icon {
+  color: #a0a0a0;
+  margin-left: 0.5rem;
+}
+
+/* Icons */
+.icon-btn {
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0;
+}
+
+.icon-btn:hover {
+  color: white;
+}
+
+/* Subscribe / Terbitkan Buku Button */
+.btn-terbitkan {
+  background-color: transparent;
+  color: #ffffff; /* White instead of amber */
+  border: 1px solid #ffffff;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.btn-terbitkan:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Profile / Sign In */
+.auth-section {
+  display: flex;
+  align-items: center;
+}
+
+.login-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.login-link:hover {
+  color: white;
+}
+
+/* User Dropdown */
+.user-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.user-greeting {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 1rem 0;
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: #20242b;
+  min-width: 180px;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.user-dropdown:hover .user-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  color: #a0a0a0;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255,255,255,0.05);
+  color: white;
+}
+
+.dropdown-item.text-danger:hover {
+  color: #ef4444;
+}
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 1024px) {
+  .search-bar { width: 180px; }
+  .header-left { gap: 1rem; }
+  .nav-list { gap: 1rem; }
+}
+
+@media (max-width: 860px) {
+  .search-bar { display: none; }
+  .header-right { gap: 1rem; }
+}
+
+@media (max-width: 640px) {
+  .nav-list { display: none; } /* On very small screens, nav would be hamburger */
+  .btn-terbitkan { display: none; }
+}

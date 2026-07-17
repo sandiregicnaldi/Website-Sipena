@@ -1,0 +1,138 @@
+/* ═══════════════════════════════════════════════
+   FEATURED AUTHORS — Vidio-style dark strip
+═══════════════════════════════════════════════ */
+.authors-section {
+  padding: 3.5rem 0;
+  background-color: var(--bg-primary);
+}
+
+.authors-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.authors-row-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  position: relative;
+  padding-left: 1rem;
+}
+
+.authors-row-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 4px;
+  background: var(--accent-color);
+  border-radius: 2px;
+}
+
+.authors-row-viewall {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  text-decoration: none;
+  transition: gap 0.2s ease;
+}
+
+.authors-row-viewall:hover {
+  gap: 0.7rem;
+}
+
+/* Grid of author cards */
+.authors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.author-card {
+  display: flex;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background-color: #ffffff; /* Ubah ke putih agar lebih clean */
+  border-radius: var(--radius-lg);
+  transition: var(--transition-normal);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Soft shadow untuk card putih */
+}
+
+.author-card:hover {
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1); /* Hover shadow yang lebih clean */
+  border-color: var(--accent-color);
+  transform: translateY(-3px);
+}
+
+.author-avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.author-avatar,
+.author-avatar-placeholder {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.author-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.author-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  color: var(--text-primary); /* Pastikan teks nama gelap */
+}
+
+.author-bio {
+  font-size: 0.85rem;
+  color: var(--text-secondary); /* Pastikan teks bio gelap/abu-abu */
+  margin-bottom: 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.55;
+}
+
+.btn-read-more {
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  transition: var(--transition-fast);
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-read-more:hover {
+  text-decoration: underline;
+  gap: 0.5rem;
+}

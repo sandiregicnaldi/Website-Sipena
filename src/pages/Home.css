@@ -1,0 +1,42 @@
+.home-page {
+  background-color: var(--bg-primary);
+}
+
+/* Each section alternates white / dark like Vidio */
+.home-section {
+  background-color: var(--bg-primary);
+}
+
+.dark-section {
+  background-color: #0f172a;
+}
+
+/* Bottom CTA button */
+.home-cta {
+  padding: 3rem 0 5rem;
+  display: flex;
+  justify-content: center;
+  background-color: var(--bg-primary);
+}
+
+.cta-btn {
+  display: inline-block;
+  padding: 0.9rem 3rem;
+  background-color: #0f172a;
+  color: white;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 2px solid #1e293b;
+  transition: all 0.2s ease;
+}
+
+.cta-btn:hover {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37,99,235,0.25);
+}

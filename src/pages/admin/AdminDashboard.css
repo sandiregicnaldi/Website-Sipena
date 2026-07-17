@@ -1,0 +1,26 @@
+.admin-dashboard { }
+
+.chart-container { position: relative; }
+
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: #fff;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.chart-tooltip strong {
+  font-weight: 700;
+  font-size: 0.8rem;
+}
