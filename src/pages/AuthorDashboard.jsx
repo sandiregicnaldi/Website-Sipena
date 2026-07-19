@@ -161,11 +161,9 @@ const AuthorDashboard = () => {
           <div className="dashboard-content">
             {/* Tabs */}
             <div className="dash-tabs">
-              {(isCalon || isAuthor) && (
-                <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
-                  <FileText size={16} /> Naskah Saya
-                </button>
-              )}
+              <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
+                <FileText size={16} /> Naskah Saya
+              </button>
               <button className={`dash-tab ${activeTab === 'biodata' ? 'active' : ''}`} onClick={() => setActiveTab('biodata')}>
                 <User size={16} /> Biodata & Bio
               </button>

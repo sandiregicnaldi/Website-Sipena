@@ -132,31 +132,6 @@ const BookDetail = () => {
               <p>{book.synopsis}</p>
             </div>
 
-            {/* Video / Audiobook Player Section */}
-            <div className="video-player-section" style={{marginBottom: '2.5rem'}}>
-              <h3 style={{marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)'}}>
-                <PlayCircle size={20} color="var(--accent-color)" /> Pemutar Media (Audiobook / Trailer)
-              </h3>
-              <div style={{
-                borderRadius: 'var(--radius-lg)', 
-                overflow: 'hidden', 
-                backgroundColor: '#000', 
-                aspectRatio: '16/9',
-                boxShadow: 'var(--shadow-md)'
-              }}>
-                <video 
-                  controls 
-                  width="100%" 
-                  height="100%" 
-                  poster="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1200&auto=format&fit=crop"
-                  style={{objectFit: 'cover'}}
-                >
-                  <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
-                  Browser Anda tidak mendukung HTML5 video.
-                </video>
-              </div>
-            </div>
-
             {/* Modern PDF Reader Section */}
             <div className="pdf-reader-section">
               <div className="pdf-header">
