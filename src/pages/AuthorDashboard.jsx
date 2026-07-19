@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   User, Mail, MapPin, Calendar, Building2, Briefcase,
-  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon
+  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2
 } from 'lucide-react';
 import './AuthorDashboard.css';
 
@@ -179,22 +179,6 @@ const AuthorDashboard = () => {
               <div className="tab-panel">
                 <div className="form-section">
                   <div className="form-group">
-                    <label>Nama Lengkap</label>
-                    <div className="input-with-icon">
-                      <User size={18} className="input-icon" />
-                      <input type="text" name="namaLengkap" value={form.namaLengkap} onChange={handleChange} placeholder="Nama lengkap Anda" />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Lokasi Saat Ini</label>
-                    <div className="input-with-icon">
-                      <MapPin size={18} className="input-icon" />
-                      <input type="text" name="lokasi" value={form.lokasi} onChange={handleChange} placeholder="Misal: Yogyakarta, Indonesia" />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
                     <label>Website / Portofolio</label>
                     <div className="input-with-icon">
                       <Globe size={18} className="input-icon" />
@@ -229,24 +213,36 @@ const AuthorDashboard = () => {
                 {/* Form Pengajuan Naskah */}
                 <div className="add-karya-section" style={{marginBottom: '2rem'}}>
                   <h3>Ajukan Naskah Baru</h3>
-                  <form onSubmit={handleAjukanNaskah}>
+                  <form onSubmit={handleAjukanNaskah} className="form-section">
                     <div className="form-group">
                       <label>Judul Naskah</label>
-                      <input type="text" className="form-control" required value={naskahBaru.judul} onChange={e => setNaskahBaru(p => ({...p, judul: e.target.value}))} placeholder="Masukkan judul naskah" />
+                      <div className="input-with-icon">
+                        <Type size={18} className="input-icon" />
+                        <input type="text" required value={naskahBaru.judul} onChange={e => setNaskahBaru(p => ({...p, judul: e.target.value}))} placeholder="Masukkan judul naskah" />
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Kategori</label>
-                      <input type="text" className="form-control" required value={naskahBaru.kategori} onChange={e => setNaskahBaru(p => ({...p, kategori: e.target.value}))} placeholder="Fiksi, Sejarah, Sains, dll." />
+                      <div className="input-with-icon">
+                        <Hash size={18} className="input-icon" />
+                        <input type="text" required value={naskahBaru.kategori} onChange={e => setNaskahBaru(p => ({...p, kategori: e.target.value}))} placeholder="Fiksi, Sejarah, Sains, dll." />
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Sinopsis Naskah</label>
-                      <textarea className="form-control" rows="4" required value={naskahBaru.sinopsis} onChange={e => setNaskahBaru(p => ({...p, sinopsis: e.target.value}))} placeholder="Ceritakan ringkasan naskah Anda..."></textarea>
+                      <div className="input-with-icon textarea-container">
+                        <AlignLeft size={18} className="input-icon textarea-icon" />
+                        <textarea rows="4" required value={naskahBaru.sinopsis} onChange={e => setNaskahBaru(p => ({...p, sinopsis: e.target.value}))} placeholder="Ceritakan ringkasan naskah Anda..."></textarea>
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Tautan File Naskah (Google Drive)</label>
-                      <input type="url" className="form-control" placeholder="https://drive.google.com/..." required />
+                      <div className="input-with-icon">
+                        <Link2 size={18} className="input-icon" />
+                        <input type="url" placeholder="https://drive.google.com/..." required />
+                      </div>
                     </div>
-                    <button type="submit" className="btn btn-primary"><Plus size={16}/> Kirim Pengajuan</button>
+                    <button type="submit" className="btn btn-primary" style={{alignSelf: 'flex-start'}}><Plus size={16}/> Kirim Pengajuan</button>
                   </form>
                 </div>
 
