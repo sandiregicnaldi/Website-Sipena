@@ -57,7 +57,7 @@ const Header = () => {
                       <ShieldCheck size={14} /> Panel Admin
                     </Link>
                   )}
-                  {(isAuthor || user?.role === 'calon penulis') && (
+                  {!isAdmin && (
                     <Link to="/profil-saya" className="dropdown-item">
                       <LayoutDashboard size={14} /> Profil Saya
                     </Link>
