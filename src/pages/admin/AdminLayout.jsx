@@ -8,6 +8,7 @@ import AdminKegiatan from './AdminKegiatan';
 import AdminKonten from './AdminKonten';
 import AdminLaporan from './AdminLaporan';
 import AdminPengaturan from './AdminPengaturan';
+import AdminNaskah from './AdminNaskah';
 import './AdminLayout.css';
 
 // ── Icons as inline SVG ─────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ const ICONS = {
   layout:    'M3 3h7v9H3z M14 3h7v5h-7z M14 12h7v9h-7z M3 16h7v5H3z',
   chart:     'M18 20V10 M12 20V4 M6 20v-6',
   settings:  'M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  'file-text': 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8',
   logout:    'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
   chevron:   'M6 9l6 6 6-6',
   menu:      'M3 12h18 M3 6h18 M3 18h18',
@@ -54,6 +56,7 @@ const NAV_ITEMS = [
       { label: 'Kategori',         path: '/admin/katalog/kategori' },
     ]
   },
+  { label: 'Manajemen Naskah', path: '/admin/naskah', icon: 'file-text' },
   { label: 'Pengguna',    path: '/admin/pengguna',    icon: 'users',
     sub: [
       { label: 'Penulis',          path: '/admin/pengguna/penulis' },
@@ -247,6 +250,7 @@ const AdminLayout = () => {
           <Routes>
             <Route index element={<AdminDashboard />} />
             <Route path="katalog/*" element={<AdminKatalog />} />
+            <Route path="naskah/*" element={<AdminNaskah />} />
             <Route path="pengguna/*" element={<AdminPengguna />} />
             <Route path="kegiatan/*" element={<AdminKegiatan />} />
             <Route path="konten/*" element={<AdminKonten />} />

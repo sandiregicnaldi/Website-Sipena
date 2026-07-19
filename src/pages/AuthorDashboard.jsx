@@ -11,8 +11,10 @@ const AuthorDashboard = () => {
   const { user, updateProfile, logout, isAuthor } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  
+  const isCalon = user?.role === 'calon penulis';
 
-  // Redirect if not logged in or not an author
+  // Redirect if not logged in
   if (!user) {
     navigate('/login');
     return null;
@@ -29,8 +31,15 @@ const AuthorDashboard = () => {
   });
 
   const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '' });
+  
+  // State untuk form pengajuan naskah baru
+  const [naskahBaru, setNaskahBaru] = useState({ judul: '', kategori: '', sinopsis: '' });
+  const [naskahList, setNaskahList] = useState([
+    { id: 1, judul: 'Sejarah Kopi Nusantara', kategori: 'Sejarah', tanggal: '2026-07-01', status: 'Menunggu' }
+  ]);
+
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState('biodata');
+  const [activeTab, setActiveTab] = useState(isCalon ? 'naskah' : 'biodata');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,6 +75,20 @@ const AuthorDashboard = () => {
     updateProfile(form);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleAjukanNaskah = (e) => {
+    e.preventDefault();
+    if(!naskahBaru.judul) return;
+    setNaskahList(prev => [...prev, {
+      id: Date.now(),
+      judul: naskahBaru.judul,
+      kategori: naskahBaru.kategori,
+      tanggal: new Date().toISOString().split('T')[0],
+      status: 'Menunggu'
+    }]);
+    setNaskahBaru({ judul: '', kategori: '', sinopsis: '' });
+    alert('Naskah berhasil diajukan!');
   };
 
   const infoItems = [
@@ -113,7 +136,7 @@ const AuthorDashboard = () => {
                 style={{ display: 'none' }}
               />
               <h2 className="sidebar-name">{user.namaLengkap || user.username}</h2>
-              <span className="role-badge">{isAuthor ? '✍️ Penulis' : '👤 Pengunjung'}</span>
+              <span className="role-badge">{isAuthor ? '✍️ Penulis' : isCalon ? '⏳ Calon Penulis' : '👤 Pengunjung'}</span>
             </div>
 
             {/* Static info */}
@@ -138,6 +161,11 @@ const AuthorDashboard = () => {
           <div className="dashboard-content">
             {/* Tabs */}
             <div className="dash-tabs">
+              {(isCalon || isAuthor) && (
+                <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
+                  <FileText size={16} /> Naskah Saya
+                </button>
+              )}
               <button className={`dash-tab ${activeTab === 'biodata' ? 'active' : ''}`} onClick={() => setActiveTab('biodata')}>
                 <User size={16} /> Biodata & Bio
               </button>
@@ -189,6 +217,66 @@ const AuthorDashboard = () => {
                       <textarea name="bio" value={form.bio} onChange={handleChange} rows="5" placeholder="Ceritakan latar belakang, pengalaman menulis, dan penghargaan yang pernah Anda raih..."></textarea>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB NASKAH SAYA ─────────────────────────────────── */}
+            {activeTab === 'naskah' && (
+              <div className="tab-panel">
+                <p className="tab-desc">Ajukan draf naskah baru dan pantau status naskah yang sedang dalam proses review.</p>
+                
+                {/* Form Pengajuan Naskah */}
+                <div className="add-karya-section" style={{marginBottom: '2rem'}}>
+                  <h3>Ajukan Naskah Baru</h3>
+                  <form onSubmit={handleAjukanNaskah}>
+                    <div className="form-group">
+                      <label>Judul Naskah</label>
+                      <input type="text" className="form-control" required value={naskahBaru.judul} onChange={e => setNaskahBaru(p => ({...p, judul: e.target.value}))} placeholder="Masukkan judul naskah" />
+                    </div>
+                    <div className="form-group">
+                      <label>Kategori</label>
+                      <input type="text" className="form-control" required value={naskahBaru.kategori} onChange={e => setNaskahBaru(p => ({...p, kategori: e.target.value}))} placeholder="Fiksi, Sejarah, Sains, dll." />
+                    </div>
+                    <div className="form-group">
+                      <label>Sinopsis Naskah</label>
+                      <textarea className="form-control" rows="4" required value={naskahBaru.sinopsis} onChange={e => setNaskahBaru(p => ({...p, sinopsis: e.target.value}))} placeholder="Ceritakan ringkasan naskah Anda..."></textarea>
+                    </div>
+                    <div className="form-group">
+                      <label>File Naskah (.doc, .docx, .pdf)</label>
+                      <input type="file" className="form-control" accept=".doc,.docx,.pdf" />
+                    </div>
+                    <button type="submit" className="btn btn-primary"><Plus size={16}/> Kirim Pengajuan</button>
+                  </form>
+                </div>
+
+                {/* Tabel Status Naskah */}
+                <h3 className="section-title-sm">Status Naskah Diajukan</h3>
+                <div style={{overflowX: 'auto'}}>
+                  <table className="admin-table" style={{width: '100%', marginTop: '1rem'}}>
+                    <thead>
+                      <tr>
+                        <th>Judul</th>
+                        <th>Kategori</th>
+                        <th>Tanggal</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {naskahList.map(n => (
+                        <tr key={n.id}>
+                          <td>{n.judul}</td>
+                          <td>{n.kategori}</td>
+                          <td>{n.tanggal}</td>
+                          <td>
+                            <span className={`admin-badge ${n.status === 'Disetujui' ? 'badge-green' : n.status === 'Ditolak' ? 'badge-red' : 'badge-amber'}`}>
+                              {n.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
