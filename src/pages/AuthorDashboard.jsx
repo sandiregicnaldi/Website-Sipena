@@ -169,9 +169,11 @@ const AuthorDashboard = () => {
               <button className={`dash-tab ${activeTab === 'biodata' ? 'active' : ''}`} onClick={() => setActiveTab('biodata')}>
                 <User size={16} /> Biodata & Bio
               </button>
-              <button className={`dash-tab ${activeTab === 'karya' ? 'active' : ''}`} onClick={() => setActiveTab('karya')}>
-                <LinkIcon size={16} /> Karya Eksternal
-              </button>
+              {isAuthor && (
+                <button className={`dash-tab ${activeTab === 'karya' ? 'active' : ''}`} onClick={() => setActiveTab('karya')}>
+                  <LinkIcon size={16} /> Karya Eksternal
+                </button>
+              )}
             </div>
 
             {/* ── TAB 1: BIODATA ─────────────────────────────────── */}
