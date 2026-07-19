@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import './AdminLayout.css';
 
 const INITIAL_NASKAH = [
-  { id: 1, judul: 'Sejarah Kopi Nusantara', penulis: 'Ahmad Faisal', tanggal: '2026-07-01', kategori: 'Sejarah', status: 'Menunggu' },
-  { id: 2, judul: 'Teknik Penulisan Fiksi', penulis: 'Rina S.', tanggal: '2026-07-05', kategori: 'Sastra', status: 'Disetujui', alasan: '' },
-  { id: 3, judul: 'Misteri Gunung Merapi', penulis: 'Budi Hartono', tanggal: '2026-07-10', kategori: 'Fiksi', status: 'Ditolak', alasan: 'Tema tidak sesuai dengan fokus penerbitan Perpusnas Press tahun ini.' },
+  { id: 1, judul: 'Sejarah Kopi Nusantara', penulis: 'Ahmad Faisal', tanggal: '2026-07-01', kategori: 'Sejarah', status: 'Menunggu', linkDrive: 'https://drive.google.com/...' },
+  { id: 2, judul: 'Teknik Penulisan Fiksi', penulis: 'Rina S.', tanggal: '2026-07-05', kategori: 'Sastra', status: 'Disetujui', alasan: '', linkDrive: 'https://drive.google.com/...' },
+  { id: 3, judul: 'Misteri Gunung Merapi', penulis: 'Budi Hartono', tanggal: '2026-07-10', kategori: 'Fiksi', status: 'Ditolak', alasan: 'Tema tidak sesuai dengan fokus penerbitan Perpusnas Press tahun ini.', linkDrive: 'https://drive.google.com/...' },
 ];
 
 const AdminNaskah = () => {
@@ -49,6 +49,7 @@ const AdminNaskah = () => {
               <th>Judul Naskah</th>
               <th>Penulis</th>
               <th>Kategori</th>
+              <th>Berkas Naskah</th>
               <th>Tanggal Masuk</th>
               <th>Status</th>
               <th>Aksi</th>
@@ -64,6 +65,11 @@ const AdminNaskah = () => {
                 </td>
                 <td>{item.penulis}</td>
                 <td>{item.kategori}</td>
+                <td>
+                  <a href={item.linkDrive} target="_blank" rel="noopener noreferrer" style={{color: 'var(--accent-color)', textDecoration: 'underline', fontSize: '0.85rem'}}>
+                    Lihat Drive
+                  </a>
+                </td>
                 <td>{item.tanggal}</td>
                 <td><span className={`admin-badge ${getStatusBadge(item.status)}`}>{item.status}</span></td>
                 <td>

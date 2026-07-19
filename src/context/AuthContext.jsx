@@ -2,10 +2,11 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-// ── Hardcoded admin accounts (demo) ────────────────────────────────────────
-const ADMIN_ACCOUNTS = [
+// ── Hardcoded accounts (demo) ────────────────────────────────────────
+const MOCK_ACCOUNTS = [
   { email: 'admin@sipena.id',     password: 'admin123',   username: 'Administrator',  role: 'admin' },
   { email: 'konten@sipena.id',    password: 'konten123',  username: 'Pengelola Konten', role: 'admin' },
+  { email: 'calon@sipena.id',     password: 'calon123',   username: 'Budi (Calon)',   role: 'calon penulis' },
 ];
 
 export const AuthProvider = ({ children }) => {
@@ -16,14 +17,14 @@ export const AuthProvider = ({ children }) => {
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
-  // login: checks hardcoded admin first, then regular users
+  // login: checks hardcoded accounts first, then regular users
   const login = (userData) => {
-    // Check if it's an admin login attempt
-    const adminMatch = ADMIN_ACCOUNTS.find(
+    // Check if it's a mock login attempt
+    const mockMatch = MOCK_ACCOUNTS.find(
       a => a.email === userData.email && a.password === userData.password
     );
-    const data = adminMatch
-      ? { ...adminMatch, loggedInAt: new Date().toISOString() }
+    const data = mockMatch
+      ? { ...mockMatch, loggedInAt: new Date().toISOString() }
       : { ...userData, loggedInAt: new Date().toISOString() };
     setUser(data);
     localStorage.setItem('sipena_user', JSON.stringify(data));

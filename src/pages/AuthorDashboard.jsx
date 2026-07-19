@@ -243,8 +243,8 @@ const AuthorDashboard = () => {
                       <textarea className="form-control" rows="4" required value={naskahBaru.sinopsis} onChange={e => setNaskahBaru(p => ({...p, sinopsis: e.target.value}))} placeholder="Ceritakan ringkasan naskah Anda..."></textarea>
                     </div>
                     <div className="form-group">
-                      <label>File Naskah (.doc, .docx, .pdf)</label>
-                      <input type="file" className="form-control" accept=".doc,.docx,.pdf" />
+                      <label>Tautan File Naskah (Google Drive)</label>
+                      <input type="url" className="form-control" placeholder="https://drive.google.com/..." required />
                     </div>
                     <button type="submit" className="btn btn-primary"><Plus size={16}/> Kirim Pengajuan</button>
                   </form>

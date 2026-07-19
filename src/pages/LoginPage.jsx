@@ -284,7 +284,10 @@ const LoginPage = () => {
               </p>
               <div className="info-note" style={{marginTop:'0.75rem'}}>
                 <span>🔑</span>
-                <p style={{fontSize:'0.78rem'}}>Admin? Gunakan email <strong>admin@sipena.id</strong> dan password <strong>admin123</strong> untuk masuk ke panel admin.</p>
+                <div style={{fontSize:'0.78rem', display:'flex', flexDirection:'column', gap:'0.25rem'}}>
+                  <p>Admin: <strong>admin@sipena.id</strong> / <strong>admin123</strong></p>
+                  <p>Calon Penulis: <strong>calon@sipena.id</strong> / <strong>calon123</strong></p>
+                </div>
               </div>
             </form>
           )}
