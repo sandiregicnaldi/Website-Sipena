@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
       updateProfile,
       isLoggedIn:     !!user,
       isAuthor:       user?.role === 'penulis',
-      isAdmin:        user?.role === 'admin',
+      isAdmin:        user?.role === 'admin' || user?.role === 'pegawai',
     }}>
       {children}
     </AuthContext.Provider>

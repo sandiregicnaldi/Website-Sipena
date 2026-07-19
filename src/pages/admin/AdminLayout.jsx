@@ -82,6 +82,7 @@ const NAV_ITEMS = [
       { label: 'Pengguna Sistem',  path: '/admin/pengaturan/sistem' },
     ]
   },
+  { label: 'Manajemen Penerbitan', path: 'https://manajemen-penerbitan.perpusnas.go.id/', icon: 'layout', external: true }
 ];
 
 // ── NavItem ──────────────────────────────────────────────────────────────────
@@ -126,14 +127,26 @@ const NavItem = ({ item, collapsed }) => {
 
   return (
     <li>
-      <Link
-        to={item.path}
-        className={`nav-link ${isActive ? 'active' : ''}`}
-        title={collapsed ? item.label : ''}
-      >
-        <SVGIcon name={item.icon} size={18} />
-        {!collapsed && <span>{item.label}</span>}
-      </Link>
+      {item.external ? (
+        <a
+          href={item.path}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nav-link"
+        >
+          <SVGIcon name={item.icon} size={18} />
+          {!collapsed && <span>{item.label}</span>}
+        </a>
+      ) : (
+        <Link
+          to={item.path}
+          className={`nav-link ${isActive ? 'active' : ''}`}
+          title={collapsed ? item.label : ''}
+        >
+          <SVGIcon name={item.icon} size={18} />
+          {!collapsed && <span>{item.label}</span>}
+        </Link>
+      )}
     </li>
   );
 };
