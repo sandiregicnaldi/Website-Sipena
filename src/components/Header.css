@@ -15,6 +15,7 @@
   justify-content: space-between;
   align-items: center;
   height: 64px; /* Kembalikan ke tinggi yang ideal/kompak */
+  max-width: 1400px; /* Diperlebar agar logo lebih ke pojok kiri */
 }
 
 /* ── LEFT: Logo & Nav ─────────────────────────── */
