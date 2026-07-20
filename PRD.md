@@ -40,9 +40,9 @@ Sistem memiliki beberapa tingkat akses (Role) dengan hak dan fungsionalitas yang
   - *Tombol "Daftar":* Pendaftaran akun dengan peran Pengunjung, Penulis, Calon Penulis, atau Pegawai.
 
 ### 3.2. Dashboard Penulis & Calon Penulis (User Area)
-- **Profil Saya:** Manajemen data diri penulis, bio, dan daftar keahlian. (Berlaku untuk Penulis & Calon Penulis).
-- **Naskah Saya (Khusus Calon Penulis & Penulis):** Formulir untuk mengajukan draf naskah baru, serta tabel pemantauan status naskah (Menunggu Review, Ditolak dengan alasan, Disetujui).
-- **Karya Eksternal:** Menampilkan rekapitulasi buku yang sudah terbit di penerbit lain.
+- **Profil Saya:** Manajemen bio, daftar keahlian, dan portofolio web (Data statis dasar seperti Nama dan Lokasi otomatis tersinkronisasi dari registrasi). Tersedia untuk semua peran non-admin.
+- **Naskah Saya:** Formulir untuk mengajukan draf naskah baru yang dilengkapi dengan unggahan tautan *Google Drive*, serta tabel pemantauan status naskah (Menunggu Review, Ditolak dengan alasan, Disetujui). Tersedia untuk semua peran non-admin.
+- **Karya Eksternal:** Menampilkan rekapitulasi buku yang sudah terbit di penerbit lain. (Khusus untuk *role* Penulis yang telah diverifikasi).
 
 ### 3.3. Dashboard Admin (Back-End)
 - **Beranda Admin:** Ringkasan statistik (total buku, unduhan, pengunjung), grafik tren SVG interaktif, dan tabel aktivitas terbaru.

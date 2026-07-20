@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import './AdminLayout.css';
 import './AdminDashboard.css';
 
@@ -199,6 +200,7 @@ const AdminDashboard = () => {
         <div className="admin-card">
           <div className="admin-card-header">
             <span className="admin-card-title">Buku Terbaru / Proses</span>
+            <Link to="/admin/katalog" style={{ fontSize: '0.82rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat Semua →</Link>
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -208,6 +210,7 @@ const AdminDashboard = () => {
                   <th>Kategori</th>
                   <th>Status</th>
                   <th>Tanggal</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,6 +225,9 @@ const AdminDashboard = () => {
                     <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
                       {new Date(b.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}
                     </td>
+                    <td>
+                      <Link to="/admin/katalog" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -233,6 +239,7 @@ const AdminDashboard = () => {
         <div className="admin-card">
           <div className="admin-card-header">
             <span className="admin-card-title">Pengguna Terdaftar Terbaru</span>
+            <Link to="/admin/pengguna" style={{ fontSize: '0.82rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat Semua →</Link>
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -241,6 +248,7 @@ const AdminDashboard = () => {
                   <th>Nama</th>
                   <th>Role</th>
                   <th>Tanggal</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -253,6 +261,9 @@ const AdminDashboard = () => {
                     <td><span className={`badge ${ROLE_BADGE[u.role] || 'badge-gray'}`}>{u.role}</span></td>
                     <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
                       {new Date(u.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}
+                    </td>
+                    <td>
+                      <Link to="/admin/pengguna" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
                     </td>
                   </tr>
                 ))}
