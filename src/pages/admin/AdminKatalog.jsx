@@ -193,8 +193,8 @@ const AdminKatalog = () => {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {b.sampul && <span className="badge badge-gray" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><ImageIcon size={12} /> Sampul</span>}
-                      {b.pdf && <span className="badge badge-gray" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><FileText size={12} /> PDF</span>}
+                      {b.sampul && <a href="#" target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><ImageIcon size={12} /> Sampul</a>}
+                      {b.pdf && <a href="#" target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><FileText size={12} /> PDF</a>}
                       {b.youtube && <a href={b.youtube} target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><ExternalLink size={12} /> Youtube</a>}
                       {!b.sampul && !b.pdf && !b.youtube && <span style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>-</span>}
                     </div>

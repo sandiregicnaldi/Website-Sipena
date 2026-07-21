@@ -57,8 +57,6 @@ const NAV_ITEMS = [
   { label: 'Manajemen Naskah', path: '/admin/naskah', icon: 'file-text' },
   { label: 'Pengguna',    path: '/admin/pengguna',    icon: 'users',
     sub: [
-      { label: 'Penulis',          path: '/admin/pengguna/penulis' },
-      { label: 'Calon Penulis',    path: '/admin/pengguna/calon-penulis' },
       { label: 'Pengunjung',       path: '/admin/pengguna/pengunjung' },
       { label: 'Pegawai',          path: '/admin/pengguna/pegawai' },
     ]
