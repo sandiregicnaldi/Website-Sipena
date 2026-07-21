@@ -5,6 +5,25 @@ import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 import './EventDetail.css';
 
+// Mock database matching the EventSection data
+const MOCK_EVENTS = [
+  {
+    id: 1,
+    title: 'Peluncuran Buku Sejarah Nusantara',
+    date: '25 Agustus 2026',
+    time: '09:00 - 12:00 WIB',
+    location: 'Gedung Perpustakaan Nasional RI',
+    address: 'Jl. Medan Merdeka Sel. No.11, Jakarta Pusat',
+    image: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?auto=format&fit=crop&w=1200&q=80',
+    description: 'Acara peluncuran buku terbaru terbitan Perpusnas Press dengan bedah buku bersama penulis.',
+    fullContent: `Bergabunglah bersama kami dalam acara peluncuran buku terbaru terbitan Perpusnas Press yang berjudul "Sejarah Nusantara". Acara ini akan mengupas tuntas latar belakang penulisan, riset yang dilakukan, serta temuan-temuan baru terkait sejarah nusantara yang jarang terekspos.\n\nSelain peluncuran, akan ada sesi bedah buku yang menghadirkan narasumber ahli di bidang sejarah, serta sesi tanya jawab interaktif dengan penulis.\n\nPeserta yang hadir secara langsung akan mendapatkan kesempatan untuk membeli buku dengan harga khusus dan mendapatkan tanda tangan penulis. Jangan lewatkan kesempatan berharga ini!`,
+    speaker: 'Prof. Dr. H. Aminuddin, M.A. (Sejarawan)',
+    quota: 150,
+    pinPresensi: '123456',
+    zoomLink: 'https://zoom.us/j/123456789'
+  }
+];
+
 const EventDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
@@ -15,27 +34,46 @@ const EventDetail = () => {
   const [hasAttended, setHasAttended] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
+  const [presensiStatus, setPresensiStatus] = useState({ open: true, msg: '' });
 
-  // Mock database matching the EventSection data
-  const events = [
-    {
-      id: 1,
-      title: 'Peluncuran Buku Sejarah Nusantara',
-      date: '25 Agustus 2026',
-      time: '09:00 - 12:00 WIB',
-      location: 'Gedung Perpustakaan Nasional RI',
-      address: 'Jl. Medan Merdeka Sel. No.11, Jakarta Pusat',
-      image: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?auto=format&fit=crop&w=1200&q=80',
-      description: 'Acara peluncuran buku terbaru terbitan Perpusnas Press dengan bedah buku bersama penulis.',
-      fullContent: `Bergabunglah bersama kami dalam acara peluncuran buku terbaru terbitan Perpusnas Press yang berjudul "Sejarah Nusantara". Acara ini akan mengupas tuntas latar belakang penulisan, riset yang dilakukan, serta temuan-temuan baru terkait sejarah nusantara yang jarang terekspos.\n\nSelain peluncuran, akan ada sesi bedah buku yang menghadirkan narasumber ahli di bidang sejarah, serta sesi tanya jawab interaktif dengan penulis.\n\nPeserta yang hadir secara langsung akan mendapatkan kesempatan untuk membeli buku dengan harga khusus dan mendapatkan tanda tangan penulis. Jangan lewatkan kesempatan berharga ini!`,
-      speaker: 'Prof. Dr. H. Aminuddin, M.A. (Sejarawan)',
-      quota: 150,
-      pinPresensi: '123456',
-      zoomLink: 'https://zoom.us/j/123456789'
-    }
-  ];
+  const event = MOCK_EVENTS.find(e => e.id === parseInt(id)) || MOCK_EVENTS[0];
 
-  const event = events.find(e => e.id === parseInt(id)) || events[0];
+  React.useEffect(() => {
+    const checkPresensiOpen = () => {
+      const months = { 'Januari': 0, 'Februari': 1, 'Maret': 2, 'April': 3, 'Mei': 4, 'Juni': 5, 'Juli': 6, 'Agustus': 7, 'September': 8, 'Oktober': 9, 'November': 10, 'Desember': 11 };
+      
+      const dateParts = event.date.split(' ');
+      if(dateParts.length !== 3) return { open: true, msg: '' };
+      const day = parseInt(dateParts[0]);
+      const month = months[dateParts[1]];
+      const year = parseInt(dateParts[2]);
+
+      const timeParts = event.time.split(' - ');
+      if(timeParts.length !== 2) return { open: true, msg: '' };
+      const endTimeStr = timeParts[1].replace(' WIB', '').trim();
+      const [endHr, endMin] = endTimeStr.split(':').map(Number);
+
+      const eventEndTime = new Date(year, month, day, endHr, endMin, 0);
+      const eventOpenTime = new Date(eventEndTime.getTime() - 10 * 60000); // 10 menit sebelum acara selesai
+
+      const now = new Date();
+
+      if (now < eventOpenTime) {
+        return { open: false, msg: `Presensi akan dibuka pada ${eventOpenTime.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})} WIB (10 menit sebelum acara selesai)` };
+      } else if (now > eventEndTime) {
+        return { open: false, msg: 'Waktu presensi telah berakhir.' };
+      } else {
+        return { open: true, msg: '' };
+      }
+    };
+
+    setPresensiStatus(checkPresensiOpen());
+    const interval = setInterval(() => {
+      setPresensiStatus(checkPresensiOpen());
+    }, 60000); // Cek setiap menit
+
+    return () => clearInterval(interval);
+  }, [event]);
 
   const handleDaftar = () => {
     if (!user) {
@@ -198,9 +236,19 @@ const EventDetail = () => {
                         🔗 Buka Tautan Acara (Zoom/YT)
                       </a>
                     )}
-                    <button className="btn btn-primary w-100" onClick={() => setShowPinModal(true)}>
+                    <button 
+                      className="btn btn-primary w-100" 
+                      onClick={() => setShowPinModal(true)}
+                      disabled={!presensiStatus.open}
+                      style={{ opacity: presensiStatus.open ? 1 : 0.6, cursor: presensiStatus.open ? 'pointer' : 'not-allowed' }}
+                    >
                       📝 Isi Daftar Hadir
                     </button>
+                    {!presensiStatus.open && (
+                      <div style={{fontSize: '0.75rem', color: 'var(--danger)', marginTop: '0.5rem', textAlign: 'center', fontWeight: 600}}>
+                        {presensiStatus.msg}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>

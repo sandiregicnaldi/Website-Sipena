@@ -52,8 +52,6 @@ const NAV_ITEMS = [
   { label: 'Katalog Buku', path: '/admin/katalog',    icon: 'book',
     sub: [
       { label: 'Daftar Buku',      path: '/admin/katalog' },
-      { label: 'Tambah Buku',      path: '/admin/katalog/tambah' },
-      { label: 'Kategori',         path: '/admin/katalog/kategori' },
     ]
   },
   { label: 'Manajemen Naskah', path: '/admin/naskah', icon: 'file-text' },

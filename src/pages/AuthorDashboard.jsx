@@ -33,9 +33,11 @@ const AuthorDashboard = () => {
   const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '' });
   
   // State untuk form pengajuan naskah baru
-  const [naskahBaru, setNaskahBaru] = useState({ judul: '', kategori: '', sinopsis: '' });
+  const [naskahBaru, setNaskahBaru] = useState({ judul: '', linkDrive: '' });
   const [naskahList, setNaskahList] = useState([
-    { id: 1, judul: 'Sejarah Kopi Nusantara', kategori: 'Sejarah', tanggal: '2026-07-01', status: 'Menunggu' }
+    { id: 1, judul: 'Sejarah Kopi Nusantara', linkDrive: 'https://drive.google.com/...', tanggal: '2026-07-01', status: 'Menunggu', alasan: '' },
+    { id: 2, judul: 'Teknik Penulisan Fiksi', linkDrive: 'https://drive.google.com/...', tanggal: '2026-07-05', status: 'Disetujui', alasan: '' },
+    { id: 3, judul: 'Misteri Gunung Merapi', linkDrive: 'https://drive.google.com/...', tanggal: '2026-07-10', status: 'Ditolak', alasan: 'Tema tidak sesuai dengan fokus penerbitan Perpusnas Press tahun ini.' },
   ]);
 
   // State untuk Kegiatan Saya (Mock)
@@ -85,15 +87,16 @@ const AuthorDashboard = () => {
 
   const handleAjukanNaskah = (e) => {
     e.preventDefault();
-    if(!naskahBaru.judul) return;
+    if(!naskahBaru.judul || !naskahBaru.linkDrive) return;
     setNaskahList(prev => [...prev, {
       id: Date.now(),
       judul: naskahBaru.judul,
-      kategori: naskahBaru.kategori,
+      linkDrive: naskahBaru.linkDrive,
       tanggal: new Date().toISOString().split('T')[0],
-      status: 'Menunggu'
+      status: 'Menunggu',
+      alasan: ''
     }]);
-    setNaskahBaru({ judul: '', kategori: '', sinopsis: '' });
+    setNaskahBaru({ judul: '', linkDrive: '' });
     alert('Naskah berhasil diajukan!');
   };
 
@@ -274,24 +277,10 @@ const AuthorDashboard = () => {
                       </div>
                     </div>
                     <div className="form-group">
-                      <label>Kategori</label>
-                      <div className="input-with-icon">
-                        <Hash size={18} className="input-icon" />
-                        <input type="text" required value={naskahBaru.kategori} onChange={e => setNaskahBaru(p => ({...p, kategori: e.target.value}))} placeholder="Fiksi, Sejarah, Sains, dll." />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label>Sinopsis Naskah</label>
-                      <div className="input-with-icon textarea-container">
-                        <AlignLeft size={18} className="input-icon textarea-icon" />
-                        <textarea rows="4" required value={naskahBaru.sinopsis} onChange={e => setNaskahBaru(p => ({...p, sinopsis: e.target.value}))} placeholder="Ceritakan ringkasan naskah Anda..."></textarea>
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label>Tautan File Naskah (Google Drive)</label>
+                      <label>Tautan File Naskah (Google Drive) *</label>
                       <div className="input-with-icon">
                         <Link2 size={18} className="input-icon" />
-                        <input type="url" placeholder="https://drive.google.com/..." required />
+                        <input type="url" placeholder="https://drive.google.com/..." required value={naskahBaru.linkDrive} onChange={e => setNaskahBaru(p => ({...p, linkDrive: e.target.value}))} />
                       </div>
                     </div>
                     <button type="submit" className="btn btn-primary" style={{alignSelf: 'flex-start'}}><Plus size={16}/> Kirim Pengajuan</button>
@@ -305,21 +294,27 @@ const AuthorDashboard = () => {
                     <thead>
                       <tr>
                         <th>Judul</th>
-                        <th>Kategori</th>
-                        <th>Tanggal</th>
+                        <th>Berkas Naskah</th>
+                        <th>Tanggal Masuk</th>
                         <th>Status</th>
+                        <th>Alasan Ditolak</th>
                       </tr>
                     </thead>
                     <tbody>
                       {naskahList.map(n => (
                         <tr key={n.id}>
-                          <td>{n.judul}</td>
-                          <td>{n.kategori}</td>
-                          <td>{n.tanggal}</td>
+                          <td style={{fontWeight: 600}}>{n.judul}</td>
+                          <td>
+                            <a href={n.linkDrive} target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{textDecoration: 'none'}}>Lihat Berkas</a>
+                          </td>
+                          <td style={{fontSize: '0.85rem'}}>{n.tanggal}</td>
                           <td>
                             <span className={`admin-badge ${n.status === 'Disetujui' ? 'badge-green' : n.status === 'Ditolak' ? 'badge-red' : 'badge-amber'}`}>
                               {n.status}
                             </span>
+                          </td>
+                          <td style={{fontSize: '0.85rem', color: 'var(--danger)', maxWidth: '150px'}}>
+                            {n.status === 'Ditolak' ? n.alasan : '-'}
                           </td>
                         </tr>
                       ))}
