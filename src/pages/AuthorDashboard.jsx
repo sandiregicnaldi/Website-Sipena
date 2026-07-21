@@ -3,20 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   User, Mail, MapPin, Calendar, Building2, Briefcase,
-  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2
+  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download
 } from 'lucide-react';
+import jsPDF from 'jspdf';
 import './AuthorDashboard.css';
 
 const AuthorDashboard = () => {
-  const { user, updateProfile, logout, isAuthor } = useAuth();
+  const { user, updateProfile, logout, isAuthor, isAdmin } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
-  const isCalon = user?.role === 'calon penulis';
-
-  // Redirect if not logged in
-  if (!user) {
-    navigate('/login');
+  // Redirect if not logged in or is admin
+  if (!user || isAdmin) {
+    if (isAdmin) navigate('/admin');
+    else navigate('/login');
     return null;
   }
 
@@ -38,8 +38,14 @@ const AuthorDashboard = () => {
     { id: 1, judul: 'Sejarah Kopi Nusantara', kategori: 'Sejarah', tanggal: '2026-07-01', status: 'Menunggu' }
   ]);
 
+  // State untuk Kegiatan Saya (Mock)
+  const [kegiatanList, setKegiatanList] = useState([
+    { id: 1, judul: 'Seminar Literasi Digital 2026', tanggal: '2026-08-10', statusPresensi: 'Hadir' },
+    { id: 2, judul: 'Workshop Penulisan Ilmiah', tanggal: '2026-07-20', statusPresensi: 'Belum Hadir' },
+  ]);
+
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState(isCalon ? 'naskah' : 'biodata');
+  const [activeTab, setActiveTab] = useState('biodata');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -91,6 +97,49 @@ const AuthorDashboard = () => {
     alert('Naskah berhasil diajukan!');
   };
 
+  const downloadSertifikat = (kegiatan) => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    
+    // Background and border
+    doc.setFillColor(245, 247, 250);
+    doc.rect(0, 0, 297, 210, 'F');
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(2);
+    doc.rect(10, 10, 277, 190);
+
+    // Title
+    doc.setFontSize(28);
+    doc.setTextColor(30, 58, 138);
+    doc.text('SERTIFIKAT KEHADIRAN', 148.5, 50, { align: 'center' });
+    
+    // Subtitle
+    doc.setFontSize(14);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Diberikan kepada:', 148.5, 75, { align: 'center' });
+
+    // Name
+    doc.setFontSize(32);
+    doc.setTextColor(15, 23, 42);
+    doc.text(user.namaLengkap || user.username, 148.5, 100, { align: 'center' });
+
+    // Text
+    doc.setFontSize(14);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Atas partisipasinya dalam kegiatan:', 148.5, 125, { align: 'center' });
+
+    // Event Title
+    doc.setFontSize(20);
+    doc.setTextColor(37, 99, 235);
+    doc.text(kegiatan.judul, 148.5, 145, { align: 'center' });
+
+    // Date
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Jakarta, ${new Date(kegiatan.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 148.5, 175, { align: 'center' });
+
+    doc.save(`Sertifikat_${kegiatan.judul.replace(/\s+/g, '_')}.pdf`);
+  };
+
   const infoItems = [
     { label: 'Email', value: user.email, icon: <Mail size={16} /> },
     { label: 'Tempat & Tanggal Lahir', value: user.tempatLahir && user.tanggalLahir ? `${user.tempatLahir}, ${new Date(user.tanggalLahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : '-', icon: <Calendar size={16} /> },
@@ -106,7 +155,7 @@ const AuthorDashboard = () => {
             <ArrowLeft size={16} /> Kembali ke Beranda
           </button>
           <h1 className="dashboard-title">Profil Saya</h1>
-          <p className="dashboard-subtitle">Kelola informasi dan karya-karya Anda di SIPena</p>
+          <p className="dashboard-subtitle">Kelola informasi, naskah, dan sertifikat kegiatan Anda.</p>
         </div>
 
         <div className="dashboard-grid">
@@ -136,7 +185,7 @@ const AuthorDashboard = () => {
                 style={{ display: 'none' }}
               />
               <h2 className="sidebar-name">{user.namaLengkap || user.username}</h2>
-              <span className="role-badge">{isAuthor ? '✍️ Penulis' : isCalon ? '⏳ Calon Penulis' : '👤 Pengunjung'}</span>
+              <span className="role-badge">{isAuthor ? '✍️ Penulis Terverifikasi' : '👤 Pengunjung'}</span>
             </div>
 
             {/* Static info */}
@@ -161,11 +210,14 @@ const AuthorDashboard = () => {
           <div className="dashboard-content">
             {/* Tabs */}
             <div className="dash-tabs">
-              <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
-                <FileText size={16} /> Naskah Saya
-              </button>
               <button className={`dash-tab ${activeTab === 'biodata' ? 'active' : ''}`} onClick={() => setActiveTab('biodata')}>
-                <User size={16} /> Biodata & Bio
+                <User size={16} /> Biodata & Profil
+              </button>
+              <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
+                <FileText size={16} /> Pengajuan Naskah
+              </button>
+              <button className={`dash-tab ${activeTab === 'kegiatan' ? 'active' : ''}`} onClick={() => setActiveTab('kegiatan')}>
+                <Calendar size={16} /> Kegiatan Saya
               </button>
               {isAuthor && (
                 <button className={`dash-tab ${activeTab === 'karya' ? 'active' : ''}`} onClick={() => setActiveTab('karya')}>
@@ -205,7 +257,7 @@ const AuthorDashboard = () => {
               </div>
             )}
 
-            {/* ── TAB NASKAH SAYA ─────────────────────────────────── */}
+            {/* ── TAB PENGUJUAN NASKAH ─────────────────────────────────── */}
             {activeTab === 'naskah' && (
               <div className="tab-panel">
                 <p className="tab-desc">Ajukan draf naskah baru dan pantau status naskah yang sedang dalam proses review.</p>
@@ -277,8 +329,52 @@ const AuthorDashboard = () => {
               </div>
             )}
 
-            {/* ── TAB 2: KARYA EKSTERNAL ─────────────────────────── */}
-            {activeTab === 'karya' && (
+            {/* ── TAB KEGIATAN SAYA ─────────────────────────────────── */}
+            {activeTab === 'kegiatan' && (
+              <div className="tab-panel">
+                <p className="tab-desc">Lihat riwayat kegiatan yang Anda ikuti dan unduh sertifikat kehadiran.</p>
+                
+                <div style={{overflowX: 'auto'}}>
+                  <table className="admin-table" style={{width: '100%', marginTop: '1rem'}}>
+                    <thead>
+                      <tr>
+                        <th>Nama Kegiatan</th>
+                        <th>Tanggal</th>
+                        <th>Status Presensi</th>
+                        <th>Sertifikat</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {kegiatanList.map(k => (
+                        <tr key={k.id}>
+                          <td style={{fontWeight: 600}}>{k.judul}</td>
+                          <td style={{fontSize: '0.85rem'}}>
+                            {new Date(k.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </td>
+                          <td>
+                            <span className={`badge ${k.statusPresensi === 'Hadir' ? 'badge-green' : 'badge-amber'}`}>
+                              {k.statusPresensi}
+                            </span>
+                          </td>
+                          <td>
+                            {k.statusPresensi === 'Hadir' ? (
+                              <button onClick={() => downloadSertifikat(k)} className="btn btn-outline" style={{padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem'}}>
+                                <Download size={14} /> Unduh PDF
+                              </button>
+                            ) : (
+                              <span style={{color: 'var(--text-tertiary)', fontSize: '0.8rem'}}>-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB KARYA EKSTERNAL (Only Verified Author) ─────────── */}
+            {activeTab === 'karya' && isAuthor && (
               <div className="tab-panel">
                 <p className="tab-desc">Tambahkan karya-karya Anda yang diterbitkan di luar Perpusnas Press beserta tautan pembelian atau aksesnya.</p>
 

@@ -255,12 +255,6 @@ const LoginPage = () => {
               <button className={`role-btn ${roleType === 'pengunjung' ? 'active' : ''}`} onClick={() => setRoleType('pengunjung')}>
                 Pengunjung
               </button>
-              <button className={`role-btn ${roleType === 'penulis' ? 'active' : ''}`} onClick={() => setRoleType('penulis')}>
-                Penulis
-              </button>
-              <button className={`role-btn ${roleType === 'calon penulis' ? 'active' : ''}`} onClick={() => setRoleType('calon penulis')}>
-                Calon Penulis
-              </button>
               <button className={`role-btn ${roleType === 'pegawai' ? 'active' : ''}`} onClick={() => setRoleType('pegawai')}>
                 Pegawai
               </button>
@@ -286,7 +280,8 @@ const LoginPage = () => {
                 <span>🔑</span>
                 <div style={{fontSize:'0.78rem', display:'flex', flexDirection:'column', gap:'0.25rem'}}>
                   <p>Admin: <strong>admin@sipena.id</strong> / <strong>admin123</strong></p>
-                  <p>Calon Penulis: <strong>calon@sipena.id</strong> / <strong>calon123</strong></p>
+                  <p>Pengunjung: <strong>pengunjung@sipena.id</strong> / <strong>pengunjung123</strong></p>
+                  <p>Penulis: <strong>penulis@sipena.id</strong> / <strong>penulis123</strong></p>
                 </div>
               </div>
             </form>
@@ -299,48 +294,6 @@ const LoginPage = () => {
               <CommonRegisterFields form={form} onChange={handleChange} setForm={setForm} showAddress={true} />
               <button type="submit" className="btn btn-primary login-btn">
                 Daftar Sekarang <ArrowRight size={18} />
-              </button>
-              <p className="switch-link">
-                Sudah punya akun?{' '}
-                <button type="button" className="link-btn" onClick={() => switchMode('login')}>
-                  Masuk di sini
-                </button>
-              </p>
-            </form>
-          )}
-
-          {/* ── REGISTER FORM – PENULIS ─────────────────────── */}
-          {mode === 'register' && roleType === 'penulis' && (
-            <form className="login-form" onSubmit={handleRegister}>
-              <div className="register-section-label">Data Diri Penulis</div>
-              <CommonRegisterFields form={form} onChange={handleChange} setForm={setForm} showAddress={true} />
-              <div className="info-note">
-                <span>📝</span>
-                <p>Setelah berhasil mendaftar, Anda dapat melengkapi profil penulis (foto, bio, karya eksternal, dll.) melalui halaman <strong>Profil Saya</strong>.</p>
-              </div>
-              <button type="submit" className="btn btn-primary login-btn">
-                Daftar Sebagai Penulis <ArrowRight size={18} />
-              </button>
-              <p className="switch-link">
-                Sudah punya akun?{' '}
-                <button type="button" className="link-btn" onClick={() => switchMode('login')}>
-                  Masuk di sini
-                </button>
-              </p>
-            </form>
-          )}
-
-          {/* ── REGISTER FORM – CALON PENULIS ─────────────────────── */}
-          {mode === 'register' && roleType === 'calon penulis' && (
-            <form className="login-form" onSubmit={handleRegister}>
-              <div className="register-section-label">Data Diri Calon Penulis</div>
-              <CommonRegisterFields form={form} onChange={handleChange} setForm={setForm} showAddress={true} />
-              <div className="info-note">
-                <span>📝</span>
-                <p>Gunakan akun ini untuk mengajukan naskah dan berdiskusi dengan editor kami. Setelah naskah disetujui, akun Anda dapat ditingkatkan menjadi Penulis.</p>
-              </div>
-              <button type="submit" className="btn btn-primary login-btn">
-                Daftar Sebagai Calon Penulis <ArrowRight size={18} />
               </button>
               <p className="switch-link">
                 Sudah punya akun?{' '}

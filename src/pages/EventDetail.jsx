@@ -1,10 +1,20 @@
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, Clock, ArrowLeft, Users, Share2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Clock, ArrowLeft, Users, Share2, CheckCircle, Download } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import jsPDF from 'jspdf';
 import './EventDetail.css';
 
 const EventDetail = () => {
   const { id } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Mock states for demonstration
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [hasAttended, setHasAttended] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
 
   // Mock database matching the EventSection data
   const events = [
@@ -17,47 +27,79 @@ const EventDetail = () => {
       address: 'Jl. Medan Merdeka Sel. No.11, Jakarta Pusat',
       image: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?auto=format&fit=crop&w=1200&q=80',
       description: 'Acara peluncuran buku terbaru terbitan Perpusnas Press dengan bedah buku bersama penulis.',
-      fullContent: `Bergabunglah bersama kami dalam acara peluncuran buku terbaru terbitan Perpusnas Press yang berjudul "Sejarah Nusantara". Acara ini akan mengupas tuntas latar belakang penulisan, riset yang dilakukan, serta temuan-temuan baru terkait sejarah nusantara yang jarang terekspos.
-
-Selain peluncuran, akan ada sesi bedah buku yang menghadirkan narasumber ahli di bidang sejarah, serta sesi tanya jawab interaktif dengan penulis.
-
-Peserta yang hadir secara langsung akan mendapatkan kesempatan untuk membeli buku dengan harga khusus dan mendapatkan tanda tangan penulis. Jangan lewatkan kesempatan berharga ini!`,
+      fullContent: `Bergabunglah bersama kami dalam acara peluncuran buku terbaru terbitan Perpusnas Press yang berjudul "Sejarah Nusantara". Acara ini akan mengupas tuntas latar belakang penulisan, riset yang dilakukan, serta temuan-temuan baru terkait sejarah nusantara yang jarang terekspos.\n\nSelain peluncuran, akan ada sesi bedah buku yang menghadirkan narasumber ahli di bidang sejarah, serta sesi tanya jawab interaktif dengan penulis.\n\nPeserta yang hadir secara langsung akan mendapatkan kesempatan untuk membeli buku dengan harga khusus dan mendapatkan tanda tangan penulis. Jangan lewatkan kesempatan berharga ini!`,
       speaker: 'Prof. Dr. H. Aminuddin, M.A. (Sejarawan)',
-      quota: 150
-    },
-    {
-      id: 2,
-      title: 'Workshop Penulisan Naskah',
-      date: '10 September 2026',
-      time: '13:00 - 16:00 WIB',
-      location: 'Online via Zoom',
-      address: 'Tautan Zoom akan dikirimkan H-1 acara',
-      image: 'https://images.unsplash.com/photo-1455390582262-044cdead27d8?auto=format&fit=crop&w=1200&q=80',
-      description: 'Pelatihan intensif bagi calon penulis untuk memahami standar penulisan di Perpusnas Press.',
-      fullContent: `Bagi Anda yang bercita-cita menerbitkan karya melalui Perpusnas Press, workshop ini wajib Anda ikuti. Kami akan membahas secara mendetail apa saja kriteria naskah yang lolos seleksi, gaya selingkung Perpusnas Press, hingga tata cara pengajuan naskah.
-
-Workshop akan dipandu langsung oleh tim editor senior Perpusnas Press yang telah menyeleksi ribuan naskah setiap tahunnya. Siapkan naskah terbaik Anda dan mari kita bedah bersama!`,
-      speaker: 'Tim Editor Senior Perpusnas Press',
-      quota: 500
-    },
-    {
-      id: 3,
-      title: 'Pameran Koleksi Langka',
-      date: '1 - 7 Oktober 2026',
-      time: '08:00 - 16:00 WIB',
-      location: 'Ruang Pameran Utama Perpusnas',
-      address: 'Lantai 2, Gedung Fasilitas Layanan Perpusnas RI',
-      image: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80',
-      description: 'Menampilkan koleksi naskah dan buku langka yang telah direstorasi dan didigitalisasi.',
-      fullContent: `Saksikan secara langsung mahakarya peradaban Nusantara dalam pameran koleksi langka terbesar tahun ini. Perpusnas akan memamerkan puluhan naskah kuno, peta lawas, dan buku-buku langka yang usianya mencapai ratusan tahun.
-
-Sebagian besar koleksi yang dipamerkan telah melalui proses restorasi fisik dan digitalisasi resolusi tinggi. Pameran ini terbuka untuk umum dan gratis. Tersedia pemandu pameran yang akan menjelaskan sejarah di balik setiap koleksi pada jam-jam tertentu.`,
-      speaker: '-',
-      quota: 'Tidak Terbatas'
+      quota: 150,
+      pinPresensi: '123456',
+      zoomLink: 'https://zoom.us/j/123456789'
     }
   ];
 
   const event = events.find(e => e.id === parseInt(id)) || events[0];
+
+  const handleDaftar = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setIsRegistered(true);
+    alert('Anda berhasil terdaftar dalam kegiatan ini!');
+  };
+
+  const handlePresensi = (e) => {
+    e.preventDefault();
+    if (pinInput === event.pinPresensi) {
+      setHasAttended(true);
+      setShowPinModal(false);
+      alert('Presensi berhasil dicatat! Anda sekarang dapat mengunduh sertifikat.');
+    } else {
+      alert('PIN Presensi salah. Silakan coba lagi.');
+    }
+  };
+
+  const downloadSertifikat = () => {
+    if (!user) return;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    
+    // Background and border
+    doc.setFillColor(245, 247, 250);
+    doc.rect(0, 0, 297, 210, 'F');
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(2);
+    doc.rect(10, 10, 277, 190);
+
+    // Title
+    doc.setFontSize(28);
+    doc.setTextColor(30, 58, 138);
+    doc.text('SERTIFIKAT KEHADIRAN', 148.5, 50, { align: 'center' });
+    
+    // Subtitle
+    doc.setFontSize(14);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Diberikan kepada:', 148.5, 75, { align: 'center' });
+
+    // Name
+    doc.setFontSize(32);
+    doc.setTextColor(15, 23, 42);
+    doc.text(user.namaLengkap || user.username, 148.5, 100, { align: 'center' });
+
+    // Text
+    doc.setFontSize(14);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Atas partisipasinya dalam kegiatan:', 148.5, 125, { align: 'center' });
+
+    // Event Title
+    doc.setFontSize(20);
+    doc.setTextColor(37, 99, 235);
+    doc.text(event.title, 148.5, 145, { align: 'center' });
+
+    // Date
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Jakarta, ${event.date}`, 148.5, 175, { align: 'center' });
+
+    doc.save(`Sertifikat_${event.title.replace(/\s+/g, '_')}.pdf`);
+  };
 
   return (
     <main className="event-detail-page">
@@ -78,10 +120,6 @@ Sebagian besar koleksi yang dipamerkan telah melalui proses restorasi fisik dan 
         <div className="event-content-grid">
           
           <div className="event-main-content">
-            <div className="event-card-info hide-desktop">
-               {/* Mobile only info card */}
-            </div>
-
             <section className="event-description-block">
               <h2>Tentang Kegiatan Ini</h2>
               <div className="event-text">
@@ -108,7 +146,6 @@ Sebagian besar koleksi yang dipamerkan telah melalui proses restorasi fisik dan 
           <aside className="event-sidebar">
             <div className="event-info-card">
               <h3>Detail Waktu & Lokasi</h3>
-              
               <ul className="event-info-list">
                 <li>
                   <div className="info-icon"><Calendar size={20} /></div>
@@ -142,18 +179,78 @@ Sebagian besar koleksi yang dipamerkan telah melalui proses restorasi fisik dan 
               </ul>
 
               <div className="event-actions-sidebar">
-                <button className="btn btn-primary w-100" onClick={() => alert('Fitur pendaftaran event akan segera hadir!')}>
-                  Daftar Sekarang
-                </button>
+                {/* ── BUTTON LOGIC ── */}
+                {!user ? (
+                  <button className="btn btn-primary w-100" onClick={() => navigate('/login')}>
+                    Masuk untuk Mendaftar
+                  </button>
+                ) : !isRegistered ? (
+                  <button className="btn btn-primary w-100" onClick={handleDaftar}>
+                    Daftar Kegiatan
+                  </button>
+                ) : !hasAttended ? (
+                  <>
+                    <div style={{background: '#f0fdf4', color: '#166534', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem'}}>
+                      <CheckCircle size={18} /> Anda sudah terdaftar
+                    </div>
+                    {event.zoomLink && (
+                      <a href={event.zoomLink} target="_blank" rel="noopener noreferrer" className="btn btn-outline w-100 mb-2" style={{textAlign: 'center'}}>
+                        🔗 Buka Tautan Acara (Zoom/YT)
+                      </a>
+                    )}
+                    <button className="btn btn-primary w-100" onClick={() => setShowPinModal(true)}>
+                      📝 Isi Daftar Hadir
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{background: '#f0fdf4', color: '#166534', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem'}}>
+                      <CheckCircle size={18} /> Presensi Berhasil
+                    </div>
+                    <button className="btn btn-primary w-100" onClick={downloadSertifikat} style={{display: 'flex', justifyContent: 'center', gap: '0.5rem'}}>
+                      <Download size={18} /> Unduh Sertifikat
+                    </button>
+                  </>
+                )}
+                
                 <button className="btn btn-outline w-100 mt-2" style={{display: 'flex', justifyContent: 'center', gap: '0.5rem'}} onClick={() => alert('Tautan berhasil disalin!')}>
                   <Share2 size={16} /> Bagikan
                 </button>
               </div>
             </div>
           </aside>
-
         </div>
       </div>
+
+      {/* ── MODAL PIN PRESENSI ── */}
+      {showPinModal && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+        }}>
+          <div style={{ background: 'white', padding: '2rem', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '400px' }}>
+            <h3 style={{marginTop: 0, marginBottom: '0.5rem'}}>Isi Daftar Hadir</h3>
+            <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem'}}>
+              Silakan masukkan Kode Presensi / PIN yang diberikan oleh panitia acara (Hint: 123456).
+            </p>
+            <form onSubmit={handlePresensi}>
+              <input 
+                type="text" 
+                placeholder="Masukkan PIN" 
+                required 
+                value={pinInput} 
+                onChange={e => setPinInput(e.target.value)}
+                style={{width: '100%', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '1.2rem', textAlign: 'center', letterSpacing: '2px'}}
+              />
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setShowPinModal(false)}>Batal</button>
+                <button type="submit" className="btn btn-primary">Konfirmasi Hadir</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 };

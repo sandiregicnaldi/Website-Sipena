@@ -5,8 +5,8 @@ const AuthContext = createContext(null);
 // ── Hardcoded accounts (demo) ────────────────────────────────────────
 const MOCK_ACCOUNTS = [
   { email: 'admin@sipena.id',     password: 'admin123',   username: 'Administrator',  role: 'admin' },
-  { email: 'konten@sipena.id',    password: 'konten123',  username: 'Pengelola Konten', role: 'admin' },
-  { email: 'calon@sipena.id',     password: 'calon123',   username: 'Budi (Calon)',   role: 'calon penulis' },
+  { email: 'pengunjung@sipena.id',password: 'pengunjung123',username: 'Budi (Pengunjung)',role: 'pengunjung', isVerifiedAuthor: false },
+  { email: 'penulis@sipena.id',   password: 'penulis123', username: 'Andi (Penulis)',   role: 'pengunjung', isVerifiedAuthor: true },
 ];
 
 export const AuthProvider = ({ children }) => {
@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }) => {
       bio:             '',
       keahlian:        '',
       karyaEksternal:  [],
+      isVerifiedAuthor: false, // will be true once admin verifies them
       loggedInAt:      new Date().toISOString(),
     };
     setUser(userData);
@@ -73,7 +74,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       updateProfile,
       isLoggedIn:     !!user,
-      isAuthor:       user?.role === 'penulis',
+      isAuthor:       user?.isVerifiedAuthor === true,
       isAdmin:        user?.role === 'admin' || user?.role === 'pegawai',
     }}>
       {children}
