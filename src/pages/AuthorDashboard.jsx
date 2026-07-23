@@ -22,10 +22,15 @@ const AuthorDashboard = () => {
 
   const [form, setForm] = useState({
     namaLengkap: user.namaLengkap || '',
-    bio: user.bio || '',
-    keahlian: user.keahlian || '',
-    website: user.website || '',
-    lokasi: user.lokasi || '',
+    tempatLahir: user.tempatLahir || '',
+    tanggalLahir: user.tanggalLahir || '',
+    pekerjaan: user.pekerjaan || '',
+    instansi: user.instansi || '',
+    alamat: user.alamat || '',
+    provinsi: user.provinsi || '',
+    kota: user.kota || '',
+    kecamatan: user.kecamatan || '',
+    kelurahan: user.kelurahan || '',
     karyaEksternal: user.karyaEksternal || [],
     fotoProfil: user.fotoProfil || null,
   });
@@ -233,29 +238,65 @@ const AuthorDashboard = () => {
             {activeTab === 'biodata' && (
               <div className="tab-panel">
                 <div className="form-section">
-                  <div className="form-group">
-                    <label>Website / Portofolio</label>
-                    <div className="input-with-icon">
-                      <Globe size={18} className="input-icon" />
-                      <input type="text" name="website" value={form.website} onChange={handleChange} placeholder="https://namasaya.com" />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Tempat Lahir</label>
+                      <input type="text" name="tempatLahir" value={form.tempatLahir} onChange={handleChange} placeholder="Kota Kelahiran" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                    </div>
+                    <div className="form-group">
+                      <label>Tanggal Lahir</label>
+                      <input type="date" name="tanggalLahir" value={form.tanggalLahir} onChange={handleChange} className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Status / Pekerjaan</label>
+                      <select name="pekerjaan" value={form.pekerjaan} onChange={handleChange} className="input-with-icon" style={{ paddingLeft: '1rem' }}>
+                        <option value="">-- Pilih --</option>
+                        <option value="Pelajar/Mahasiswa">Pelajar/Mahasiswa</option>
+                        <option value="PNS">PNS</option>
+                        <option value="Pegawai Swasta">Pegawai Swasta</option>
+                        <option value="Wiraswasta">Wiraswasta</option>
+                        <option value="Lainnya">Lainnya</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Instansi / Lembaga</label>
+                      <input type="text" name="instansi" value={form.instansi} onChange={handleChange} placeholder="Nama Instansi/Lembaga Anda" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
                     </div>
                   </div>
 
                   <div className="form-group">
-                    <label>Keahlian / Bidang Penulisan</label>
-                    <div className="input-with-icon">
-                      <Briefcase size={18} className="input-icon" />
-                      <input type="text" name="keahlian" value={form.keahlian} onChange={handleChange} placeholder="Misal: Fiksi Sejarah, Sastra Anak" />
+                    <label>Alamat Lengkap</label>
+                    <textarea name="alamat" value={form.alamat} onChange={handleChange} rows="3" placeholder="Jalan, RT/RW, Nomor Rumah" className="input-with-icon" style={{ paddingLeft: '1rem', width: '100%', boxSizing: 'border-box', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}></textarea>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Provinsi</label>
+                      <input type="text" name="provinsi" value={form.provinsi} onChange={handleChange} placeholder="Provinsi" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                    </div>
+                    <div className="form-group">
+                      <label>Kota/Kabupaten</label>
+                      <input type="text" name="kota" value={form.kota} onChange={handleChange} placeholder="Kota/Kabupaten" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Biografi Singkat</label>
-                    <div className="input-with-icon textarea-container">
-                      <FileText size={18} className="input-icon textarea-icon" />
-                      <textarea name="bio" value={form.bio} onChange={handleChange} rows="5" placeholder="Ceritakan latar belakang, pengalaman menulis, dan penghargaan yang pernah Anda raih..."></textarea>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Kecamatan</label>
+                      <input type="text" name="kecamatan" value={form.kecamatan} onChange={handleChange} placeholder="Kecamatan" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                    </div>
+                    <div className="form-group">
+                      <label>Kelurahan</label>
+                      <input type="text" name="kelurahan" value={form.kelurahan} onChange={handleChange} placeholder="Kelurahan" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
                     </div>
                   </div>
+
+                  <button className="btn btn-primary" onClick={() => alert('Profil berhasil diperbarui!')} style={{ marginTop: '1rem' }}>
+                    <Save size={16} /> Simpan Perubahan
+                  </button>
                 </div>
               </div>
             )}
