@@ -22,6 +22,8 @@ const AuthorDashboard = () => {
 
   const [form, setForm] = useState({
     namaLengkap: user.namaLengkap || '',
+    bio: user.bio || '',
+    website: user.website || '',
     tempatLahir: user.tempatLahir || '',
     tanggalLahir: user.tanggalLahir || '',
     pekerjaan: user.pekerjaan || '',
@@ -229,7 +231,7 @@ const AuthorDashboard = () => {
               </button>
               {isAuthor && (
                 <button className={`dash-tab ${activeTab === 'karya' ? 'active' : ''}`} onClick={() => setActiveTab('karya')}>
-                  <LinkIcon size={16} /> Karya Eksternal
+                  <User size={16} /> Profil Penulis Publik
                 </button>
               )}
               {!isAuthor && (
@@ -470,10 +472,51 @@ const AuthorDashboard = () => {
               </div>
             )}
 
-            {/* ── TAB KARYA EKSTERNAL (Only Verified Author) ─────────── */}
+            {/* ── TAB PROFIL PENULIS (Only Verified Author) ─────────── */}
             {activeTab === 'karya' && isAuthor && (
               <div className="tab-panel">
-                <p className="tab-desc">Tambahkan karya-karya Anda yang diterbitkan di luar Perpusnas Press beserta tautan pembelian atau aksesnya.</p>
+                <p className="tab-desc">Lengkapi profil publik Anda yang akan ditampilkan di halaman detail penulis bagi pengunjung website.</p>
+
+                <div className="form-section" style={{ marginBottom: '2rem' }}>
+                  <div className="form-group">
+                    <label>Foto Profil Publik</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      {form.fotoProfil ? (
+                        <img src={form.fotoProfil} alt="Foto Profil" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <User size={24} color="#94a3b8" />
+                        </div>
+                      )}
+                      <button className="btn btn-outline" onClick={() => fileInputRef.current.click()} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Camera size={16} /> Unggah Foto Baru
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Biografi Singkat</label>
+                    <div className="input-with-icon textarea-container">
+                      <FileText size={18} className="input-icon textarea-icon" />
+                      <textarea name="bio" value={form.bio} onChange={handleChange} rows="4" placeholder="Ceritakan latar belakang, pengalaman menulis, dan hal menarik lainnya tentang Anda..."></textarea>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Website / Portofolio (Opsional)</label>
+                    <div className="input-with-icon">
+                      <Globe size={18} className="input-icon" />
+                      <input type="text" name="website" value={form.website} onChange={handleChange} placeholder="https://namasaya.com atau link media sosial" />
+                    </div>
+                  </div>
+
+                  <button className="btn btn-primary" onClick={handleSave}>
+                    <Save size={16} /> Simpan Profil Publik
+                  </button>
+                </div>
+
+                <h3 className="section-title-sm">Karya di Penerbit Lain</h3>
+                <p className="tab-desc" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>Tambahkan karya-karya Anda yang diterbitkan di luar Perpusnas Press beserta tautan pembelian atau aksesnya.</p>
 
                 {/* List existing */}
                 <div className="karya-list">
