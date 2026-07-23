@@ -1,16 +1,47 @@
 import React, { useState } from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
+import { Eye, Check, X, Trash2, Power } from 'lucide-react';
 
 const INITIAL_USERS = {
   pengunjung: [
-    { id: 1, nama: 'Sari Indah',   email: 'sari@email.com',   instansi: '-', bergabung: '2026-07-14', status: 'Aktif', isVerifiedAuthor: false },
-    { id: 2, nama: 'Rizki Fauzan', email: 'rizki@email.com',  instansi: '-', bergabung: '2026-07-10', status: 'Aktif', isVerifiedAuthor: false },
-    { id: 3, nama: 'Dr. Ahmad Fauzi', email: 'ahmad@email.com', instansi: 'UI', bergabung: '2024-03-10', status: 'Aktif', isVerifiedAuthor: true },
-    { id: 4, nama: 'Agus Pratama',  email: 'agus@email.com',  instansi: 'UNPAD', bergabung: '2026-07-15', status: 'Menunggu', isVerifiedAuthor: false },
+    { 
+      id: 1, 
+      nama: 'Sari Indah', 
+      email: 'sari@email.com', 
+      tempatLahir: 'Jakarta', 
+      tanggalLahir: '15/04/1992', 
+      pekerjaan: 'Pegawai Swasta', 
+      instansi: 'PT Mencari Cinta Sejati', 
+      alamat: 'Jl. Melati No 12, RT 01/RW 02', 
+      provinsi: 'DKI Jakarta', 
+      kota: 'Jakarta Selatan', 
+      kecamatan: 'Tebet', 
+      kelurahan: 'Tebet Barat', 
+      bergabung: '2026-07-14', 
+      statusAkun: 'Aktif', 
+      isVerifiedAuthor: false 
+    },
+    { 
+      id: 2, 
+      nama: 'Dr. Ahmad Fauzi', 
+      email: 'ahmad@email.com', 
+      tempatLahir: 'Bandung', 
+      tanggalLahir: '10/08/1985', 
+      pekerjaan: 'Dosen', 
+      instansi: 'Universitas Indonesia', 
+      alamat: 'Perumahan Dosen UI No 5', 
+      provinsi: 'Jawa Barat', 
+      kota: 'Depok', 
+      kecamatan: 'Beji', 
+      kelurahan: 'Pondok Cina', 
+      bergabung: '2024-03-10', 
+      statusAkun: 'Aktif', 
+      isVerifiedAuthor: true 
+    },
   ],
   pegawai: [
-    { id: 1, nama: 'Hendra Wijaya', email: 'hendra@perpusnas.id', instansi: 'Perpusnas', bergabung: '2023-09-01', status: 'Aktif' },
+    { id: 1, nama: 'Hendra Wijaya', email: 'hendra@perpusnas.id', instansi: 'Perpusnas', bergabung: '2023-09-01', statusAkun: 'Aktif' },
   ],
 };
 
@@ -29,9 +60,77 @@ const Toast = ({ msg, type = 'success', onClose }) => (
   </div>
 );
 
+const UserDetailModal = ({ user, onClose }) => {
+  if (!user) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }}>
+      <div style={{
+        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '600px',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column'
+      }}>
+        <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>📄 Detail Data Pengunjung</h3>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
+        </div>
+        <div style={{ overflowY: 'auto', padding: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Nama Lengkap (KTP)</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.nama}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Email</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.email}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Tempat, Tanggal Lahir</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.tempatLahir}, {user.tanggalLahir}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Pekerjaan / Instansi</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.pekerjaan} - {user.instansi}</p>
+            </div>
+          </div>
+
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Data Alamat</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Alamat Lengkap</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.alamat}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Provinsi</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.provinsi}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Kota / Kabupaten</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.kota}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Kecamatan</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.kecamatan}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Kelurahan</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.kelurahan}</p>
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn btn-outline" onClick={onClose}>Tutup</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UserTable = ({ type, title, onUsersChange, users }) => {
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState(null);
+  const [detailModal, setDetailModal] = useState(null);
 
   const showToast = (msg, t = 'success') => { setToast({ msg, type: t }); setTimeout(() => setToast(null), 3500); };
 
@@ -46,7 +145,7 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
       const updated = {
         ...users,
         pengunjung: users.pengunjung.map(x => 
-          x.id === u.id ? { ...x, status: 'Aktif', isVerifiedAuthor: true } : x
+          x.id === u.id ? { ...x, statusAkun: 'Aktif', isVerifiedAuthor: true } : x
         )
       };
       onUsersChange(updated);
@@ -55,14 +154,14 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
   };
 
   const handleNonaktifkan = (u) => {
-    const isNonaktif = u.status === 'Nonaktif';
+    const isNonaktif = u.statusAkun === 'Nonaktif';
     const label = isNonaktif ? 'Aktifkan' : 'Nonaktifkan';
     if (window.confirm(`${label} akun ${u.nama}?`)) {
       const updated = {
         ...users,
         [type]: users[type].map(x =>
           (x.id === u.id && x.email === u.email)
-            ? { ...x, status: isNonaktif ? 'Aktif' : 'Nonaktif' }
+            ? { ...x, statusAkun: isNonaktif ? 'Aktif' : 'Nonaktif' }
             : x
         )
       };
@@ -100,49 +199,118 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>#</th><th>Nama</th><th>Email</th><th>Instansi</th><th>Bergabung</th><th>Role</th><th>Status</th><th>Aksi</th></tr>
+              <tr>
+                {type === 'pengunjung' ? (
+                  <>
+                    <th>Kontak Pengguna</th>
+                    <th>Instansi & Domisili</th>
+                    <th>Role / Akun</th>
+                    <th>Aksi</th>
+                  </>
+                ) : (
+                  <>
+                    <th>#</th>
+                    <th>Nama</th>
+                    <th>Email</th>
+                    <th>Instansi</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </>
+                )}
+              </tr>
             </thead>
             <tbody>
               {filtered.length === 0
                 ? <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada data.</td></tr>
                 : filtered.map((u, i) => (
                   <tr key={`${u.id}-${u.email}`}>
-                    <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
-                    <td style={{ fontWeight: 600 }}>{u.nama}</td>
-                    <td style={{ fontSize: '0.82rem' }}>{u.email}</td>
-                    <td>{u.instansi}</td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-                      {new Date(u.bergabung).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td>
-                      {type === 'pengunjung' ? (
-                        <span className={`badge ${u.isVerifiedAuthor ? 'badge-blue' : 'badge-gray'}`}>
-                          {u.isVerifiedAuthor ? 'Penulis' : 'Pengunjung'}
-                        </span>
-                      ) : (
-                        <span className="badge badge-gray">Pegawai</span>
-                      )}
-                    </td>
-                    <td><span className={`badge ${STATUS_BADGE[u.status] || 'badge-gray'}`}>{u.status}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        {type === 'pengunjung' && !u.isVerifiedAuthor && (
-                          <button
-                            onClick={() => handleSetujuiPenulis(u)}
-                            style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                            title="Verifikasi sebagai Penulis"
-                          >✓ Verifikasi</button>
-                        )}
-                        <button
-                          onClick={() => handleNonaktifkan(u)}
-                          style={{ background: 'none', border: 'none', color: u.status === 'Nonaktif' ? '#2563eb' : 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                        >{u.status === 'Nonaktif' ? '▶ Aktifkan' : '⏸ Nonaktifkan'}</button>
-                        <button
-                          onClick={() => handleHapus(u)}
-                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                        >🗑️</button>
-                      </div>
-                    </td>
+                    {type === 'pengunjung' ? (
+                      <>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{u.nama}</div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{u.email}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>Lahir: {u.tempatLahir}, {u.tanggalLahir}</div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{u.instansi || '-'}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{u.pekerjaan || '-'}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>{u.kota}, {u.provinsi}</div>
+                        </td>
+                        <td>
+                          <div style={{ marginBottom: '0.3rem' }}>
+                            <span className={`badge ${u.isVerifiedAuthor ? 'badge-blue' : 'badge-gray'}`}>
+                              {u.isVerifiedAuthor ? 'Penulis' : 'Pengunjung'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className={`badge ${STATUS_BADGE[u.statusAkun] || 'badge-gray'}`}>{u.statusAkun}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => setDetailModal(u)}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                            >
+                              <Eye size={12}/> Detail
+                            </button>
+                            {!u.isVerifiedAuthor && (
+                              <button
+                                onClick={() => handleSetujuiPenulis(u)}
+                                className="btn btn-outline"
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                title="Verifikasi sebagai Penulis"
+                              >
+                                <Check size={12}/> Verifikasi
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleNonaktifkan(u)}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem', color: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)', borderColor: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)' }}
+                            >
+                              <Power size={12}/> {u.statusAkun === 'Nonaktif' ? 'Aktifkan' : 'Nonaktifkan'}
+                            </button>
+                            <button
+                              onClick={() => handleHapus(u)}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#64748b', borderColor: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                            >
+                              <Trash2 size={12}/> Hapus
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
+                        <td style={{ fontWeight: 600 }}>{u.nama}</td>
+                        <td style={{ fontSize: '0.82rem' }}>{u.email}</td>
+                        <td>{u.instansi}</td>
+                        <td><span className="badge badge-gray">Pegawai</span></td>
+                        <td><span className={`badge ${STATUS_BADGE[u.statusAkun] || 'badge-gray'}`}>{u.statusAkun}</span></td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => handleNonaktifkan(u)}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem', color: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)', borderColor: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)' }}
+                            >
+                              <Power size={12}/> {u.statusAkun === 'Nonaktif' ? 'Aktifkan' : 'Nonaktifkan'}
+                            </button>
+                            <button
+                              onClick={() => handleHapus(u)}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#64748b', borderColor: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                            >
+                              <Trash2 size={12}/> Hapus
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))
               }
@@ -151,6 +319,7 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
         </div>
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+      <UserDetailModal user={detailModal} onClose={() => setDetailModal(null)} />
     </div>
   );
 };
