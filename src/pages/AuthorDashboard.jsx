@@ -232,6 +232,11 @@ const AuthorDashboard = () => {
                   <LinkIcon size={16} /> Karya Eksternal
                 </button>
               )}
+              {!isAuthor && (
+                <button className={`dash-tab ${activeTab === 'pengajuan-penulis' ? 'active' : ''}`} onClick={() => setActiveTab('pengajuan-penulis')}>
+                  <CheckCircle size={16} /> Verifikasi Penulis
+                </button>
+              )}
             </div>
 
             {/* ── TAB 1: BIODATA ─────────────────────────────────── */}
@@ -241,61 +246,117 @@ const AuthorDashboard = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div className="form-group">
                       <label>Tempat Lahir</label>
-                      <input type="text" name="tempatLahir" value={form.tempatLahir} onChange={handleChange} placeholder="Kota Kelahiran" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                      <div className="input-with-icon">
+                        <MapPin size={18} className="input-icon" />
+                        <input type="text" name="tempatLahir" value={form.tempatLahir} onChange={handleChange} placeholder="Kota Kelahiran" />
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Tanggal Lahir</label>
-                      <input type="date" name="tanggalLahir" value={form.tanggalLahir} onChange={handleChange} className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                      <div className="input-with-icon">
+                        <Calendar size={18} className="input-icon" />
+                        <input type="date" name="tanggalLahir" value={form.tanggalLahir} onChange={handleChange} />
+                      </div>
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div className="form-group">
                       <label>Status / Pekerjaan</label>
-                      <select name="pekerjaan" value={form.pekerjaan} onChange={handleChange} className="input-with-icon" style={{ paddingLeft: '1rem' }}>
-                        <option value="">-- Pilih --</option>
-                        <option value="Pelajar/Mahasiswa">Pelajar/Mahasiswa</option>
-                        <option value="PNS">PNS</option>
-                        <option value="Pegawai Swasta">Pegawai Swasta</option>
-                        <option value="Wiraswasta">Wiraswasta</option>
-                        <option value="Lainnya">Lainnya</option>
-                      </select>
+                      <div className="input-with-icon">
+                        <Briefcase size={18} className="input-icon" />
+                        <select name="pekerjaan" value={form.pekerjaan} onChange={handleChange}>
+                          <option value="">-- Pilih --</option>
+                          <option value="Pelajar/Mahasiswa">Pelajar/Mahasiswa</option>
+                          <option value="PNS">PNS</option>
+                          <option value="Pegawai Swasta">Pegawai Swasta</option>
+                          <option value="Wiraswasta">Wiraswasta</option>
+                          <option value="Lainnya">Lainnya</option>
+                        </select>
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Instansi / Lembaga</label>
-                      <input type="text" name="instansi" value={form.instansi} onChange={handleChange} placeholder="Nama Instansi/Lembaga Anda" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                      <div className="input-with-icon">
+                        <Building2 size={18} className="input-icon" />
+                        <input type="text" name="instansi" value={form.instansi} onChange={handleChange} placeholder="Nama Instansi/Lembaga Anda" />
+                      </div>
                     </div>
                   </div>
 
                   <div className="form-group">
                     <label>Alamat Lengkap</label>
-                    <textarea name="alamat" value={form.alamat} onChange={handleChange} rows="3" placeholder="Jalan, RT/RW, Nomor Rumah" className="input-with-icon" style={{ paddingLeft: '1rem', width: '100%', boxSizing: 'border-box', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}></textarea>
+                    <div className="input-with-icon textarea-container">
+                      <MapPin size={18} className="input-icon textarea-icon" />
+                      <textarea name="alamat" value={form.alamat} onChange={handleChange} rows="3" placeholder="Jalan, RT/RW, Nomor Rumah"></textarea>
+                    </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div className="form-group">
                       <label>Provinsi</label>
-                      <input type="text" name="provinsi" value={form.provinsi} onChange={handleChange} placeholder="Provinsi" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                      <div className="input-with-icon">
+                        <MapPin size={18} className="input-icon" />
+                        <input type="text" name="provinsi" value={form.provinsi} onChange={handleChange} placeholder="Provinsi" />
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Kota/Kabupaten</label>
-                      <input type="text" name="kota" value={form.kota} onChange={handleChange} placeholder="Kota/Kabupaten" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                      <div className="input-with-icon">
+                        <MapPin size={18} className="input-icon" />
+                        <input type="text" name="kota" value={form.kota} onChange={handleChange} placeholder="Kota/Kabupaten" />
+                      </div>
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div className="form-group">
                       <label>Kecamatan</label>
-                      <input type="text" name="kecamatan" value={form.kecamatan} onChange={handleChange} placeholder="Kecamatan" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                      <div className="input-with-icon">
+                        <MapPin size={18} className="input-icon" />
+                        <input type="text" name="kecamatan" value={form.kecamatan} onChange={handleChange} placeholder="Kecamatan" />
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Kelurahan</label>
-                      <input type="text" name="kelurahan" value={form.kelurahan} onChange={handleChange} placeholder="Kelurahan" className="input-with-icon" style={{ paddingLeft: '1rem' }} />
+                      <div className="input-with-icon">
+                        <MapPin size={18} className="input-icon" />
+                        <input type="text" name="kelurahan" value={form.kelurahan} onChange={handleChange} placeholder="Kelurahan" />
+                      </div>
                     </div>
                   </div>
 
                   <button className="btn btn-primary" onClick={() => alert('Profil berhasil diperbarui!')} style={{ marginTop: '1rem' }}>
                     <Save size={16} /> Simpan Perubahan
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB PENGAJUAN PENULIS ─────────────────────────────────── */}
+            {activeTab === 'pengajuan-penulis' && (
+              <div className="tab-panel">
+                <div className="add-karya-section">
+                  <h3>Pengajuan Verifikasi Penulis</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+                    Tingkatkan akun Anda menjadi Penulis Terverifikasi. Sebagai penulis, Anda dapat mempublikasikan karya eksternal di halaman utama SiPena dan berpartisipasi aktif dalam komunitas literasi Perpusnas Press.
+                  </p>
+                  
+                  <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+                    <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Syarat Menjadi Penulis:</h4>
+                    <ul style={{ paddingLeft: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <li>Pernah menerbitkan minimal satu buku fisik atau digital.</li>
+                      <li>Data profil dan biodata (KTP, Alamat, dll) sudah dilengkapi dan benar.</li>
+                      <li>Berkomitmen membagikan karya tulis yang orisinal dan tidak melanggar hak cipta.</li>
+                    </ul>
+                  </div>
+
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => alert('Pengajuan verifikasi berhasil dikirim! Admin akan segera memproses permintaan Anda.')}
+                    style={{ padding: '0.75rem 1.5rem' }}
+                  >
+                    <CheckCircle size={18} /> Ajukan Diri Sebagai Penulis
                   </button>
                 </div>
               </div>

@@ -20,7 +20,8 @@ const INITIAL_USERS = {
       kelurahan: 'Tebet Barat', 
       bergabung: '2026-07-14', 
       statusAkun: 'Aktif', 
-      isVerifiedAuthor: false 
+      isVerifiedAuthor: false,
+      pengajuanPenulis: true
     },
     { 
       id: 2, 
@@ -242,6 +243,9 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
                             <span className={`badge ${u.isVerifiedAuthor ? 'badge-blue' : 'badge-gray'}`}>
                               {u.isVerifiedAuthor ? 'Penulis' : 'Pengunjung'}
                             </span>
+                            {u.pengajuanPenulis && !u.isVerifiedAuthor && (
+                              <span className="badge badge-amber" style={{ marginLeft: '0.3rem' }}>Mengajukan Penulis</span>
+                            )}
                           </div>
                           <div>
                             <span className={`badge ${STATUS_BADGE[u.statusAkun] || 'badge-gray'}`}>{u.statusAkun}</span>
@@ -256,14 +260,14 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
                             >
                               <Eye size={12}/> Detail
                             </button>
-                            {!u.isVerifiedAuthor && (
+                            {!u.isVerifiedAuthor && u.pengajuanPenulis && (
                               <button
                                 onClick={() => handleSetujuiPenulis(u)}
                                 className="btn btn-outline"
                                 style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
                                 title="Verifikasi sebagai Penulis"
                               >
-                                <Check size={12}/> Verifikasi
+                                <Check size={12}/> Terima Pengajuan
                               </button>
                             )}
                             <button
