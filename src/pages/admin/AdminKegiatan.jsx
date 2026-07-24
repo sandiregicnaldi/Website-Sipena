@@ -6,8 +6,8 @@ const STATUS_LIST = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
 
 const INITIAL_EVENTS = [
-  { id: 1, judul: 'Seminar Literasi Digital 2026', tanggal: '2026-08-10', jamKegiatan: '09:00 - 12:00', lokasi: 'Aula Perpusnas, Jakarta', urlZoom: '', narasumber: 'Dr. Budi Santoso', penjelasan: 'Seminar tentang literasi digital di era AI.', status: 'Akan Datang', peserta: 120, waktuBuka: '08:00', waktuTutup: '10:00', kode: 'LITDIG26' },
-  { id: 2, judul: 'Workshop Penulisan Ilmiah', tanggal: '2026-07-20', jamKegiatan: '13:00 - 15:00', lokasi: 'Online (Zoom)', urlZoom: 'https://zoom.us/j/123456789', narasumber: 'Prof. Rina Wijaya', penjelasan: 'Teknik penulisan ilmiah standar nasional.', status: 'Segera', peserta: 85, waktuBuka: '12:30', waktuTutup: '13:30', kode: 'WRKILM' },
+  { id: 1, judul: 'Seminar Literasi Digital 2026', tanggal: '2026-08-10', jamKegiatan: '09:00 - 12:00', lokasi: 'Aula Perpusnas, Jakarta', urlZoom: '', narasumber: ['Dr. Budi Santoso'], penjelasan: 'Seminar tentang literasi digital di era AI.', status: 'Akan Datang', peserta: 120, waktuBuka: '08:00', waktuTutup: '10:00', kode: 'LITDIG26' },
+  { id: 2, judul: 'Workshop Penulisan Ilmiah', tanggal: '2026-07-20', jamKegiatan: '13:00 - 15:00', lokasi: 'Online (Zoom)', urlZoom: 'https://zoom.us/j/123456789', narasumber: ['Prof. Rina Wijaya', 'Dr. Andi Hermawan'], penjelasan: 'Teknik penulisan ilmiah standar nasional.', status: 'Segera', peserta: 85, waktuBuka: '12:30', waktuTutup: '13:30', kode: 'WRKILM' },
 ];
 
 // Mock Peserta per Event
@@ -17,7 +17,7 @@ const MOCK_PESERTA = [
   { id: 3, nama: 'Budi Santoso', email: 'budi@email.com', instansi: 'Guru', status: 'Tidak Hadir' },
 ];
 
-const EMPTY_FORM = { judul: '', tanggal: '', jamKegiatan: '', lokasi: '', urlZoom: '', narasumber: '', penjelasan: '', status: 'Akan Datang', peserta: 0, waktuBuka: '', waktuTutup: '', kode: '' };
+const EMPTY_FORM = { judul: '', tanggal: '', jamKegiatan: '', lokasi: '', urlZoom: '', narasumber: [''], penjelasan: '', status: 'Akan Datang', peserta: 0, waktuBuka: '', waktuTutup: '', kode: '' };
 
 const Toast = ({ msg, onClose }) => (
   <div style={{
@@ -115,7 +115,7 @@ const AdminKegiatan = () => {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>#</th><th>Judul Kegiatan</th><th>Tanggal</th><th>Lokasi</th><th>Peserta</th><th>Status</th><th>Aksi</th></tr>
+              <tr><th>#</th><th>Detail Kegiatan</th><th>Pelaksanaan</th><th>Narasumber</th><th>Peserta</th><th>Status</th><th>Aksi</th></tr>
             </thead>
             <tbody>
               {filtered.length === 0
@@ -123,9 +123,20 @@ const AdminKegiatan = () => {
                 : filtered.map((e, i) => (
                   <tr key={e.id}>
                     <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
-                    <td style={{ fontWeight: 600 }}>{e.judul}</td>
-                    <td style={{ fontSize: '0.82rem' }}>{new Date(e.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
-                    <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{e.lokasi}</td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{e.judul}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>PIN Presensi: <strong>{e.kode || '-'}</strong></div>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>{new Date(e.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {e.jamKegiatan}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{e.lokasi}</div>
+                      {e.urlZoom && <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.1rem' }}>🌐 Online (Zoom)</div>}
+                    </td>
+                    <td>
+                      <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        {(Array.isArray(e.narasumber) ? e.narasumber : [e.narasumber]).map((n, idx) => <li key={idx}>{n}</li>)}
+                      </ul>
+                    </td>
                     <td style={{ textAlign: 'center' }}>{e.peserta}</td>
                     <td><span className={`badge ${STATUS_BADGE[e.status]}`}>{e.status}</span></td>
                     <td>
@@ -190,7 +201,27 @@ const AdminKegiatan = () => {
               </div>
               <div>
                 <label style={labelStyle}>Narasumber *</label>
-                <input style={inputStyle} required value={modal.data.narasumber || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, narasumber: e.target.value } }))} placeholder="Nama narasumber beserta gelar" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {(Array.isArray(modal.data.narasumber) ? modal.data.narasumber : ['']).map((n, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input style={inputStyle} required value={n} onChange={e => {
+                        const newArr = [...modal.data.narasumber];
+                        newArr[idx] = e.target.value;
+                        setModal(p => ({ ...p, data: { ...p.data, narasumber: newArr } }));
+                      }} placeholder="Nama narasumber beserta gelar" />
+                      {idx > 0 && (
+                        <button type="button" onClick={() => {
+                          const newArr = modal.data.narasumber.filter((_, i) => i !== idx);
+                          setModal(p => ({ ...p, data: { ...p.data, narasumber: newArr } }));
+                        }} className="btn btn-outline" style={{ padding: '0 0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}>X</button>
+                      )}
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => {
+                    const current = Array.isArray(modal.data.narasumber) ? modal.data.narasumber : [];
+                    setModal(p => ({ ...p, data: { ...p.data, narasumber: [...current, ''] } }));
+                  }} className="btn btn-outline" style={{ alignSelf: 'flex-start', padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>+ Tambah Narasumber</button>
+                </div>
               </div>
               <div>
                 <label style={labelStyle}>Penjelasan Singkat Kegiatan *</label>
