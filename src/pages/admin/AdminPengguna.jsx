@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
-import { Eye, Check, X, Trash2, Power } from 'lucide-react';
+import { Eye, Check, X, Trash2, Power, Pencil } from 'lucide-react';
 
 const INITIAL_USERS = {
   pengunjung: [
@@ -38,7 +38,9 @@ const INITIAL_USERS = {
       kelurahan: 'Pondok Cina', 
       bergabung: '2024-03-10', 
       statusAkun: 'Aktif', 
-      isVerifiedAuthor: true 
+      isVerifiedAuthor: true,
+      bio: 'Pengajar, peneliti, dan penulis aktif yang fokus pada sejarah Nusantara.',
+      website: 'https://ahmadfauzi.id'
     },
   ],
   pegawai: [
@@ -128,10 +130,55 @@ const UserDetailModal = ({ user, onClose }) => {
   );
 };
 
+const EditAuthorModal = ({ user, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    bio: user.bio || '',
+    website: user.website || ''
+  });
+
+  if (!user) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }}>
+      <div style={{
+        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '500px',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+      }}>
+        <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>✍️ Edit Profil Penulis Publik</h3>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
+        </div>
+        <div style={{ padding: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Nama Penulis</label>
+            <input type="text" value={user.nama} disabled style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-tertiary)', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Biografi Singkat</label>
+            <textarea rows="4" value={formData.bio} onChange={e => setFormData({ ...formData, bio: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}></textarea>
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Website / Portofolio</label>
+            <input type="text" value={formData.website} onChange={e => setFormData({ ...formData, website: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
+          </div>
+        </div>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          <button className="btn btn-outline" onClick={onClose}>Batal</button>
+          <button className="btn btn-primary" onClick={() => onSave(formData)}>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UserTable = ({ type, title, onUsersChange, users }) => {
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
+  const [editAuthorModal, setEditAuthorModal] = useState(null);
 
   const showToast = (msg, t = 'success') => { setToast({ msg, type: t }); setTimeout(() => setToast(null), 3500); };
 
@@ -169,6 +216,18 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
       onUsersChange(updated);
       showToast(`Akun ${u.nama} berhasil ${isNonaktif ? 'diaktifkan' : 'dinonaktifkan'}.`);
     }
+  };
+
+  const handleSaveAuthorProfile = (data) => {
+    const updated = {
+      ...users,
+      pengunjung: users.pengunjung.map(x => 
+        x.id === editAuthorModal.id ? { ...x, bio: data.bio, website: data.website } : x
+      )
+    };
+    onUsersChange(updated);
+    setEditAuthorModal(null);
+    showToast(`Profil publik ${editAuthorModal.nama} berhasil diperbarui.`);
   };
 
   const handleHapus = (u) => {
@@ -260,6 +319,15 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
                             >
                               <Eye size={12}/> Detail
                             </button>
+                            {u.isVerifiedAuthor && (
+                              <button
+                                onClick={() => setEditAuthorModal(u)}
+                                className="btn btn-outline"
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                              >
+                                <Pencil size={12}/> Edit Profil
+                              </button>
+                            )}
                             {!u.isVerifiedAuthor && u.pengajuanPenulis && (
                               <button
                                 onClick={() => handleSetujuiPenulis(u)}
@@ -324,6 +392,7 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <UserDetailModal user={detailModal} onClose={() => setDetailModal(null)} />
+      {editAuthorModal && <EditAuthorModal user={editAuthorModal} onClose={() => setEditAuthorModal(null)} onSave={handleSaveAuthorProfile} />}
     </div>
   );
 };
