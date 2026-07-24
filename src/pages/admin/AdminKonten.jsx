@@ -201,11 +201,13 @@ const TentangEditor = () => {
 };
 
 // ── FAQ Editor ──────────────────────────────────────────────────────────────
+const FAQ_KATEGORI = ['Pendaftaran & Akun', 'Penerbitan Buku', 'Koleksi & Unduhan', 'Teknis & Sistem'];
+
 const INITIAL_FAQS = [
-  { id: 1, pertanyaan: 'Apakah semua buku bisa diunduh secara gratis?', jawaban: 'Ya, sebagian besar buku di SiPena dapat diunduh secara gratis. Namun beberapa konten premium mungkin memerlukan pendaftaran akun.' },
-  { id: 2, pertanyaan: 'Bagaimana cara mendaftar sebagai penulis?', jawaban: 'Anda dapat mendaftar melalui menu "Daftar" dan memilih peran "Calon Penulis". Setelah itu, tim kami akan melakukan verifikasi.' },
-  { id: 3, pertanyaan: 'Format file apa saja yang tersedia?', jawaban: 'Kami menyediakan format PDF, E-Pub, dan beberapa buku dalam format audiobook berbasis video YouTube.' },
-  { id: 4, pertanyaan: 'Bagaimana cara mengajukan naskah buku?', jawaban: 'Login ke akun Anda, buka menu "Profil Saya", pilih tab "Naskah Saya", lalu isi formulir pengajuan naskah beserta tautan Google Drive.' },
+  { id: 1, kategori: 'Koleksi & Unduhan', pertanyaan: 'Apakah semua buku bisa diunduh secara gratis?', jawaban: 'Ya, sebagian besar buku di SiPena dapat diunduh secara gratis. Namun beberapa konten premium mungkin memerlukan pendaftaran akun.' },
+  { id: 2, kategori: 'Pendaftaran & Akun', pertanyaan: 'Bagaimana cara mendaftar sebagai penulis?', jawaban: 'Anda dapat mendaftar melalui menu "Daftar" dan memilih peran "Calon Penulis". Setelah itu, tim kami akan melakukan verifikasi.' },
+  { id: 3, kategori: 'Koleksi & Unduhan', pertanyaan: 'Format file apa saja yang tersedia?', jawaban: 'Kami menyediakan format PDF, E-Pub, dan beberapa buku dalam format audiobook berbasis video YouTube.' },
+  { id: 4, kategori: 'Penerbitan Buku', pertanyaan: 'Bagaimana cara mengajukan naskah buku?', jawaban: 'Login ke akun Anda, buka menu "Profil Saya", pilih tab "Naskah Saya", lalu isi formulir pengajuan naskah beserta tautan Google Drive.' },
 ];
 
 const FAQEditor = () => {
@@ -213,6 +215,7 @@ const FAQEditor = () => {
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
   const [nextId, setNextId] = useState(INITIAL_FAQS.length + 1);
+  const [activeTab, setActiveTab] = useState('Semua');
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
@@ -238,25 +241,38 @@ const FAQEditor = () => {
     }
   };
 
+  const filteredFaqs = activeTab === 'Semua' ? faqs : faqs.filter(f => f.kategori === activeTab);
+
   return (
     <div>
       <div className="admin-page-header"><h1>❓ FAQ</h1><p>Tambah, ubah, atau hapus pertanyaan yang sering diajukan oleh pengunjung.</p></div>
+      
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+        <button onClick={() => setActiveTab('Semua')} className={`btn ${activeTab === 'Semua' ? 'btn-primary' : 'btn-outline'}`} style={{ borderRadius: '2rem', padding: '0.5rem 1.25rem', whiteSpace: 'nowrap' }}>Semua</button>
+        {FAQ_KATEGORI.map(cat => (
+          <button key={cat} onClick={() => setActiveTab(cat)} className={`btn ${activeTab === cat ? 'btn-primary' : 'btn-outline'}`} style={{ borderRadius: '2rem', padding: '0.5rem 1.25rem', whiteSpace: 'nowrap' }}>{cat}</button>
+        ))}
+      </div>
+
       <div className="admin-card">
         <div className="admin-card-header">
-          <span className="admin-card-title">Daftar FAQ ({faqs.length} pertanyaan)</span>
-          <button className="btn btn-primary" style={{ padding: '0.45rem 1rem', fontSize: '0.875rem' }} onClick={() => setModal({ mode: 'tambah', data: { pertanyaan: '', jawaban: '' } })}>
+          <span className="admin-card-title">Daftar FAQ ({filteredFaqs.length} pertanyaan)</span>
+          <button className="btn btn-primary" style={{ padding: '0.45rem 1rem', fontSize: '0.875rem' }} onClick={() => setModal({ mode: 'tambah', data: { pertanyaan: '', jawaban: '', kategori: FAQ_KATEGORI[0] } })}>
             + Tambah FAQ
           </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
-          {faqs.map((f, i) => (
+          {filteredFaqs.length === 0 && <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem 0' }}>Tidak ada FAQ di kategori ini.</div>}
+          {filteredFaqs.map((f, i) => (
             <div key={f.id} style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1rem', background: 'var(--bg-secondary)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                     <span style={{ color: 'var(--accent-color)', marginRight: '0.5rem' }}>Q{i + 1}.</span>{f.pertanyaan}
                   </div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.6 }}>{f.jawaban}</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: '0.5rem' }}>{f.jawaban}</div>
+                  <span className="badge badge-gray">{f.kategori}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                   <button onClick={() => setModal({ mode: 'edit', data: { ...f } })} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>✏️ Edit</button>
@@ -275,9 +291,15 @@ const FAQEditor = () => {
               <button onClick={() => setModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
             </div>
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={labelStyle}>Kategori *</label>
+                <select style={inputStyle} required value={modal.data.kategori || FAQ_KATEGORI[0]} onChange={e => setModal(p => ({ ...p, data: { ...p.data, kategori: e.target.value } }))}>
+                  {FAQ_KATEGORI.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
               <div><label style={labelStyle}>Pertanyaan *</label><input style={inputStyle} required value={modal.data.pertanyaan} onChange={e => setModal(p => ({ ...p, data: { ...p.data, pertanyaan: e.target.value } }))} placeholder="Tulis pertanyaan..." /></div>
               <div><label style={labelStyle}>Jawaban *</label><textarea style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }} required value={modal.data.jawaban} onChange={e => setModal(p => ({ ...p, data: { ...p.data, jawaban: e.target.value } }))} placeholder="Tulis jawaban lengkap..." /></div>
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <button className="btn btn-outline" onClick={() => setModal(null)}>Batal</button>
                 <button className="btn btn-primary" onClick={() => { if (modal.data.pertanyaan && modal.data.jawaban) handleSave(modal.data); }}>💾 Simpan</button>
               </div>
