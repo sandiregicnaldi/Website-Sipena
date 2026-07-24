@@ -6,8 +6,8 @@ const STATUS_LIST = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
 
 const INITIAL_EVENTS = [
-  { id: 1, judul: 'Seminar Literasi Digital 2026', tanggal: '2026-08-10', lokasi: 'Aula Perpusnas, Jakarta', status: 'Akan Datang', peserta: 120, waktuBuka: '08:00', waktuTutup: '10:00', kode: 'LITDIG26' },
-  { id: 2, judul: 'Workshop Penulisan Ilmiah', tanggal: '2026-07-20', lokasi: 'Online (Zoom)', status: 'Segera', peserta: 85, waktuBuka: '12:30', waktuTutup: '13:30', kode: 'WRKILM' },
+  { id: 1, judul: 'Seminar Literasi Digital 2026', tanggal: '2026-08-10', jamKegiatan: '09:00 - 12:00', lokasi: 'Aula Perpusnas, Jakarta', urlZoom: '', narasumber: 'Dr. Budi Santoso', penjelasan: 'Seminar tentang literasi digital di era AI.', status: 'Akan Datang', peserta: 120, waktuBuka: '08:00', waktuTutup: '10:00', kode: 'LITDIG26' },
+  { id: 2, judul: 'Workshop Penulisan Ilmiah', tanggal: '2026-07-20', jamKegiatan: '13:00 - 15:00', lokasi: 'Online (Zoom)', urlZoom: 'https://zoom.us/j/123456789', narasumber: 'Prof. Rina Wijaya', penjelasan: 'Teknik penulisan ilmiah standar nasional.', status: 'Segera', peserta: 85, waktuBuka: '12:30', waktuTutup: '13:30', kode: 'WRKILM' },
 ];
 
 // Mock Peserta per Event
@@ -17,7 +17,7 @@ const MOCK_PESERTA = [
   { id: 3, nama: 'Budi Santoso', email: 'budi@email.com', instansi: 'Guru', status: 'Tidak Hadir' },
 ];
 
-const EMPTY_FORM = { judul: '', tanggal: '', lokasi: '', status: 'Akan Datang', peserta: 0, waktuBuka: '', waktuTutup: '', kode: '' };
+const EMPTY_FORM = { judul: '', tanggal: '', jamKegiatan: '', lokasi: '', urlZoom: '', narasumber: '', penjelasan: '', status: 'Akan Datang', peserta: 0, waktuBuka: '', waktuTutup: '', kode: '' };
 
 const Toast = ({ msg, onClose }) => (
   <div style={{
@@ -164,19 +164,37 @@ const AdminKegiatan = () => {
                 <label style={labelStyle}>Judul Kegiatan *</label>
                 <input style={inputStyle} required value={modal.data.judul} onChange={e => setModal(p => ({ ...p, data: { ...p.data, judul: e.target.value } }))} placeholder="Nama kegiatan/event" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={labelStyle}>Tanggal *</label>
                   <input style={inputStyle} type="date" required value={modal.data.tanggal} onChange={e => setModal(p => ({ ...p, data: { ...p.data, tanggal: e.target.value } }))} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Jam Kegiatan *</label>
+                  <input style={inputStyle} type="text" required value={modal.data.jamKegiatan || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, jamKegiatan: e.target.value } }))} placeholder="09:00 - 12:00 WIB" />
                 </div>
                 <div>
                   <label style={labelStyle}>Estimasi Peserta</label>
                   <input style={inputStyle} type="number" min="0" value={modal.data.peserta} onChange={e => setModal(p => ({ ...p, data: { ...p.data, peserta: Number(e.target.value) } }))} />
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={labelStyle}>Lokasi Fisik *</label>
+                  <input style={inputStyle} required value={modal.data.lokasi} onChange={e => setModal(p => ({ ...p, data: { ...p.data, lokasi: e.target.value } }))} placeholder="Contoh: Aula Perpusnas" />
+                </div>
+                <div>
+                  <label style={labelStyle}>URL Link Zoom (Opsional)</label>
+                  <input style={inputStyle} type="url" value={modal.data.urlZoom || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, urlZoom: e.target.value } }))} placeholder="https://zoom.us/..." />
+                </div>
+              </div>
               <div>
-                <label style={labelStyle}>Lokasi *</label>
-                <input style={inputStyle} required value={modal.data.lokasi} onChange={e => setModal(p => ({ ...p, data: { ...p.data, lokasi: e.target.value } }))} placeholder="Contoh: Aula Perpusnas / Online (Zoom)" />
+                <label style={labelStyle}>Narasumber *</label>
+                <input style={inputStyle} required value={modal.data.narasumber || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, narasumber: e.target.value } }))} placeholder="Nama narasumber beserta gelar" />
+              </div>
+              <div>
+                <label style={labelStyle}>Penjelasan Singkat Kegiatan *</label>
+                <textarea style={{ ...inputStyle, resize: 'vertical' }} rows="3" required value={modal.data.penjelasan || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, penjelasan: e.target.value } }))} placeholder="Deskripsi mengenai kegiatan ini..."></textarea>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
@@ -192,10 +210,17 @@ const AdminKegiatan = () => {
                   <input style={inputStyle} type="text" value={modal.data.kode} onChange={e => setModal(p => ({ ...p, data: { ...p.data, kode: e.target.value } }))} placeholder="Mis: 123456" />
                 </div>
               </div>
-              <div>
-                <label style={labelStyle}>Templat Sertifikat (Opsional)</label>
-                <input type="file" ref={fileRef} accept="image/*" style={inputStyle} />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Unggah desain kosong untuk cetak PDF otomatis.</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={labelStyle}>Upload Banner Kegiatan</label>
+                  <input type="file" accept="image/*" style={inputStyle} />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Desain menarik dengan rasio 16:9, Ukuran Max: 2MB.</span>
+                </div>
+                <div>
+                  <label style={labelStyle}>Templat Sertifikat (Opsional)</label>
+                  <input type="file" ref={fileRef} accept="image/*" style={inputStyle} />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Unggah desain kosong untuk cetak PDF otomatis.</span>
+                </div>
               </div>
               <div>
                 <label style={labelStyle}>Status *</label>

@@ -64,7 +64,6 @@ const NAV_ITEMS = [
   { label: 'Kegiatan',    path: '/admin/kegiatan',    icon: 'calendar',
     sub: [
       { label: 'Daftar Kegiatan',  path: '/admin/kegiatan' },
-      { label: 'Tambah Kegiatan',  path: '/admin/kegiatan/tambah' },
     ]
   },
   { label: 'Konten Web',  path: '/admin/konten',      icon: 'layout',

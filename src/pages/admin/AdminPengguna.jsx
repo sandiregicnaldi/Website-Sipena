@@ -40,7 +40,10 @@ const INITIAL_USERS = {
       statusAkun: 'Aktif', 
       isVerifiedAuthor: true,
       bio: 'Pengajar, peneliti, dan penulis aktif yang fokus pada sejarah Nusantara.',
-      website: 'https://ahmadfauzi.id'
+      website: 'https://ahmadfauzi.id',
+      karyaEksternal: [
+        { id: 1, judul: 'Sejarah Maritim Nusantara', penerbit: 'Pustaka Jaya', tahun: '2021', url: 'https://tokopedia.com' }
+      ]
     },
   ],
   pegawai: [
@@ -133,8 +136,27 @@ const UserDetailModal = ({ user, onClose }) => {
 const EditAuthorModal = ({ user, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     bio: user.bio || '',
-    website: user.website || ''
+    website: user.website || '',
+    karyaEksternal: user.karyaEksternal || []
   });
+  
+  const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '' });
+
+  const handleAddKarya = () => {
+    if (!newKarya.judul) return;
+    setFormData(prev => ({
+      ...prev,
+      karyaEksternal: [...prev.karyaEksternal, { ...newKarya, id: Date.now() }]
+    }));
+    setNewKarya({ judul: '', penerbit: '', tahun: '', url: '' });
+  };
+
+  const handleRemoveKarya = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      karyaEksternal: prev.karyaEksternal.filter(k => k.id !== id)
+    }));
+  };
 
   if (!user) return null;
 
@@ -163,6 +185,25 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Website / Portofolio</label>
             <input type="text" value={formData.website} onChange={e => setFormData({ ...formData, website: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Karya di Penerbit Lain</label>
+            {formData.karyaEksternal.map(k => (
+              <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-secondary)', padding: '0.5rem 0.8rem', borderRadius: 'var(--radius-md)', marginBottom: '0.5rem', border: '1px solid var(--border-color)' }}>
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{k.judul}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{k.penerbit} ({k.tahun})</div>
+                </div>
+                <button onClick={() => handleRemoveKarya(k.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }} title="Hapus"><Trash2 size={14}/></button>
+              </div>
+            ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <input type="text" placeholder="Judul Buku" value={newKarya.judul} onChange={e => setNewKarya({...newKarya, judul: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
+              <input type="text" placeholder="Penerbit" value={newKarya.penerbit} onChange={e => setNewKarya({...newKarya, penerbit: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
+              <input type="text" placeholder="Tahun" value={newKarya.tahun} onChange={e => setNewKarya({...newKarya, tahun: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
+              <input type="text" placeholder="Link URL" value={newKarya.url} onChange={e => setNewKarya({...newKarya, url: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
+            </div>
+            <button onClick={handleAddKarya} className="btn btn-outline" style={{ marginTop: '0.5rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>+ Tambah Karya</button>
           </div>
         </div>
         <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -222,7 +263,7 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
     const updated = {
       ...users,
       pengunjung: users.pengunjung.map(x => 
-        x.id === editAuthorModal.id ? { ...x, bio: data.bio, website: data.website } : x
+        x.id === editAuthorModal.id ? { ...x, bio: data.bio, website: data.website, karyaEksternal: data.karyaEksternal } : x
       )
     };
     onUsersChange(updated);
