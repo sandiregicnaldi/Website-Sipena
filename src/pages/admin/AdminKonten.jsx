@@ -17,14 +17,17 @@ const Toast = ({ msg, onClose }) => (
 );
 
 // ── Banner / Hero ───────────────────────────────────────────────────────────
+const EMPTY_BANNER = { kategori: '', judul: '', subjudul: '', deskripsi: '', btn1Label: 'Baca Sekarang', btn1Url: '', btn2Label: 'Unduh PDF', btn2Url: '' };
+
 const BannerEditor = () => {
   const [banners, setBanners] = useState([
-    { id: 1, judul: 'ILPN SUMATRA BARAT', subjudul: 'Yang Tak Lekang Digerus Zaman', kategori: 'Sastra · Budaya', aktif: true },
-    { id: 2, judul: 'Literasi Digital 2026', subjudul: 'Membangun Masyarakat Cerdas Informasi', kategori: 'Teknologi', aktif: true },
-    { id: 3, judul: 'Pedoman Katalogisasi', subjudul: 'Panduan Lengkap untuk Pustakawan Indonesia', kategori: 'Pedoman', aktif: false },
+    { id: 1, kategori: 'BUDAYA · ENSIKLOPEDIA', judul: 'SERAT CENTHINI', subjudul: 'Ensiklopedia Budaya Jawa', deskripsi: 'Mahakarya sastra Jawa yang merangkum pengetahuan, kepercayaan, dan adat istiadat masyarakat Jawa secara lengkap.', btn1Label: 'Baca Sekarang', btn1Url: '#', btn2Label: 'Unduh PDF', btn2Url: '#', aktif: true },
+    { id: 2, kategori: 'TEKNOLOGI', judul: 'Literasi Digital 2026', subjudul: 'Membangun Masyarakat Cerdas Informasi', deskripsi: 'Panduan dan wawasan terbaru seputar dunia literasi digital di era transformasi kecerdasan buatan.', btn1Label: 'Selengkapnya', btn1Url: '#', btn2Label: '', btn2Url: '', aktif: true },
   ]);
   const [toast, setToast] = useState('');
-  const [editModal, setEditModal] = useState(null);
+  const [modal, setModal] = useState(null); // { mode: 'edit' | 'tambah', data: {} }
+  const [nextId, setNextId] = useState(3);
+  
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const handleToggle = (id) => {
@@ -33,10 +36,23 @@ const BannerEditor = () => {
     showToast(`Banner "${b.judul}" berhasil ${b.aktif ? 'dinonaktifkan' : 'diaktifkan'}.`);
   };
   const handleSaveEdit = (form) => {
-    setBanners(prev => prev.map(b => b.id === form.id ? { ...form } : b));
-    setEditModal(null);
-    showToast(`Banner "${form.judul}" berhasil disimpan.`);
+    if (modal.mode === 'edit') {
+      setBanners(prev => prev.map(b => b.id === form.id ? { ...form } : b));
+      showToast(`Banner "${form.judul}" berhasil disimpan.`);
+    } else {
+      setBanners(prev => [...prev, { ...form, id: nextId, aktif: true }]);
+      setNextId(n => n + 1);
+      showToast(`Banner "${form.judul}" berhasil ditambahkan.`);
+    }
+    setModal(null);
   };
+  const handleHapus = (id) => {
+    if(window.confirm('Hapus banner ini?')) {
+      setBanners(prev => prev.filter(b => b.id !== id));
+      showToast('Banner berhasil dihapus.');
+    }
+  };
+
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' };
 
@@ -44,21 +60,36 @@ const BannerEditor = () => {
     <div>
       <div className="admin-page-header"><h1>🖼️ Banner / Hero</h1><p>Kelola gambar dan teks banner utama halaman beranda SiPena.</p></div>
       <div className="admin-card">
-        <div className="admin-card-header"><span className="admin-card-title">Daftar Banner Aktif</span></div>
+        <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="admin-card-title">Daftar Banner Aktif</span>
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'tambah', data: EMPTY_BANNER })}>+ Tambah Banner</button>
+        </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
-            <thead><tr><th>#</th><th>Judul</th><th>Sub Judul</th><th>Kategori</th><th>Status</th><th>Aksi</th></tr></thead>
+            <thead><tr><th>#</th><th>Info Banner</th><th>Deskripsi</th><th>Tombol Aksi</th><th>Status</th><th>Aksi</th></tr></thead>
             <tbody>
               {banners.map((b, i) => (
                 <tr key={b.id}>
                   <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
-                  <td style={{ fontWeight: 600 }}>{b.judul}</td>
-                  <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{b.subjudul}</td>
-                  <td><span className="badge badge-gray">{b.kategori}</span></td>
+                  <td>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{b.kategori}</div>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem', marginTop: '0.2rem' }}>{b.judul}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{b.subjudul}</div>
+                  </td>
+                  <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', maxWidth: '250px' }}>{b.deskripsi}</td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      {b.btn1Label && <span className="badge badge-gray">{b.btn1Label}</span>}
+                      {b.btn2Label && <span className="badge badge-gray">{b.btn2Label}</span>}
+                    </div>
+                  </td>
                   <td><span className={`badge ${b.aktif ? 'badge-green' : 'badge-red'}`}>{b.aktif ? 'Aktif' : 'Nonaktif'}</span></td>
                   <td>
-                    <button onClick={() => setEditModal({ ...b })} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', fontSize: '0.8rem', marginRight: '0.5rem', fontWeight: 600 }}>✏️ Edit</button>
-                    <button onClick={() => handleToggle(b.id)} style={{ background: 'none', border: 'none', color: b.aktif ? 'var(--danger)' : '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{b.aktif ? '⏸ Nonaktifkan' : '▶ Aktifkan'}</button>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <button onClick={() => setModal({ mode: 'edit', data: { ...b } })} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>✏️ Edit</button>
+                      <button onClick={() => handleToggle(b.id)} style={{ background: 'none', border: 'none', color: b.aktif ? 'var(--danger)' : '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{b.aktif ? '⏸ Nonaktifkan' : '▶ Aktifkan'}</button>
+                      <button onClick={() => handleHapus(b.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>🗑️ Hapus</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -66,20 +97,52 @@ const BannerEditor = () => {
           </table>
         </div>
       </div>
-      {editModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '480px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
+          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '700px', margin: 'auto', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>✏️ Edit Banner</h3>
-              <button onClick={() => setEditModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
+              <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>{modal.mode === 'edit' ? '✏️ Edit Banner' : '➕ Tambah Banner'}</h3>
+              <button onClick={() => setModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
             </div>
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {[{ label: 'Judul', key: 'judul' }, { label: 'Sub Judul', key: 'subjudul' }, { label: 'Kategori', key: 'kategori' }].map(f => (
-                <div key={f.key}><label style={labelStyle}>{f.label}</label><input style={inputStyle} value={editModal[f.key]} onChange={e => setEditModal(p => ({ ...p, [f.key]: e.target.value }))} /></div>
-              ))}
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button className="btn btn-outline" onClick={() => setEditModal(null)}>Batal</button>
-                <button className="btn btn-primary" onClick={() => handleSaveEdit(editModal)}>💾 Simpan</button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                <div><label style={labelStyle}>Kategori</label><input style={inputStyle} value={modal.data.kategori} onChange={e => setModal(p => ({ ...p, data: { ...p.data, kategori: e.target.value } }))} placeholder="Misal: BUDAYA • ENSIKLOPEDIA" /></div>
+                <div><label style={labelStyle}>Judul Besar</label><input style={inputStyle} value={modal.data.judul} onChange={e => setModal(p => ({ ...p, data: { ...p.data, judul: e.target.value } }))} placeholder="Misal: SERAT CENTHINI" /></div>
+              </div>
+              
+              <div><label style={labelStyle}>Subjudul / Nama Penulis</label><input style={inputStyle} value={modal.data.subjudul} onChange={e => setModal(p => ({ ...p, data: { ...p.data, subjudul: e.target.value } }))} placeholder="Misal: Ensiklopedia Budaya Jawa" /></div>
+              
+              <div><label style={labelStyle}>Deskripsi Singkat</label><textarea rows="3" style={{ ...inputStyle, resize: 'vertical' }} value={modal.data.deskripsi} onChange={e => setModal(p => ({ ...p, data: { ...p.data, deskripsi: e.target.value } }))} placeholder="Mahakarya sastra Jawa yang merangkum..." /></div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <div>
+                  <label style={labelStyle}>Tombol 1 (Label & URL)</label>
+                  <input style={{ ...inputStyle, marginBottom: '0.5rem' }} value={modal.data.btn1Label} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn1Label: e.target.value } }))} placeholder="Teks Tombol (Mis: Baca Sekarang)" />
+                  <input style={inputStyle} value={modal.data.btn1Url} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn1Url: e.target.value } }))} placeholder="URL Tautan" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Tombol 2 (Label & URL)</label>
+                  <input style={{ ...inputStyle, marginBottom: '0.5rem' }} value={modal.data.btn2Label} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn2Label: e.target.value } }))} placeholder="Teks Tombol (Mis: Unduh PDF)" />
+                  <input style={inputStyle} value={modal.data.btn2Url} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn2Url: e.target.value } }))} placeholder="URL Tautan" />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={labelStyle}>Upload Gambar Background</label>
+                  <input type="file" accept="image/*" style={inputStyle} />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Rasio 16:9 atau lebar penuh.</span>
+                </div>
+                <div>
+                  <label style={labelStyle}>Upload Gambar Sampul Buku (Kanan)</label>
+                  <input type="file" accept="image/*" style={inputStyle} />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Gambar proporsi buku portrait.</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setModal(null)}>Batal</button>
+                <button className="btn btn-primary" onClick={() => handleSaveEdit(modal.data)}>💾 Simpan Banner</button>
               </div>
             </div>
           </div>
