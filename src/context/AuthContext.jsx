@@ -2,11 +2,10 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-// ── Hardcoded accounts (demo) ────────────────────────────────────────
 const MOCK_ACCOUNTS = [
   { email: 'admin@sipena.id',     password: 'admin123',   username: 'Administrator',  role: 'admin' },
-  { email: 'pengunjung@sipena.id',password: 'pengunjung123',username: 'Budi (Pengunjung)',role: 'pengunjung', isVerifiedAuthor: false },
-  { email: 'penulis@sipena.id',   password: 'penulis123', username: 'Andi (Penulis)',   role: 'pengunjung', isVerifiedAuthor: true },
+  { email: 'sari@email.com',      password: 'pengunjung123', username: 'Sari Indah', role: 'pengunjung', isVerifiedAuthor: false },
+  { email: 'ahmad@email.com',     password: 'penulis123', username: 'Dr. Ahmad Fauzi', role: 'pengunjung', isVerifiedAuthor: true },
 ];
 
 export const AuthProvider = ({ children }) => {
