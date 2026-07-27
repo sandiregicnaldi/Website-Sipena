@@ -7,7 +7,7 @@ const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
 
 const EMPTY_FORM = {
-  judul: '', tanggal: '', jamKegiatan: '', lokasi: '', urlZoom: '',
+  judul: '', tanggal: '', jamKegiatan: '', batasDaftar: '', lokasi: '', urlZoom: '',
   narasumber: [''], penjelasan: '', status: 'Akan Datang',
   peserta: 0, waktuBuka: '', waktuTutup: '', kode: ''
 };
@@ -116,7 +116,10 @@ const AdminKegiatan = () => {
                     <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{e.judul}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>PIN: <strong>{e.kode || '-'}</strong> &bull; Presensi: {e.waktuBuka}–{e.waktuTutup} WIB</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        PIN: <strong>{e.kode || '-'}</strong> &bull; Presensi: {e.waktuBuka}–{e.waktuTutup} WIB
+                        {e.batasDaftar && <span style={{ color: 'var(--danger)' }}> &bull; Batas daftar: {e.batasDaftar} WIB</span>}
+                      </div>
                     </td>
                     <td>
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>{new Date(e.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {e.jamKegiatan}</div>
@@ -173,6 +176,17 @@ const AdminKegiatan = () => {
                 <div>
                   <label style={labelStyle}>Jam Kegiatan *</label>
                   <input style={inputStyle} type="text" required value={modal.data.jamKegiatan || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, jamKegiatan: e.target.value } }))} placeholder="09:00 - 12:00 WIB" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Estimasi Peserta</label>
+                  <input style={inputStyle} type="number" min="0" value={modal.data.peserta} onChange={e => setModal(p => ({ ...p, data: { ...p.data, peserta: Number(e.target.value) } }))} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={labelStyle}>Batas Pendaftaran (Waktu)</label>
+                  <input style={inputStyle} type="time" value={modal.data.batasDaftar || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, batasDaftar: e.target.value } }))} />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.25rem', display: 'block' }}>Disarankan H-30 menit dari jam mulai acara. Kosongkan jika tidak ada batas.</span>
                 </div>
                 <div>
                   <label style={labelStyle}>Estimasi Peserta</label>

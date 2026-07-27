@@ -17,21 +17,26 @@ const EventDetail = () => {
     getPresensiStatus,
     isUserRegistered,
     isUserHadir,
+    isRegistrationOpen,
   } = useEvent();
 
   const eventId = parseInt(id);
   const event   = events.find(e => e.id === eventId) || events[0];
 
-  const [showPinModal, setShowPinModal]   = useState(false);
-  const [pinInput, setPinInput]           = useState('');
-  const [pinError, setPinError]           = useState('');
-  const [presensiStatus, setPresensiStatus] = useState({ open: false, msg: '' });
-  const [justRegistered, setJustRegistered] = useState(false);
+  const [showPinModal, setShowPinModal]       = useState(false);
+  const [pinInput, setPinInput]               = useState('');
+  const [pinError, setPinError]               = useState('');
+  const [presensiStatus, setPresensiStatus]   = useState({ open: false, msg: '' });
+  const [regStatus, setRegStatus]             = useState({ open: true, msg: '' });
+  const [justRegistered, setJustRegistered]   = useState(false);
 
-  // Cek status presensi tiap menit berdasarkan waktuBuka/waktuTutup dari admin
+  // Cek status presensi & batas pendaftaran tiap menit
   useEffect(() => {
     if (!event) return;
-    const check = () => setPresensiStatus(getPresensiStatus(event));
+    const check = () => {
+      setPresensiStatus(getPresensiStatus(event));
+      setRegStatus(isRegistrationOpen(event));
+    };
     check();
     const interval = setInterval(check, 60000);
     return () => clearInterval(interval);
@@ -44,11 +49,11 @@ const EventDetail = () => {
 
   const handleDaftar = () => {
     if (!user) { navigate('/login'); return; }
-    const ok = daftarKegiatan(eventId, user);
-    if (ok) {
+    const result = daftarKegiatan(eventId, user);
+    if (result.success) {
       setJustRegistered(true);
     } else {
-      alert('Anda sudah terdaftar dalam kegiatan ini.');
+      alert(result.msg);
     }
   };
 
@@ -213,13 +218,35 @@ const EventDetail = () => {
               </div>
 
               <div className="event-actions-sidebar">
+                {/* ── BATAS PENDAFTARAN INFO ── */}
+                {event.batasDaftar && !registered && (
+                  <div style={{
+                    background: regStatus.open ? '#fefce8' : '#fef2f2',
+                    border: `1px solid ${regStatus.open ? '#fde047' : '#fca5a5'}`,
+                    borderRadius: '0.5rem', padding: '0.6rem 0.9rem', marginBottom: '0.75rem',
+                    fontSize: '0.8rem', color: regStatus.open ? '#854d0e' : '#991b1b',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem'
+                  }}>
+                    {regStatus.open ? '⏰' : '🔒'}
+                    {regStatus.open
+                      ? `Batas pendaftaran: ${event.batasDaftar} WIB${regStatus.msg.includes('menit') ? ` — ${regStatus.msg}` : ''}`
+                      : regStatus.msg
+                    }
+                  </div>
+                )}
+
                 {/* ── BUTTON LOGIC ── */}
                 {!user ? (
                   <button className="btn btn-primary w-100" onClick={() => navigate('/login')}>
                     Masuk untuk Mendaftar
                   </button>
                 ) : !registered ? (
-                  <button className="btn btn-primary w-100" onClick={handleDaftar}>
+                  <button
+                    className="btn btn-primary w-100"
+                    onClick={handleDaftar}
+                    disabled={!regStatus.open}
+                    style={{ opacity: regStatus.open ? 1 : 0.6, cursor: regStatus.open ? 'pointer' : 'not-allowed' }}
+                  >
                     🎫 Daftar Sekarang
                   </button>
                 ) : !hadir ? (
@@ -282,6 +309,7 @@ const EventDetail = () => {
           </aside>
         </div>
       </div>
+
 
       {/* ── MODAL PIN PRESENSI ── */}
       {showPinModal && (

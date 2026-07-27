@@ -7,6 +7,7 @@ const INITIAL_EVENTS = [
     judul: 'Seminar Literasi Digital 2026',
     tanggal: '2026-08-10',
     jamKegiatan: '09:00 - 12:00',
+    batasDaftar: '08:30', // H-30 menit dari mulai acara
     lokasi: 'Aula Perpusnas, Jakarta',
     urlZoom: '',
     narasumber: ['Dr. Budi Santoso'],
@@ -22,6 +23,7 @@ const INITIAL_EVENTS = [
     judul: 'Workshop Penulisan Ilmiah',
     tanggal: '2026-07-20',
     jamKegiatan: '13:00 - 15:00',
+    batasDaftar: '12:30', // H-30 menit dari mulai acara
     lokasi: 'Online (Zoom)',
     urlZoom: 'https://zoom.us/j/123456789',
     narasumber: ['Prof. Rina Wijaya', 'Dr. Andi Hermawan'],
@@ -85,11 +87,39 @@ export const EventProvider = ({ children }) => {
     }));
   };
 
+  // ── Helper: cek apakah pendaftaran masih dibuka ─────────────────────────
+  const isRegistrationOpen = (event) => {
+    if (!event) return { open: false, msg: 'Kegiatan tidak ditemukan.' };
+    if (!event.batasDaftar) return { open: true, msg: '' }; // jika tidak diset, selalu buka
+
+    const [bH, bM] = event.batasDaftar.split(':').map(Number);
+    const eventDate = new Date(event.tanggal);
+    const deadlineTime = new Date(
+      eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), bH, bM, 0
+    );
+    const now = new Date();
+
+    if (now > deadlineTime) {
+      const fmt = `${String(bH).padStart(2,'0')}:${String(bM).padStart(2,'0')}`;
+      return { open: false, msg: `Pendaftaran telah ditutup sejak pukul ${fmt} WIB.` };
+    }
+    const selisihMs = deadlineTime - now;
+    const selisihMnt = Math.ceil(selisihMs / 60000);
+    const msg = selisihMnt <= 60
+      ? `Pendaftaran tutup dalam ${selisihMnt} menit (pukul ${event.batasDaftar} WIB).`
+      : `Batas pendaftaran: ${event.batasDaftar} WIB.`;
+    return { open: true, msg };
+  };
+
   // ── Pengunjung: daftar kegiatan (otomatis masuk list peserta admin) ─────
   const daftarKegiatan = (eventId, userData) => {
+    const ev = events.find(e => e.id === eventId);
+    const regStatus = isRegistrationOpen(ev);
+    if (!regStatus.open) return { success: false, msg: regStatus.msg };
+
     const pesertaEventIni = peserta[eventId] || [];
     // Cegah duplikat (email sama)
-    if (pesertaEventIni.some(p => p.email === userData.email)) return false;
+    if (pesertaEventIni.some(p => p.email === userData.email)) return { success: false, msg: 'Anda sudah terdaftar.' };
 
     const newPeserta = {
       id: nextPesertaId,
@@ -104,7 +134,7 @@ export const EventProvider = ({ children }) => {
       [eventId]: [...(prev[eventId] || []), newPeserta],
     }));
     setNextPesertaId(n => n + 1);
-    return true;
+    return { success: true, msg: '' };
   };
 
   // ── Pengunjung: konfirmasi hadir dengan PIN ──────────────────────────────
@@ -162,6 +192,7 @@ export const EventProvider = ({ children }) => {
       getPresensiStatus,
       isUserRegistered,
       isUserHadir,
+      isRegistrationOpen,
     }}>
       {children}
     </EventContext.Provider>
