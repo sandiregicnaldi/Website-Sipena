@@ -16,6 +16,7 @@ import FAQPage from './pages/FAQPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
+import { EventProvider } from './context/EventContext';
 
 // Wrapper: public pages use Header + Footer
 const PublicLayout = () => (
@@ -29,6 +30,7 @@ const PublicLayout = () => (
 function App() {
   return (
     <AuthProvider>
+      <EventProvider>
       <Router>
         <ScrollToTop />
         <Routes>
@@ -51,6 +53,7 @@ function App() {
           </Route>
         </Routes>
       </Router>
+      </EventProvider>
     </AuthProvider>
   );
 }

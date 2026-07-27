@@ -1,23 +1,16 @@
 import React, { useState, useRef } from 'react';
 import './AdminLayout.css';
 import { Users, FileDown } from 'lucide-react';
+import { useEvent } from '../../context/EventContext';
 
-const STATUS_LIST = ['Akan Datang', 'Segera', 'Selesai'];
+const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
 
-const INITIAL_EVENTS = [
-  { id: 1, judul: 'Seminar Literasi Digital 2026', tanggal: '2026-08-10', jamKegiatan: '09:00 - 12:00', lokasi: 'Aula Perpusnas, Jakarta', urlZoom: '', narasumber: ['Dr. Budi Santoso'], penjelasan: 'Seminar tentang literasi digital di era AI.', status: 'Akan Datang', peserta: 120, waktuBuka: '08:00', waktuTutup: '10:00', kode: 'LITDIG26' },
-  { id: 2, judul: 'Workshop Penulisan Ilmiah', tanggal: '2026-07-20', jamKegiatan: '13:00 - 15:00', lokasi: 'Online (Zoom)', urlZoom: 'https://zoom.us/j/123456789', narasumber: ['Prof. Rina Wijaya', 'Dr. Andi Hermawan'], penjelasan: 'Teknik penulisan ilmiah standar nasional.', status: 'Segera', peserta: 85, waktuBuka: '12:30', waktuTutup: '13:30', kode: 'WRKILM' },
-];
-
-// Mock Peserta per Event
-const MOCK_PESERTA = [
-  { id: 1, nama: 'Sari Indah', email: 'sari@email.com', instansi: 'Umum', status: 'Hadir' },
-  { id: 2, nama: 'Rizki Fauzan', email: 'rizki@email.com', instansi: 'Mahasiswa', status: 'Tidak Hadir' },
-  { id: 3, nama: 'Budi Santoso', email: 'budi@email.com', instansi: 'Guru', status: 'Tidak Hadir' },
-];
-
-const EMPTY_FORM = { judul: '', tanggal: '', jamKegiatan: '', lokasi: '', urlZoom: '', narasumber: [''], penjelasan: '', status: 'Akan Datang', peserta: 0, waktuBuka: '', waktuTutup: '', kode: '' };
+const EMPTY_FORM = {
+  judul: '', tanggal: '', jamKegiatan: '', lokasi: '', urlZoom: '',
+  narasumber: [''], penjelasan: '', status: 'Akan Datang',
+  peserta: 0, waktuBuka: '', waktuTutup: '', kode: ''
+};
 
 const Toast = ({ msg, onClose }) => (
   <div style={{
@@ -33,13 +26,12 @@ const Toast = ({ msg, onClose }) => (
 );
 
 const AdminKegiatan = () => {
-  const [events, setEvents] = useState(INITIAL_EVENTS);
-  const [search, setSearch] = useState('');
-  const [modal, setModal] = useState(null);
+  const { events, peserta, addEvent, updateEvent, deleteEvent, toggleKehadiran } = useEvent();
+
+  const [search, setSearch]         = useState('');
+  const [modal, setModal]           = useState(null);
   const [pesertaModal, setPesertaModal] = useState(null);
-  const [pesertaList, setPesertaList] = useState(MOCK_PESERTA);
-  const [toast, setToast] = useState('');
-  const [nextId, setNextId] = useState(INITIAL_EVENTS.length + 1);
+  const [toast, setToast]           = useState('');
 
   const fileRef = useRef(null);
 
@@ -49,11 +41,10 @@ const AdminKegiatan = () => {
 
   const handleSave = (form) => {
     if (modal.mode === 'edit') {
-      setEvents(prev => prev.map(e => e.id === form.id ? { ...form } : e));
+      updateEvent(form);
       showToast(`Kegiatan "${form.judul}" berhasil diperbarui.`);
     } else {
-      setEvents(prev => [...prev, { ...form, id: nextId }]);
-      setNextId(n => n + 1);
+      addEvent(form);
       showToast(`Kegiatan "${form.judul}" berhasil ditambahkan.`);
     }
     setModal(null);
@@ -62,27 +53,27 @@ const AdminKegiatan = () => {
   const handleHapus = (id) => {
     const ev = events.find(e => e.id === id);
     if (window.confirm(`Hapus kegiatan "${ev.judul}"?\n\nTindakan ini tidak dapat dibatalkan.`)) {
-      setEvents(prev => prev.filter(e => e.id !== id));
+      deleteEvent(id);
       showToast(`Kegiatan "${ev.judul}" berhasil dihapus.`);
     }
   };
 
+  // Peserta list untuk event yang sedang dibuka
+  const pesertaList = pesertaModal ? (peserta[pesertaModal.id] || []) : [];
+
   const exportCSV = () => {
-    const header = ['Nama', 'Email', 'Instansi', 'Status'];
-    const rows = pesertaList.map(p => [p.nama, p.email, p.instansi, p.status]);
-    const csvContent = [header, ...rows].map(e => e.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const header = ['Nama', 'Email', 'Instansi', 'Status', 'Tanggal Daftar'];
+    const rows   = pesertaList.map(p => [p.nama, p.email, p.instansi, p.status, p.tanggalDaftar || '-']);
+    const csvContent = [header, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM untuk Excel
+    const url  = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `Daftar_Hadir_${pesertaModal.judul.replace(/\s+/g, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const toggleKehadiran = (id) => {
-    setPesertaList(prev => prev.map(p => p.id === id ? { ...p, status: p.status === 'Hadir' ? 'Tidak Hadir' : 'Hadir' } : p));
+    URL.revokeObjectURL(url);
   };
 
   const inputStyle = {
@@ -125,7 +116,7 @@ const AdminKegiatan = () => {
                     <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{e.judul}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>PIN Presensi: <strong>{e.kode || '-'}</strong></div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>PIN: <strong>{e.kode || '-'}</strong> &bull; Presensi: {e.waktuBuka}–{e.waktuTutup} WIB</div>
                     </td>
                     <td>
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>{new Date(e.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {e.jamKegiatan}</div>
@@ -137,12 +128,17 @@ const AdminKegiatan = () => {
                         {(Array.isArray(e.narasumber) ? e.narasumber : [e.narasumber]).map((n, idx) => <li key={idx}>{n}</li>)}
                       </ul>
                     </td>
-                    <td style={{ textAlign: 'center' }}>{e.peserta}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ fontWeight: 700 }}>{(peserta[e.id] || []).length}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+                        {(peserta[e.id] || []).filter(p => p.status === 'Hadir').length} hadir
+                      </div>
+                    </td>
                     <td><span className={`badge ${STATUS_BADGE[e.status]}`}>{e.status}</span></td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        <button onClick={() => { setPesertaModal(e); setPesertaList(MOCK_PESERTA); }} style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Users size={14} /> Peserta
+                        <button onClick={() => setPesertaModal(e)} style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Users size={14} /> Peserta ({(peserta[e.id] || []).length})
                         </button>
                         <button onClick={() => setModal({ mode: 'edit', data: { ...e } })} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>✏️ Edit</button>
                         <button onClick={() => handleHapus(e.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>🗑️</button>
@@ -156,16 +152,10 @@ const AdminKegiatan = () => {
         </div>
       </div>
 
-      {/* MODAL KEGIATAN */}
+      {/* MODAL TAMBAH/EDIT KEGIATAN */}
       {modal && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto'
-        }}>
-          <div style={{
-            background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '600px',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', margin: 'auto'
-          }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
+          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '600px', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', margin: 'auto' }}>
             <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>{modal.mode === 'edit' ? '✏️ Edit Kegiatan' : '➕ Tambah Kegiatan Baru'}</h3>
               <button onClick={() => setModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
@@ -229,11 +219,11 @@ const AdminKegiatan = () => {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Buka Presensi</label>
+                  <label style={labelStyle}>Buka Presensi (Waktu)</label>
                   <input style={inputStyle} type="time" value={modal.data.waktuBuka} onChange={e => setModal(p => ({ ...p, data: { ...p.data, waktuBuka: e.target.value } }))} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Tutup Presensi</label>
+                  <label style={labelStyle}>Tutup Presensi (Waktu)</label>
                   <input style={inputStyle} type="time" value={modal.data.waktuTutup} onChange={e => setModal(p => ({ ...p, data: { ...p.data, waktuTutup: e.target.value } }))} />
                 </div>
                 <div>
@@ -245,12 +235,12 @@ const AdminKegiatan = () => {
                 <div>
                   <label style={labelStyle}>Upload Banner Kegiatan</label>
                   <input type="file" accept="image/*" style={inputStyle} />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Desain menarik dengan rasio 16:9, Ukuran Max: 2MB.</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Rasio 16:9, Max 2MB.</span>
                 </div>
                 <div>
                   <label style={labelStyle}>Templat Sertifikat (Opsional)</label>
                   <input type="file" ref={fileRef} accept="image/*" style={inputStyle} />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Unggah desain kosong untuk cetak PDF otomatis.</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Unggah desain kosong untuk cetak PDF.</span>
                 </div>
               </div>
               <div>
@@ -270,52 +260,52 @@ const AdminKegiatan = () => {
 
       {/* MODAL PESERTA */}
       {pesertaModal && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
-        }}>
-          <div style={{
-            background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '700px',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden'
-          }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '700px', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
             <div style={{ background: 'var(--bg-secondary)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>👥 Peserta: {pesertaModal.judul}</h3>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Manajemen daftar hadir dan data peserta acara.</p>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {pesertaList.length} mendaftar &bull; {pesertaList.filter(p => p.status === 'Hadir').length} hadir
+                </p>
               </div>
               <button onClick={() => setPesertaModal(null)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>
             <div style={{ padding: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total: {pesertaList.length} pendaftar</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>PIN Presensi: <strong>{pesertaModal.kode}</strong> &bull; Jam: {pesertaModal.waktuBuka}–{pesertaModal.waktuTutup} WIB</span>
                 <button onClick={exportCSV} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <FileDown size={16} /> Ekspor CSV
+                  <FileDown size={16} /> Ekspor CSV (Excel)
                 </button>
               </div>
               <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
                 <table className="admin-table" style={{ width: '100%' }}>
                   <thead>
-                    <tr><th>Nama</th><th>Email</th><th>Instansi</th><th>Status</th><th>Aksi</th></tr>
+                    <tr><th>Nama</th><th>Email</th><th>Instansi</th><th>Tgl. Daftar</th><th>Status</th><th>Aksi</th></tr>
                   </thead>
                   <tbody>
-                    {pesertaList.map(p => (
-                      <tr key={p.id}>
-                        <td style={{ fontWeight: 600 }}>{p.nama}</td>
-                        <td style={{ fontSize: '0.82rem' }}>{p.email}</td>
-                        <td style={{ fontSize: '0.82rem' }}>{p.instansi}</td>
-                        <td>
-                          <span className={`badge ${p.status === 'Hadir' ? 'badge-green' : 'badge-amber'}`}>{p.status}</span>
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => toggleKehadiran(p.id)}
-                            style={{ background: 'none', border: 'none', color: p.status === 'Hadir' ? 'var(--danger)' : '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                          >
-                            {p.status === 'Hadir' ? 'Batalkan' : 'Tandai Hadir'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {pesertaList.length === 0
+                      ? <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Belum ada peserta yang mendaftar.</td></tr>
+                      : pesertaList.map(p => (
+                        <tr key={p.id}>
+                          <td style={{ fontWeight: 600 }}>{p.nama}</td>
+                          <td style={{ fontSize: '0.82rem' }}>{p.email}</td>
+                          <td style={{ fontSize: '0.82rem' }}>{p.instansi}</td>
+                          <td style={{ fontSize: '0.82rem' }}>{p.tanggalDaftar || '-'}</td>
+                          <td>
+                            <span className={`badge ${p.status === 'Hadir' ? 'badge-green' : 'badge-amber'}`}>{p.status}</span>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => toggleKehadiran(pesertaModal.id, p.id)}
+                              style={{ background: 'none', border: 'none', color: p.status === 'Hadir' ? 'var(--danger)' : '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                            >
+                              {p.status === 'Hadir' ? 'Batalkan' : 'Tandai Hadir'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    }
                   </tbody>
                 </table>
               </div>
