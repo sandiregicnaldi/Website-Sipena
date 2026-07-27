@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   User, Mail, MapPin, Calendar, Building2, Briefcase,
-  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download
+  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download, PenTool
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import './AuthorDashboard.css';
@@ -195,7 +195,17 @@ const AuthorDashboard = () => {
                 style={{ display: 'none' }}
               />
               <h2 className="sidebar-name">{user.namaLengkap || user.username}</h2>
-              <span className="role-badge">{isAuthor ? '✍️ Penulis Terverifikasi' : '👤 Pengunjung'}</span>
+              <span className="role-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                {isAuthor ? (
+                  <>
+                    <PenTool size={13} /> Penulis Terverifikasi
+                  </>
+                ) : (
+                  <>
+                    <User size={13} /> Pengunjung
+                  </>
+                )}
+              </span>
             </div>
 
             {/* Static info */}
@@ -562,7 +572,11 @@ const AuthorDashboard = () => {
 
             {/* Save button */}
             <div className="dashboard-footer-actions">
-              {saved && <span className="save-success">✅ Perubahan berhasil disimpan!</span>}
+              {saved && (
+                <span className="save-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <CheckCircle size={15} /> Perubahan berhasil disimpan!
+                </span>
+              )}
               <button className="btn btn-primary save-btn" onClick={handleSave}>
                 <Save size={18} /> Simpan Perubahan
               </button>

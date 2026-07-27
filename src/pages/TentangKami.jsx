@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTentang } from '../context/TentangContext';
+import { Target, Compass, MapPin } from 'lucide-react';
 import './TentangKami.css';
 
 const TentangKami = () => {
@@ -26,12 +27,16 @@ const TentangKami = () => {
         <div className="container">
           <div className="visi-grid">
             <div className="visi-card visi-card--blue">
-              <div className="visi-icon">🎯</div>
+              <div className="visi-icon" style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <Target size={42} strokeWidth={2} color="#fff" />
+              </div>
               <h2>Visi</h2>
               <p>{data.visi}</p>
             </div>
             <div className="visi-card visi-card--green">
-              <div className="visi-icon">🚀</div>
+              <div className="visi-icon" style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <Compass size={42} strokeWidth={2} color="#fff" />
+              </div>
               <h2>Misi</h2>
               <ul>
                 {data.misi.map((m, i) => <li key={i}>{m}</li>)}
@@ -94,7 +99,9 @@ const TentangKami = () => {
       <section className="tentang-kontak-section">
         <div className="container">
           <div className="kontak-card">
-            <h2>📍 Hubungi Kami</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <MapPin size={22} color="#93c5fd" /> Hubungi Kami
+            </h2>
             <div className="kontak-grid">
               <div>
                 <strong>Alamat</strong>

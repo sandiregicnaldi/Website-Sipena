@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Clock, ArrowLeft, Users, Share2, CheckCircle, Download, KeyRound } from 'lucide-react';
+import { Calendar, MapPin, Clock, ArrowLeft, Users, Share2, CheckCircle, Download, KeyRound, Lock, ExternalLink, Ticket, ClipboardCheck, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEvent } from '../context/EventContext';
 import jsPDF from 'jspdf';
@@ -177,8 +177,8 @@ const EventDetail = () => {
                     <span className="info-value">{event.lokasi}</span>
                     {event.urlZoom && (
                       <a href={event.urlZoom} target="_blank" rel="noopener noreferrer"
-                        style={{ fontSize: '0.8rem', color: '#2563eb', display: 'block', marginTop: '0.25rem' }}>
-                        🌐 Buka Tautan Zoom
+                        style={{ fontSize: '0.8rem', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}>
+                        <ExternalLink size={12} /> Buka Tautan Zoom
                       </a>
                     )}
                   </div>
@@ -201,8 +201,17 @@ const EventDetail = () => {
               }}>
                 <KeyRound size={16} color={presensiStatus.open ? '#16a34a' : '#94a3b8'} />
                 <div>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: presensiStatus.open ? '#15803d' : '#64748b' }}>
-                    Presensi: {presensiStatus.open ? '🟢 Sedang Dibuka' : '🔴 Belum / Sudah Ditutup'}
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: presensiStatus.open ? '#15803d' : '#64748b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    Presensi: 
+                    {presensiStatus.open ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} /> Sedang Dibuka
+                      </span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} /> Belum / Sudah Ditutup
+                      </span>
+                    )}
                   </div>
                   {!presensiStatus.open && (
                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.15rem' }}>
@@ -227,7 +236,7 @@ const EventDetail = () => {
                     fontSize: '0.8rem', color: regStatus.open ? '#854d0e' : '#991b1b',
                     display: 'flex', alignItems: 'center', gap: '0.5rem'
                   }}>
-                    {regStatus.open ? '⏰' : '🔒'}
+                    {regStatus.open ? <Clock size={14} /> : <Lock size={14} />}
                     {regStatus.open
                       ? `Batas pendaftaran: ${event.batasDaftar} WIB${regStatus.msg.includes('menit') ? ` — ${regStatus.msg}` : ''}`
                       : regStatus.msg
@@ -245,9 +254,9 @@ const EventDetail = () => {
                     className="btn btn-primary w-100"
                     onClick={handleDaftar}
                     disabled={!regStatus.open}
-                    style={{ opacity: regStatus.open ? 1 : 0.6, cursor: regStatus.open ? 'pointer' : 'not-allowed' }}
+                    style={{ opacity: regStatus.open ? 1 : 0.6, cursor: regStatus.open ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                   >
-                    🎫 Daftar Sekarang
+                    <Ticket size={18} /> Daftar Sekarang
                   </button>
                 ) : !hadir ? (
                   <>
@@ -256,8 +265,8 @@ const EventDetail = () => {
                     </div>
                     {event.urlZoom && (
                       <a href={event.urlZoom} target="_blank" rel="noopener noreferrer"
-                        className="btn btn-outline w-100 mb-2" style={{ textAlign: 'center', display: 'block', marginBottom: '0.75rem' }}>
-                        🔗 Buka Tautan Zoom
+                        className="btn btn-outline w-100 mb-2" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                        <ExternalLink size={16} /> Buka Tautan Zoom
                       </a>
                     )}
                     <button
@@ -279,7 +288,7 @@ const EventDetail = () => {
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
                       }}
                     >
-                      📝 Isi Daftar Hadir {presensiStatus.open && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: '4px', padding: '0 6px', fontSize: '0.8rem' }}>BUKA</span>}
+                      <ClipboardCheck size={18} /> Isi Daftar Hadir {presensiStatus.open && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: '4px', padding: '0 6px', fontSize: '0.8rem' }}>BUKA</span>}
                     </button>
                     {!presensiStatus.open && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '0.5rem', textAlign: 'center' }}>
@@ -343,7 +352,9 @@ const EventDetail = () => {
               )}
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
                 <button type="button" className="btn btn-outline" onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }}>Batal</button>
-                <button type="submit" className="btn btn-primary">✅ Konfirmasi Hadir</button>
+                <button type="submit" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Check size={16} /> Konfirmasi Hadir
+                </button>
               </div>
             </form>
           </div>

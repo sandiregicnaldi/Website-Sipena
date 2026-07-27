@@ -53,7 +53,9 @@ const EventsPage = () => {
       <div className="container events-container">
         {events.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#94a3b8' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📅</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+              <Calendar size={48} color="var(--text-tertiary)" />
+            </div>
             <p style={{ fontSize: '1.1rem' }}>Belum ada kegiatan yang dijadwalkan.</p>
           </div>
         ) : (

@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
+import { User, BookOpen, Download, Settings, Search, MessageSquare, Mail, Phone } from 'lucide-react';
 import './FAQPage.css';
+
+const CATEGORY_ICONS = {
+  'Pendaftaran & Akun': <User size={20} color="var(--accent-color)" />,
+  'Penerbitan Buku': <BookOpen size={20} color="var(--accent-color)" />,
+  'Koleksi & Unduhan': <Download size={20} color="var(--accent-color)" />,
+  'Teknis & Sistem': <Settings size={20} color="var(--accent-color)" />,
+};
 
 const FAQ_DATA = [
   {
     kategori: 'Pendaftaran & Akun',
-    icon: '👤',
     items: [
       {
         q: 'Bagaimana cara mendaftar sebagai penulis di SiPena?',
@@ -22,7 +29,6 @@ const FAQ_DATA = [
   },
   {
     kategori: 'Penerbitan Buku',
-    icon: '📚',
     items: [
       {
         q: 'Bagaimana prosedur pengajuan naskah ke Perpusnas Press?',
@@ -44,7 +50,6 @@ const FAQ_DATA = [
   },
   {
     kategori: 'Koleksi & Unduhan',
-    icon: '📥',
     items: [
       {
         q: 'Apakah semua buku dapat diunduh secara gratis?',
@@ -62,7 +67,6 @@ const FAQ_DATA = [
   },
   {
     kategori: 'Teknis & Sistem',
-    icon: '⚙️',
     items: [
       {
         q: 'Browser apa yang direkomendasikan untuk menggunakan SiPena?',
@@ -146,8 +150,10 @@ const FAQPage = () => {
                   key={kat.kategori}
                   className={`faq-tab ${activeKat === kat.kategori ? 'active' : ''}`}
                   onClick={() => setActiveKat(k => k === kat.kategori ? null : kat.kategori)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                  {kat.icon} {kat.kategori}
+                  {CATEGORY_ICONS[kat.kategori]}
+                  {kat.kategori}
                 </button>
               ))}
             </div>
@@ -162,7 +168,9 @@ const FAQPage = () => {
             .map(kat => (
               <div key={kat.kategori} className="faq-group">
                 <div className="faq-group-header">
-                  <span className="faq-group-icon">{kat.icon}</span>
+                  <span className="faq-group-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                    {CATEGORY_ICONS[kat.kategori]}
+                  </span>
                   <h2 className="faq-group-title">{kat.kategori}</h2>
                   <span className="faq-group-count">{kat.items.length} pertanyaan</span>
                 </div>
@@ -176,7 +184,9 @@ const FAQPage = () => {
           }
           {filtered.length === 0 && (
             <div className="faq-empty">
-              <div style={{ fontSize:'3rem', marginBottom:'1rem' }}>🔍</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <Search size={48} color="var(--text-tertiary)" />
+              </div>
               <h3>Pertanyaan tidak ditemukan</h3>
               <p>Coba kata kunci lain atau hubungi kami langsung di <strong>sipena@perpusnas.go.id</strong></p>
             </div>
@@ -187,16 +197,18 @@ const FAQPage = () => {
       {/* CTA */}
       <section className="faq-cta-section">
         <div className="container">
-          <div className="faq-cta-card">
-            <div className="faq-cta-icon">💬</div>
+          <div className="faq-cta-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <div className="faq-cta-icon" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <MessageSquare size={40} color="#93c5fd" />
+            </div>
             <h2>Masih punya pertanyaan?</h2>
             <p>Tim kami siap membantu Anda. Hubungi kami melalui email atau telepon pada jam kerja.</p>
             <div className="faq-cta-actions">
-              <a href="mailto:sipena@perpusnas.go.id" className="btn btn-primary">
-                📧 Kirim Email
+              <a href="mailto:sipena@perpusnas.go.id" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Mail size={16} /> Kirim Email
               </a>
-              <a href="tel:0213922749" className="btn btn-outline">
-                📞 Hubungi Kami
+              <a href="tel:0213922749" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Phone size={16} /> Hubungi Kami
               </a>
             </div>
           </div>
