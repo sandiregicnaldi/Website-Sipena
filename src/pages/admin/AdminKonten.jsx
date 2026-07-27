@@ -154,47 +154,226 @@ const BannerEditor = () => {
 };
 
 // ── Tentang Kami ────────────────────────────────────────────────────────────
+import { useTentang } from '../../context/TentangContext';
+
 const TentangEditor = () => {
-  const [form, setForm] = useState({
-    judul: 'Perpusnas Press',
-    deskripsi: 'Perpusnas Press adalah unit penerbitan resmi Perpustakaan Nasional Republik Indonesia. Kami berkomitmen untuk menerbitkan karya-karya berkualitas tinggi yang berkontribusi pada perkembangan ilmu pengetahuan dan kebudayaan Indonesia.',
-    visi: 'Menjadi penerbit terkemuka yang menghasilkan karya berkualitas tinggi untuk mencerdaskan bangsa.',
-    misi: '1. Menerbitkan karya ilmiah dan populer yang berkualitas\n2. Mendukung pengembangan budaya literasi\n3. Memfasilitasi penulis Indonesia untuk berkarya\n4. Menjadi referensi terpercaya bagi masyarakat',
-    telepon: '(021) 3924548',
-    email: 'perpusnas@perpusnas.go.id',
-    alamat: 'Jl. Salemba Raya No. 28A, Jakarta Pusat 10430',
-  });
-  const [toast, setToast] = useState('');
+  const { data, updateData, updateListItem, addListItem, removeListItem } = useTentang();
+  const [toast, setToast]     = useState('');
+  const [activeTab, setActiveTab] = useState('hero');
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' };
+  const sectionBox = { background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' };
+
+  const TABS = [
+    { key: 'hero',      label: '🏠 Hero' },
+    { key: 'visimisi',  label: '🎯 Visi & Misi' },
+    { key: 'statistik', label: '📊 Statistik' },
+    { key: 'sejarah',   label: '📜 Sejarah' },
+    { key: 'tim',       label: '👥 Tim' },
+    { key: 'kontak',    label: '📍 Kontak' },
+  ];
 
   return (
     <div>
-      <div className="admin-page-header"><h1>ℹ️ Tentang Kami</h1><p>Edit konten halaman Tentang Perpusnas Press, visi, misi, dan informasi kontak.</p></div>
-      <div className="admin-grid-2">
-        <div className="admin-card">
-          <div className="admin-card-header"><span className="admin-card-title">Identitas Lembaga</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div><label style={labelStyle}>Nama Lembaga</label><input style={inputStyle} value={form.judul} onChange={e => setForm(p => ({ ...p, judul: e.target.value }))} /></div>
-            <div><label style={labelStyle}>Deskripsi Singkat</label><textarea style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} value={form.deskripsi} onChange={e => setForm(p => ({ ...p, deskripsi: e.target.value }))} /></div>
-            <div><label style={labelStyle}>Visi</label><textarea style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} value={form.visi} onChange={e => setForm(p => ({ ...p, visi: e.target.value }))} /></div>
-            <div><label style={labelStyle}>Misi (satu per baris)</label><textarea style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }} value={form.misi} onChange={e => setForm(p => ({ ...p, misi: e.target.value }))} /></div>
-          </div>
-        </div>
-        <div className="admin-card">
-          <div className="admin-card-header"><span className="admin-card-title">Informasi Kontak</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div><label style={labelStyle}>Nomor Telepon</label><input style={inputStyle} value={form.telepon} onChange={e => setForm(p => ({ ...p, telepon: e.target.value }))} /></div>
-            <div><label style={labelStyle}>Email Resmi</label><input type="email" style={inputStyle} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
-            <div><label style={labelStyle}>Alamat Lengkap</label><textarea style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} value={form.alamat} onChange={e => setForm(p => ({ ...p, alamat: e.target.value }))} /></div>
-            <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => showToast('Konten Tentang Kami berhasil disimpan!')}>
-              💾 Simpan Semua Perubahan
-            </button>
-          </div>
-        </div>
+      <div className="admin-page-header">
+        <h1>ℹ️ Tentang Kami</h1>
+        <p>Edit seluruh konten halaman Tentang Perpusnas Press — hero, visi/misi, statistik, sejarah, tim, dan kontak.</p>
       </div>
+
+      {/* Tab navigasi seksi */}
+      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className={`btn ${activeTab === t.key ? 'btn-primary' : 'btn-outline'}`}
+            style={{ borderRadius: '2rem', padding: '0.4rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── TAB: HERO ── */}
+      {activeTab === 'hero' && (
+        <div className="admin-card">
+          <div className="admin-card-header"><span className="admin-card-title">🏠 Konten Hero / Pembuka</span></div>
+          <div style={{ ...sectionBox, margin: '0 1rem 1rem' }}>
+            <div>
+              <label style={labelStyle}>Judul (baris pertama)</label>
+              <input style={inputStyle} value={data.heroJudul} onChange={e => updateData({ heroJudul: e.target.value })} placeholder="Mis: Perpusnas Press —" />
+            </div>
+            <div>
+              <label style={labelStyle}>Subjudul (baris kedua, teks berwarna)</label>
+              <input style={inputStyle} value={data.heroSubjudul} onChange={e => updateData({ heroSubjudul: e.target.value })} placeholder="Mis: Penerbit Resmi Perpustakaan Nasional RI" />
+            </div>
+            <div>
+              <label style={labelStyle}>Deskripsi Pembuka</label>
+              <textarea rows="3" style={{ ...inputStyle, resize: 'vertical' }} value={data.heroDeskripsi} onChange={e => updateData({ heroDeskripsi: e.target.value })} />
+            </div>
+            <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => showToast('Konten Hero berhasil disimpan!')}>💾 Simpan</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: VISI & MISI ── */}
+      {activeTab === 'visimisi' && (
+        <div className="admin-card">
+          <div className="admin-card-header"><span className="admin-card-title">🎯 Visi &amp; Misi</span></div>
+          <div style={{ ...sectionBox, margin: '0 1rem 1rem' }}>
+            <div>
+              <label style={labelStyle}>Visi</label>
+              <textarea rows="3" style={{ ...inputStyle, resize: 'vertical' }} value={data.visi} onChange={e => updateData({ visi: e.target.value })} />
+            </div>
+            <div>
+              <label style={labelStyle}>Misi (tiap poin)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {data.misi.map((m, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--accent-color)', fontWeight: 700, minWidth: '1.2rem' }}>{i + 1}.</span>
+                    <input style={{ ...inputStyle, flex: 1 }} value={m} onChange={e => updateListItem('misi', i, e.target.value.toString()) || updateData({ misi: data.misi.map((x, j) => j === i ? e.target.value : x) })} />
+                    <button type="button" onClick={() => removeListItem('misi', i)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
+                  </div>
+                ))}
+                <button className="btn btn-outline" style={{ alignSelf: 'flex-start', padding: '0.3rem 0.8rem', fontSize: '0.8rem' }} onClick={() => addListItem('misi', '')}>+ Tambah Poin Misi</button>
+              </div>
+            </div>
+            <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => showToast('Visi & Misi berhasil disimpan!')}>💾 Simpan</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: STATISTIK ── */}
+      {activeTab === 'statistik' && (
+        <div className="admin-card">
+          <div className="admin-card-header">
+            <span className="admin-card-title">📊 Statistik Capaian</span>
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
+              onClick={() => addListItem('statistik', { label: 'Label Baru', value: '0' })}>+ Tambah Statistik</button>
+          </div>
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {data.statistik.map((s, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'center', background: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <div>
+                  <label style={labelStyle}>Label</label>
+                  <input style={inputStyle} value={s.label} onChange={e => updateListItem('statistik', i, { ...s, label: e.target.value })} placeholder="Mis: Judul Buku" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Nilai / Angka</label>
+                  <input style={inputStyle} value={s.value} onChange={e => updateListItem('statistik', i, { ...s, value: e.target.value })} placeholder="Mis: 1.290+" />
+                </div>
+                <button type="button" onClick={() => removeListItem('statistik', i)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.3rem', marginTop: '1.2rem' }}>×</button>
+              </div>
+            ))}
+            <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }} onClick={() => showToast('Statistik berhasil disimpan!')}>💾 Simpan</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: SEJARAH / TIMELINE ── */}
+      {activeTab === 'sejarah' && (
+        <div className="admin-card">
+          <div className="admin-card-header">
+            <span className="admin-card-title">📜 Timeline Sejarah</span>
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
+              onClick={() => addListItem('timeline', { tahun: '', judul: '', deskripsi: '' })}>+ Tambah Periode</button>
+          </div>
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {data.timeline.map((t, i) => (
+              <div key={i} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: '0.75rem', alignItems: 'start' }}>
+                  <div>
+                    <label style={labelStyle}>Tahun</label>
+                    <input style={inputStyle} value={t.tahun} onChange={e => updateListItem('timeline', i, { ...t, tahun: e.target.value })} placeholder="2026" />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Judul Peristiwa</label>
+                    <input style={inputStyle} value={t.judul} onChange={e => updateListItem('timeline', i, { ...t, judul: e.target.value })} placeholder="Mis: Pendirian Perpusnas Press" />
+                  </div>
+                  <button type="button" onClick={() => removeListItem('timeline', i)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.3rem', marginTop: '1.4rem' }}>×</button>
+                </div>
+                <div>
+                  <label style={labelStyle}>Deskripsi</label>
+                  <textarea rows="2" style={{ ...inputStyle, resize: 'vertical' }} value={t.deskripsi} onChange={e => updateListItem('timeline', i, { ...t, deskripsi: e.target.value })} />
+                </div>
+              </div>
+            ))}
+            <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }} onClick={() => showToast('Timeline sejarah berhasil disimpan!')}>💾 Simpan</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: TIM ── */}
+      {activeTab === 'tim' && (
+        <div className="admin-card">
+          <div className="admin-card-header">
+            <span className="admin-card-title">👥 Anggota Tim</span>
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
+              onClick={() => addListItem('tim', { nama: '', jabatan: '', inisial: '' })}>+ Tambah Anggota</button>
+          </div>
+          <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
+            {data.tim.map((t, i) => (
+              <div key={i} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1rem' }}>{t.inisial || '??'}</div>
+                  <button type="button" onClick={() => removeListItem('tim', i)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
+                </div>
+                <div>
+                  <label style={labelStyle}>Nama Lengkap</label>
+                  <input style={inputStyle} value={t.nama} onChange={e => updateListItem('tim', i, { ...t, nama: e.target.value })} placeholder="Dr. Nama Lengkap" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Jabatan</label>
+                  <input style={inputStyle} value={t.jabatan} onChange={e => updateListItem('tim', i, { ...t, jabatan: e.target.value })} placeholder="Kepala Bidang ..." />
+                </div>
+                <div>
+                  <label style={labelStyle}>Inisial Avatar (2 huruf)</label>
+                  <input style={{ ...inputStyle, textTransform: 'uppercase' }} maxLength={2} value={t.inisial} onChange={e => updateListItem('tim', i, { ...t, inisial: e.target.value.toUpperCase() })} placeholder="HK" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '0 1rem 1rem' }}>
+            <button className="btn btn-primary" style={{ marginTop: '0.5rem' }} onClick={() => showToast('Data tim berhasil disimpan!')}>💾 Simpan</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: KONTAK ── */}
+      {activeTab === 'kontak' && (
+        <div className="admin-card">
+          <div className="admin-card-header"><span className="admin-card-title">📍 Informasi Kontak</span></div>
+          <div style={{ ...sectionBox, margin: '0 1rem 1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={labelStyle}>Nomor Telepon</label>
+                <input style={inputStyle} value={data.telepon} onChange={e => updateData({ telepon: e.target.value })} />
+              </div>
+              <div>
+                <label style={labelStyle}>Nomor Fax</label>
+                <input style={inputStyle} value={data.fax} onChange={e => updateData({ fax: e.target.value })} />
+              </div>
+              <div>
+                <label style={labelStyle}>Email Resmi</label>
+                <input type="email" style={inputStyle} value={data.email} onChange={e => updateData({ email: e.target.value })} />
+              </div>
+              <div>
+                <label style={labelStyle}>Email SiPena</label>
+                <input type="email" style={inputStyle} value={data.emailSipena} onChange={e => updateData({ emailSipena: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Alamat Lengkap</label>
+              <textarea rows="3" style={{ ...inputStyle, resize: 'vertical' }} value={data.alamat} onChange={e => updateData({ alamat: e.target.value })} />
+            </div>
+            <div>
+              <label style={labelStyle}>Jam Layanan</label>
+              <textarea rows="2" style={{ ...inputStyle, resize: 'vertical' }} value={data.jamLayanan} onChange={e => updateData({ jamLayanan: e.target.value })} placeholder="Senin – Jumat: 08.00 – 16.00 WIB&#10;Sabtu – Minggu: Tutup" />
+            </div>
+            <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => showToast('Informasi kontak berhasil disimpan!')}>💾 Simpan</button>
+          </div>
+        </div>
+      )}
+
       {toast && <Toast msg={toast} onClose={() => setToast('')} />}
     </div>
   );

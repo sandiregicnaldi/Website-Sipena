@@ -17,6 +17,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
+import { TentangProvider } from './context/TentangContext';
 
 // Wrapper: public pages use Header + Footer
 const PublicLayout = () => (
@@ -31,6 +32,7 @@ function App() {
   return (
     <AuthProvider>
       <EventProvider>
+        <TentangProvider>
       <Router>
         <ScrollToTop />
         <Routes>
@@ -53,6 +55,7 @@ function App() {
           </Route>
         </Routes>
       </Router>
+        </TentangProvider>
       </EventProvider>
     </AuthProvider>
   );
