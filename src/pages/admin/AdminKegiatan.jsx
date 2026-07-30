@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import './AdminLayout.css';
-import { Users, FileDown } from 'lucide-react';
+import { Users, FileDown, Calendar, Globe, Edit, Trash2, CheckCircle, Plus, Save } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
 
 const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
@@ -19,7 +19,7 @@ const Toast = ({ msg, onClose }) => (
     borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
     display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '280px'
   }}>
-    <span style={{ fontSize: '1.2rem' }}>✅</span>
+    <CheckCircle size={18} color="#10b981" />
     <span style={{ flex: 1, fontSize: '0.9rem' }}>{msg}</span>
     <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
   </div>
@@ -86,7 +86,9 @@ const AdminKegiatan = () => {
   return (
     <div>
       <div className="admin-page-header">
-        <h1>📅 Kegiatan</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Calendar size={24} color="var(--accent-color)" /> Kegiatan
+        </h1>
         <p>Kelola seminar, workshop, pendaftaran, dan daftar hadir acara.</p>
       </div>
       <div className="admin-card">
@@ -124,7 +126,7 @@ const AdminKegiatan = () => {
                     <td>
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>{new Date(e.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {e.jamKegiatan}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{e.lokasi}</div>
-                      {e.urlZoom && <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.1rem' }}>🌐 Online (Zoom)</div>}
+                      {e.urlZoom && <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.1rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Globe size={11} /> Online (Zoom)</div>}
                     </td>
                     <td>
                       <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
@@ -143,8 +145,12 @@ const AdminKegiatan = () => {
                         <button onClick={() => setPesertaModal(e)} style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <Users size={14} /> Peserta ({(peserta[e.id] || []).length})
                         </button>
-                        <button onClick={() => setModal({ mode: 'edit', data: { ...e } })} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>✏️ Edit</button>
-                        <button onClick={() => handleHapus(e.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>🗑️</button>
+                        <button onClick={() => setModal({ mode: 'edit', data: { ...e } })} style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                          <Edit size={12} /> Edit
+                        </button>
+                        <button onClick={() => handleHapus(e.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                          <Trash2 size={12} /> Hapus
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -160,7 +166,9 @@ const AdminKegiatan = () => {
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
           <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '600px', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', margin: 'auto' }}>
             <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>{modal.mode === 'edit' ? '✏️ Edit Kegiatan' : '➕ Tambah Kegiatan Baru'}</h3>
+              <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {modal.mode === 'edit' ? <Edit size={16} /> : <Plus size={16} />} {modal.mode === 'edit' ? 'Edit Kegiatan' : 'Tambah Kegiatan Baru'}
+              </h3>
               <button onClick={() => setModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
             </div>
             <form onSubmit={e => { e.preventDefault(); handleSave(modal.data); }} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -265,7 +273,9 @@ const AdminKegiatan = () => {
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setModal(null)} className="btn btn-outline">Batal</button>
-                <button type="submit" className="btn btn-primary">{modal.mode === 'edit' ? '💾 Simpan Perubahan' : '➕ Tambah Kegiatan'}</button>
+                <button type="submit" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {modal.mode === 'edit' ? <Save size={16} /> : <Plus size={16} />} {modal.mode === 'edit' ? 'Simpan Perubahan' : 'Tambah Kegiatan'}
+                </button>
               </div>
             </form>
           </div>
@@ -278,7 +288,7 @@ const AdminKegiatan = () => {
           <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '700px', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
             <div style={{ background: 'var(--bg-secondary)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>👥 Peserta: {pesertaModal.judul}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Users size={18} /> Peserta: {pesertaModal.judul}</h3>
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   {pesertaList.length} mendaftar &bull; {pesertaList.filter(p => p.status === 'Hadir').length} hadir
                 </p>

@@ -13,11 +13,13 @@ import EventDetail from './pages/EventDetail';
 import AuthorDashboard from './pages/AuthorDashboard';
 import TentangKami from './pages/TentangKami';
 import FAQPage from './pages/FAQPage';
+import PanduanPenerbitan from './pages/PanduanPenerbitan';
 import AdminLayout from './pages/admin/AdminLayout';
 import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import { TentangProvider } from './context/TentangContext';
+import { PanduanProvider } from './context/PanduanContext';
 
 // Wrapper: public pages use Header + Footer
 const PublicLayout = () => (
@@ -33,6 +35,7 @@ function App() {
     <AuthProvider>
       <EventProvider>
         <TentangProvider>
+          <PanduanProvider>
       <Router>
         <ScrollToTop />
         <Routes>
@@ -50,11 +53,13 @@ function App() {
             <Route path="/event"       element={<EventsPage />} />
             <Route path="/event/:id"   element={<EventDetail />} />
             <Route path="/profil-saya" element={<AuthorDashboard />} />
-            <Route path="/tentang"     element={<TentangKami />} />
-            <Route path="/faq"         element={<FAQPage />} />
+            <Route path="/tentang"            element={<TentangKami />} />
+            <Route path="/faq"                element={<FAQPage />} />
+            <Route path="/panduan-penerbitan" element={<PanduanPenerbitan />} />
           </Route>
         </Routes>
       </Router>
+          </PanduanProvider>
         </TentangProvider>
       </EventProvider>
     </AuthProvider>

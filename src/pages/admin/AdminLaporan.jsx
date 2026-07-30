@@ -4,7 +4,7 @@ import {
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { useEvent } from '../../context/EventContext';
-import { FileDown } from 'lucide-react';
+import { FileDown, BarChart2, Eye, Download, BookOpen, Users, TrendingUp, Award, Calendar, Search } from 'lucide-react';
 import './AdminLayout.css';
 
 // ─── Data simulasi realistis (bisa diganti API nanti) ───────────────────────
@@ -109,7 +109,10 @@ const StatCard = ({ icon, label, value, sub, color }) => (
     boxShadow: 'var(--shadow-sm)', borderTop: `4px solid ${color}`,
     display: 'flex', alignItems: 'center', gap: '1.25rem'
   }}>
-    <div style={{ fontSize: '2.2rem' }}>{icon}</div>
+    <div style={{
+      width: '42px', height: '42px', borderRadius: '50%',
+      background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center'
+    }}>{icon}</div>
     <div>
       <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
       <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>{value}</div>
@@ -241,7 +244,9 @@ const AdminLaporan = () => {
   return (
     <div>
       <div className="admin-page-header">
-        <h1>📊 Laporan &amp; Statistik</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <BarChart2 size={24} color="var(--accent-color)" /> Laporan &amp; Statistik
+        </h1>
         <p>Pantau performa pengunjung, unduhan buku, dan peserta kegiatan SiPena.</p>
       </div>
 
@@ -252,7 +257,9 @@ const AdminLaporan = () => {
         display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', justifyContent: 'space-between'
       }}>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>🔍 Filter Periode:</span>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Search size={15} /> Filter Periode:
+          </span>
           <select style={inputStyle} value={filterTahun} onChange={e => setFilterTahun(Number(e.target.value))}>
             {TAHUN_LIST.map(y => <option key={y} value={y}>Tahun {y}</option>)}
           </select>
@@ -261,8 +268,11 @@ const AdminLaporan = () => {
           </select>
           <span style={{
             background: '#eff6ff', color: '#1d4ed8', padding: '0.3rem 0.75rem',
-            borderRadius: '999px', fontSize: '0.78rem', fontWeight: 700
-          }}>📅 {periodLabel}</span>
+            borderRadius: '999px', fontSize: '0.78rem', fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
+          }}>
+            <Calendar size={13} /> {periodLabel}
+          </span>
         </div>
         <button onClick={unduhSemua} className="btn btn-primary"
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -272,20 +282,22 @@ const AdminLaporan = () => {
 
       {/* ── KARTU RINGKASAN ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px,1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <StatCard icon="👁️" label={`Pengunjung — ${periodLabel}`}
+        <StatCard icon={<Eye size={20} color="#2563eb" />} label={`Pengunjung — ${periodLabel}`}
           value={totalPengunjung.toLocaleString('id-ID')} sub="↑ Data kunjungan website" color="#2563eb" />
-        <StatCard icon="📥" label={`Unduhan — ${periodLabel}`}
+        <StatCard icon={<Download size={20} color="#10b981" />} label={`Unduhan — ${periodLabel}`}
           value={totalUnduhan.toLocaleString('id-ID')} sub="↑ Total unduhan buku" color="#10b981" />
-        <StatCard icon="📚" label="Total Buku Terdaftar"
+        <StatCard icon={<BookOpen size={20} color="#8b5cf6" />} label="Total Buku Terdaftar"
           value={TOP_BUKU.length + '+'} sub="Buku aktif di katalog" color="#8b5cf6" />
-        <StatCard icon="👥" label="Peserta Kegiatan"
+        <StatCard icon={<Users size={20} color="#f59e0b" />} label="Peserta Kegiatan"
           value={totalPeserta.toLocaleString('id-ID')} sub={`Dari ${events.length} kegiatan`} color="#f59e0b" />
       </div>
 
       {/* ── GRAFIK PENGUNJUNG ── */}
       <div className="admin-card" style={{ marginBottom: '1.5rem' }}>
         <div className="admin-card-header">
-          <span className="admin-card-title">📈 Tren Pengunjung — {periodLabel}</span>
+          <span className="admin-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <TrendingUp size={16} /> Tren Pengunjung — {periodLabel}
+          </span>
           <button onClick={unduhPengunjung} className="btn btn-outline"
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <FileDown size={14} /> Unduh CSV
@@ -309,7 +321,9 @@ const AdminLaporan = () => {
       {/* ── GRAFIK UNDUHAN ── */}
       <div className="admin-card" style={{ marginBottom: '1.5rem' }}>
         <div className="admin-card-header">
-          <span className="admin-card-title">📥 Tren Unduhan Buku — {periodLabel}</span>
+          <span className="admin-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Download size={16} /> Tren Unduhan Buku — {periodLabel}
+          </span>
           <button onClick={unduhUnduhan} className="btn btn-outline"
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <FileDown size={14} /> Unduh CSV
@@ -334,7 +348,9 @@ const AdminLaporan = () => {
       {/* ── TOP 10 BUKU TERPOPULER ── */}
       <div className="admin-card" style={{ marginBottom: '1.5rem' }}>
         <div className="admin-card-header">
-          <span className="admin-card-title">🏆 Top 10 Buku Paling Banyak Diunduh</span>
+          <span className="admin-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Award size={16} /> Top 10 Buku Paling Banyak Diunduh
+          </span>
           <button onClick={unduhBukuPopuler} className="btn btn-outline"
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <FileDown size={14} /> Unduh CSV
@@ -380,7 +396,9 @@ const AdminLaporan = () => {
       {/* ── LAPORAN PESERTA KEGIATAN ── */}
       <div className="admin-card">
         <div className="admin-card-header">
-          <span className="admin-card-title">📅 Ringkasan Peserta Kegiatan</span>
+          <span className="admin-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Calendar size={16} /> Ringkasan Peserta Kegiatan
+          </span>
           <button onClick={unduhPeserta} className="btn btn-outline"
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <FileDown size={14} /> Unduh CSV

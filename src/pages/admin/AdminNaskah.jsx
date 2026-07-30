@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './AdminLayout.css';
-import { ExternalLink, Check, X } from 'lucide-react';
+import { ExternalLink, Check, X, FileText } from 'lucide-react';
 
 const INITIAL_NASKAH = [
   { id: 1, judul: 'Sejarah Kopi Nusantara', penulis: 'Sari Indah', tanggal: '2026-07-01', status: 'Menunggu', alasan: '', linkDrive: 'https://drive.google.com/...' },
@@ -38,7 +38,9 @@ const AdminNaskah = () => {
   return (
     <div className="admin-page">
       <div className="admin-page-header">
-        <h1>📑 Manajemen Naskah Masuk</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <FileText size={24} color="var(--accent-color)" /> Manajemen Naskah Masuk
+        </h1>
         <p>Tinjau, setujui, atau tolak naskah yang diajukan oleh pengunjung/calon penulis.</p>
       </div>
 

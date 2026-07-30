@@ -68,9 +68,10 @@ const NAV_ITEMS = [
   },
   { label: 'Konten Web',  path: '/admin/konten',      icon: 'layout',
     sub: [
-      { label: 'Banner / Hero',    path: '/admin/konten/banner' },
-      { label: 'Tentang Kami',     path: '/admin/konten/tentang' },
-      { label: 'FAQ',              path: '/admin/konten/faq' },
+      { label: 'Banner / Hero',        path: '/admin/konten/banner' },
+      { label: 'Tentang Kami',         path: '/admin/konten/tentang' },
+      { label: 'Panduan Penerbitan',   path: '/admin/konten/panduan' },
+      { label: 'FAQ',                  path: '/admin/konten/faq' },
     ]
   },
   { label: 'Laporan',     path: '/admin/laporan',     icon: 'chart' },

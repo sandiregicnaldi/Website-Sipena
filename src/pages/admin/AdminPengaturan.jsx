@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { Settings, Shield, Save, Key, CheckCircle, XCircle } from 'lucide-react';
 import './AdminLayout.css';
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -11,7 +12,9 @@ const Toast = ({ msg, type = 'success', onClose }) => (
     borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
     display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '280px'
   }}>
-    <span style={{ fontSize: '1.2rem' }}>{type === 'success' ? '✅' : '❌'}</span>
+    <span style={{ display: 'flex', alignItems: 'center' }}>
+      {type === 'success' ? <CheckCircle size={18} color="#10b981" /> : <XCircle size={18} color="#ef4444" />}
+    </span>
     <span style={{ flex: 1, fontSize: '0.9rem' }}>{msg}</span>
     <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
   </div>
@@ -72,7 +75,9 @@ const ProfilAdmin = () => {
   return (
     <div>
       <div className="admin-page-header">
-        <h1>⚙️ Profil Admin</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Settings size={24} color="var(--accent-color)" /> Profil Admin
+        </h1>
         <p>Kelola informasi profil dan keamanan akun administrator.</p>
       </div>
       <div className="admin-grid-2">
@@ -96,16 +101,16 @@ const ProfilAdmin = () => {
                 />
               </div>
             ))}
-            <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.55rem 1.25rem', fontSize: '0.875rem' }}>
-              💾 Simpan Perubahan
-            </button>
+            <button className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-start' }} onClick={handleSaveProfile}>
+                <Save size={16} /> Simpan Perubahan
+              </button>
           </form>
         </div>
 
         {/* Ubah Kata Sandi */}
         <div className="admin-card">
           <div className="admin-card-header"><span className="admin-card-title">Ubah Kata Sandi</span></div>
-          <form onSubmit={handleUbahPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {[
               { label: 'Kata Sandi Saat Ini', key: 'lama' },
               { label: 'Kata Sandi Baru', key: 'baru' },
@@ -122,9 +127,9 @@ const ProfilAdmin = () => {
                 />
               </div>
             ))}
-            <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.55rem 1.25rem', fontSize: '0.875rem' }}>
-              🔒 Ubah Kata Sandi
-            </button>
+            <button className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-start' }} onClick={handleSavePassword}>
+                <Key size={16} /> Ubah Kata Sandi
+              </button>
           </form>
         </div>
       </div>
@@ -144,12 +149,6 @@ const PenggunaSistem = () => {
   const [toast, setToast] = useState(null);
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
 
-  const inputStyle = {
-    width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)',
-    borderRadius: 'var(--radius-md)', fontSize: '0.875rem',
-    background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box'
-  };
-
   const handleToggle = (id) => {
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, status: a.status === 'Aktif' ? 'Nonaktif' : 'Aktif' } : a));
     const acc = accounts.find(a => a.id === id);
@@ -159,7 +158,9 @@ const PenggunaSistem = () => {
   return (
     <div>
       <div className="admin-page-header">
-        <h1>🔧 Pengguna Sistem</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Shield size={24} color="var(--accent-color)" /> Pengguna Sistem
+        </h1>
         <p>Kelola akun admin dan hak akses pengguna sistem SiPena.</p>
       </div>
       <div className="admin-card">
@@ -184,8 +185,10 @@ const PenggunaSistem = () => {
                   <td>
                     <button
                       onClick={() => handleToggle(a.id)}
-                      style={{ background: 'none', border: 'none', color: a.status === 'Aktif' ? 'var(--danger)' : '#2563eb', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                    >{a.status === 'Aktif' ? '⏸ Nonaktifkan' : '▶ Aktifkan'}</button>
+                      style={{ background: 'none', border: 'none', color: a.status === 'Aktif' ? 'var(--danger)' : '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                    >
+                      <Power size={14} /> {a.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan'}
+                    </button>
                   </td>
                 </tr>
               ))}

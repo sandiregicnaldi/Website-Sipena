@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import './AdminLayout.css';
-import { ExternalLink, Image as ImageIcon, FileText, Edit, Trash2, Eye } from 'lucide-react';
+import { ExternalLink, Image as ImageIcon, FileText, Edit, Trash2, Eye, CheckCircle, BookOpen } from 'lucide-react';
 
 const INITIAL_BOOKS = [
   { id: 1, judul: 'Sejarah Perpustakaan Nasional RI', penulis: 'Dr. Ahmad Fauzi', tahun: 2026, isbnCetak: '978-602-001', isbnDigital: '978-602-001-E', sampul: true, pdf: true, youtube: 'https://youtube.com/...' },
@@ -17,7 +17,7 @@ const Toast = ({ msg, onClose }) => (
     display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '280px',
     animation: 'slideUp 0.3s ease'
   }}>
-    <span style={{ fontSize: '1.2rem' }}>✅</span>
+    <CheckCircle size={18} color="#10b981" />
     <span style={{ flex: 1, fontSize: '0.9rem' }}>{msg}</span>
     <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
   </div>
@@ -49,7 +49,9 @@ const ModalBuku = ({ data, onSave, onClose }) => {
         boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column'
       }}>
         <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>{isEdit ? '✏️ Edit Data Buku' : '➕ Tambah Buku Baru'}</h3>
+          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {isEdit ? <Edit size={16} /> : null} {isEdit ? 'Edit Data Buku' : 'Tambah Buku Baru'}
+          </h3>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '1.5rem' }}>
@@ -146,7 +148,9 @@ const AdminKatalog = () => {
   return (
     <div className="admin-page">
       <div className="admin-page-header">
-        <h1>📚 Daftar Buku</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <BookOpen size={24} color="var(--accent-color)" /> Daftar Buku
+        </h1>
         <p>Kelola koleksi buku cetak, buku digital, dan audiobook.</p>
       </div>
 

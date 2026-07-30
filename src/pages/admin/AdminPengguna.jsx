@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
-import { Eye, Check, X, Trash2, Power, Pencil } from 'lucide-react';
+import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users } from 'lucide-react';
 
 const INITIAL_USERS = {
   pengunjung: [
@@ -60,7 +60,9 @@ const Toast = ({ msg, type = 'success', onClose }) => (
     borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
     display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '280px'
   }}>
-    <span style={{ fontSize: '1.2rem' }}>{type === 'success' ? '✅' : '⚠️'}</span>
+    <span style={{ display: 'flex', alignItems: 'center' }}>
+      {type === 'success' ? <CheckCircle size={18} color="#10b981" /> : <AlertTriangle size={18} color="#f59e0b" />}
+    </span>
     <span style={{ flex: 1, fontSize: '0.9rem' }}>{msg}</span>
     <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
   </div>
@@ -78,7 +80,9 @@ const UserDetailModal = ({ user, onClose }) => {
         boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column'
       }}>
         <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>📄 Detail Data Pengunjung</h3>
+          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FileText size={16} /> Detail Data Pengunjung
+          </h3>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '1.5rem' }}>
@@ -170,7 +174,9 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
         boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
       }}>
         <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem' }}>✍️ Edit Profil Penulis Publik</h3>
+          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <PenTool size={16} /> Edit Profil Penulis Publik
+          </h3>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
         </div>
         <div style={{ padding: '1.5rem' }}>
@@ -285,7 +291,9 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
   return (
     <div>
       <div className="admin-page-header">
-        <h1>👥 {title}</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Users size={24} color="var(--accent-color)" /> {title}
+        </h1>
         <p>Kelola akun {title.toLowerCase()} yang terdaftar di SiPena.</p>
       </div>
       <div className="admin-card">

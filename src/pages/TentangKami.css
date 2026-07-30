@@ -39,7 +39,7 @@
 }
 
 .tentang-hero-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 900;
   color: #fff;
@@ -120,7 +120,7 @@
 .tentang-stat-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 
 .tentang-stat-value {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 2.5rem;
   font-weight: 900;
   color: var(--accent-color);

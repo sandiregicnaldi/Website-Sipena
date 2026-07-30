@@ -26,12 +26,13 @@ const Header = () => {
           </Link>
           <nav className="main-nav">
             <ul className="nav-list">
-              <li><Link to="/"        className="nav-item">Home</Link></li>
-              <li><Link to="/buku"    className="nav-item">Buku</Link></li>
-              <li><Link to="/penulis" className="nav-item">Penulis</Link></li>
-              <li><Link to="/event"   className="nav-item">Kegiatan</Link></li>
-              <li><Link to="/tentang" className="nav-item">Tentang</Link></li>
-              <li><Link to="/faq"     className="nav-item">FAQ</Link></li>
+              <li><Link to="/"                 className="nav-item">Home</Link></li>
+              <li><Link to="/buku"             className="nav-item">Buku</Link></li>
+              <li><Link to="/penulis"          className="nav-item">Penulis</Link></li>
+              <li><Link to="/event"            className="nav-item">Kegiatan</Link></li>
+              <li><Link to="/panduan-penerbitan" className="nav-item">Panduan</Link></li>
+              <li><Link to="/tentang"          className="nav-item">Tentang</Link></li>
+              <li><Link to="/faq"              className="nav-item">FAQ</Link></li>
             </ul>
           </nav>
         </div>

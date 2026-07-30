@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BookOpen, FileText, BarChart2, Book, PenTool, Clipboard } from 'lucide-react';
 import './AdminLayout.css';
 import './AdminDashboard.css';
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 const STATS = [
-  { label: 'Total Buku',        value: 1290, sub: '+12 bulan ini',  cls: 'stat-card--blue',   icon: '📚' },
-  { label: 'Pedoman / Standar', value: 42,   sub: '+2 bulan ini',   cls: 'stat-card--amber',  icon: '📋' },
-  { label: 'Prosiding',         value: 8,    sub: '+1 bulan ini',   cls: 'stat-card--red',    icon: '📄' },
-  { label: 'Laporan',           value: 54,   sub: '+5 bulan ini',   cls: 'stat-card--green',  icon: '📊' },
-  { label: 'Majalah / Jurnal',  value: 28,   sub: '+3 bulan ini',   cls: 'stat-card--teal',   icon: '📰' },
-  { label: 'Total Penulis',     value: 187,  sub: '+6 bulan ini',   cls: 'stat-card--purple', icon: '✍️' },
+  { label: 'Total Buku',        value: 1290, sub: '+12 bulan ini',  cls: 'stat-card--blue',   icon: <BookOpen size={16} /> },
+  { label: 'Pedoman / Standar', value: 42,   sub: '+2 bulan ini',   cls: 'stat-card--amber',  icon: <Clipboard size={16} /> },
+  { label: 'Prosiding',         value: 8,    sub: '+1 bulan ini',   cls: 'stat-card--red',    icon: <FileText size={16} /> },
+  { label: 'Laporan',           value: 54,   sub: '+5 bulan ini',   cls: 'stat-card--green',  icon: <BarChart2 size={16} /> },
+  { label: 'Majalah / Jurnal',  value: 28,   sub: '+3 bulan ini',   cls: 'stat-card--teal',   icon: <Book size={16} /> },
+  { label: 'Total Penulis',     value: 187,  sub: '+6 bulan ini',   cls: 'stat-card--purple', icon: <PenTool size={16} /> },
 ];
 
 // Download per year (2015-2026)
@@ -170,7 +171,7 @@ const AdminDashboard = () => {
     <div className="admin-dashboard">
       {/* Page header */}
       <div className="admin-page-header">
-        <h1>{greet}, Administrator 👋</h1>
+        <h1>{greet}, Administrator</h1>
         <p>Selamat datang di panel pengelolaan SiPena — Perpusnas Press</p>
       </div>
 
@@ -178,7 +179,9 @@ const AdminDashboard = () => {
       <div className="admin-stat-grid">
         {STATS.map(s => (
           <div key={s.label} className={`admin-stat-card ${s.cls}`}>
-            <div className="stat-label">{s.icon} {s.label}</div>
+            <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              {s.icon} <span>{s.label}</span>
+            </div>
             <div className="stat-value">{s.value.toLocaleString('id-ID')}</div>
             <div className="stat-sub">{s.sub}</div>
           </div>
