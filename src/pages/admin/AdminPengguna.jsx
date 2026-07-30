@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
-import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users } from 'lucide-react';
+import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 const INITIAL_USERS = {
   pengunjung: [
@@ -248,6 +248,32 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
     }
   };
 
+  const handleUpgradePenulis = (u) => {
+    if (window.confirm(`Upgrade ${u.nama} menjadi Penulis?\n\nVerifikasi ini diberikan karena naskah yang diajukan sudah berhasil diterbitkan.`)) {
+      const updated = {
+        ...users,
+        pengunjung: users.pengunjung.map(x => 
+          x.id === u.id ? { ...x, isVerifiedAuthor: true } : x
+        )
+      };
+      onUsersChange(updated);
+      showToast(`${u.nama} berhasil di-upgrade menjadi Penulis (Terverifikasi).`);
+    }
+  };
+
+  const handleDowngradePengunjung = (u) => {
+    if (window.confirm(`Cabut status Penulis dari ${u.nama}?\n\nAkun akan dikembalikan ke status Pengunjung biasa.`)) {
+      const updated = {
+        ...users,
+        pengunjung: users.pengunjung.map(x => 
+          x.id === u.id ? { ...x, isVerifiedAuthor: false } : x
+        )
+      };
+      onUsersChange(updated);
+      showToast(`Status penulis ${u.nama} berhasil dicabut.`);
+    }
+  };
+
   const handleNonaktifkan = (u) => {
     const isNonaktif = u.statusAkun === 'Nonaktif';
     const label = isNonaktif ? 'Aktifkan' : 'Nonaktifkan';
@@ -368,23 +394,32 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
                             >
                               <Eye size={12}/> Detail
                             </button>
-                            {u.isVerifiedAuthor && (
+                            {u.isVerifiedAuthor ? (
+                              <>
+                                <button
+                                  onClick={() => setEditAuthorModal(u)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                >
+                                  <Pencil size={12}/> Edit Profil
+                                </button>
+                                <button
+                                  onClick={() => handleDowngradePengunjung(u)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#d97706', borderColor: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                  title="Downgrade ke Pengunjung Biasa"
+                                >
+                                  <ArrowDownCircle size={12}/> Downgrade
+                                </button>
+                              </>
+                            ) : (
                               <button
-                                onClick={() => setEditAuthorModal(u)}
-                                className="btn btn-outline"
-                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
-                              >
-                                <Pencil size={12}/> Edit Profil
-                              </button>
-                            )}
-                            {!u.isVerifiedAuthor && u.pengajuanPenulis && (
-                              <button
-                                onClick={() => handleSetujuiPenulis(u)}
+                                onClick={() => handleUpgradePenulis(u)}
                                 className="btn btn-outline"
                                 style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
-                                title="Verifikasi sebagai Penulis"
+                                title="Upgrade ke Penulis Resmi"
                               >
-                                <Check size={12}/> Terima Pengajuan
+                                <ArrowUpCircle size={12}/> Upgrade
                               </button>
                             )}
                             <button

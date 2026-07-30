@@ -52,7 +52,7 @@
 }
 
 .panduan-hero-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(2rem, 4.2vw, 3.2rem);
   font-weight: 800;
   color: #fff;
@@ -124,7 +124,7 @@
 }
 
 .panduan-section-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.6rem, 3vw, 2.4rem);
   font-weight: 800;
   color: var(--text-primary);
@@ -285,7 +285,7 @@
 }
 
 .panduan-cta-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.6rem, 3vw, 2.2rem);
   font-weight: 800;
   color: #fff;
