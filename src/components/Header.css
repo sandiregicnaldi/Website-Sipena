@@ -245,6 +245,91 @@
   color: #ef4444;
 }
 
+/* ── Hamburger Button ─────────────────────────── */
+.hamburger-btn {
+  display: none; /* hidden on desktop */
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0.25rem;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Mobile Menu Overlay ──────────────────────── */
+.mobile-menu {
+  display: none; /* shown via JS — overridden below */
+  background-color: #0f172a;
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 99;
+}
+
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  color: #e2e8f0;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background-color 0.15s, color 0.15s;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+}
+
+.mobile-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.mobile-terbitkan {
+  color: #ffffff;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.mobile-nav-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mobile-logout-btn {
+  color: #f87171;
+}
+
+.mobile-logout-btn:hover {
+  color: #ef4444;
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0.25rem 0;
+}
+
 /* ── Responsive ───────────────────────────────── */
 @media (max-width: 1024px) {
   .search-bar { width: 180px; }
@@ -257,7 +342,21 @@
   .header-right { gap: 1rem; }
 }
 
-@media (max-width: 640px) {
-  .nav-list { display: none; } /* On very small screens, nav would be hamburger */
-  .btn-terbitkan { display: none; }
+@media (max-width: 768px) {
+  /* Show hamburger */
+  .hamburger-btn {
+    display: flex;
+  }
+
+  /* Hide desktop nav & actions */
+  .main-nav        { display: none; }
+  .btn-terbitkan   { display: none; }
+  .auth-section    { display: none; }
+
+  /* Show mobile menu when rendered by React */
+  .mobile-menu {
+    display: block;
+  }
+
+  .header-left { gap: 0; }
 }

@@ -1,17 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogIn, LogOut, User as UserIcon, LayoutDashboard, Search, ShieldCheck } from 'lucide-react';
+import { LogIn, LogOut, User as UserIcon, LayoutDashboard, Search, ShieldCheck, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
 
 const Header = () => {
   const { user, logout, isLoggedIn, isAuthor, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
+    setMenuOpen(false);
     navigate('/');
   };
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <header className="header">
@@ -74,8 +78,65 @@ const Header = () => {
               </Link>
             )}
           </div>
+
+          {/* Hamburger Button — mobile only */}
+          <button
+            className="hamburger-btn"
+            onClick={() => setMenuOpen(prev => !prev)}
+            aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
+          >
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {menuOpen && (
+        <div className="mobile-menu">
+          <nav className="mobile-nav">
+            <Link to="/"                  className="mobile-nav-item" onClick={closeMenu}>Home</Link>
+            <Link to="/buku"              className="mobile-nav-item" onClick={closeMenu}>Buku</Link>
+            <Link to="/penulis"           className="mobile-nav-item" onClick={closeMenu}>Penulis</Link>
+            <Link to="/event"             className="mobile-nav-item" onClick={closeMenu}>Kegiatan</Link>
+            <Link to="/panduan-penerbitan" className="mobile-nav-item" onClick={closeMenu}>Panduan</Link>
+            <Link to="/tentang"           className="mobile-nav-item" onClick={closeMenu}>Tentang</Link>
+            <Link to="/faq"               className="mobile-nav-item" onClick={closeMenu}>FAQ</Link>
+
+            <div className="mobile-menu-divider" />
+
+            <Link to="/login" className="mobile-nav-item mobile-terbitkan" onClick={closeMenu}>
+              TERBITKAN BUKU
+            </Link>
+
+            <div className="mobile-menu-divider" />
+
+            {isLoggedIn ? (
+              <>
+                <span className="mobile-nav-user">
+                  <UserIcon size={16} /> {user.username}
+                </span>
+                {isAdmin && (
+                  <Link to="/admin" className="mobile-nav-item" onClick={closeMenu}>
+                    <ShieldCheck size={14} /> Panel Admin
+                  </Link>
+                )}
+                {!isAdmin && (
+                  <Link to="/profil-saya" className="mobile-nav-item" onClick={closeMenu}>
+                    <LayoutDashboard size={14} /> Profil Saya
+                  </Link>
+                )}
+                <button className="mobile-nav-item mobile-logout-btn" onClick={handleLogout}>
+                  <LogOut size={14} /> Keluar
+                </button>
+              </>
+            ) : (
+              <Link to="/login" className="mobile-nav-item" onClick={closeMenu}>
+                <UserIcon size={16} /> Masuk
+              </Link>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 };

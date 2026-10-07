@@ -413,14 +413,25 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
                                 </button>
                               </>
                             ) : (
-                              <button
-                                onClick={() => handleUpgradePenulis(u)}
-                                className="btn btn-outline"
-                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
-                                title="Upgrade ke Penulis Resmi"
-                              >
-                                <ArrowUpCircle size={12}/> Upgrade
-                              </button>
+                              u.pengajuanPenulis ? (
+                                <button
+                                  onClick={() => handleUpgradePenulis(u)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                  title="Terima Pengajuan Penulis"
+                                >
+                                  <Check size={12}/> Terima Pengajuan
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUpgradePenulis(u)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#2563eb', borderColor: '#3b82f6', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                  title="Upgrade ke Penulis Resmi"
+                                >
+                                  <ArrowUpCircle size={12}/> Upgrade
+                                </button>
+                              )
                             )}
                             <button
                               onClick={() => handleNonaktifkan(u)}

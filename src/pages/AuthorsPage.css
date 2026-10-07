@@ -146,3 +146,43 @@
   color: white;
   border-color: var(--accent-color);
 }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — Authors Page
+═══════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .authors-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .authors-content {
+    padding: 0 1rem 2rem;
+  }
+  .authors-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .authors-toolbar {
+    margin-bottom: 1.5rem;
+  }
+  .author-photo-wrapper {
+    width: 100px;
+    height: 100px;
+  }
+  .author-card {
+    padding: 1.5rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .authors-grid {
+    grid-template-columns: 1fr;
+  }
+  .author-photo-wrapper {
+    width: 120px;
+    height: 120px;
+  }
+}

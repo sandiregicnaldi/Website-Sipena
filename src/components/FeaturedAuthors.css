@@ -136,3 +136,61 @@
   text-decoration: underline;
   gap: 0.5rem;
 }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — Featured Authors
+═══════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .authors-section {
+    padding: 2.5rem 0;
+  }
+  .authors-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .authors-section {
+    padding: 2rem 0;
+  }
+  .authors-row-header {
+    margin-bottom: 1.25rem;
+  }
+  .authors-row-title {
+    font-size: 1.1rem;
+  }
+  .authors-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .author-card {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem 1rem;
+    align-items: center;
+    text-align: center;
+  }
+  .btn-read-more {
+    align-self: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .authors-grid {
+    grid-template-columns: 1fr;
+  }
+  .author-avatar,
+  .author-avatar-placeholder {
+    width: 56px;
+    height: 56px;
+  }
+  .author-card {
+    flex-direction: row;
+    text-align: left;
+    align-items: flex-start;
+  }
+  .btn-read-more {
+    align-self: flex-start;
+  }
+}

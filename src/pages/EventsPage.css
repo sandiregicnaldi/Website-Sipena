@@ -153,4 +153,22 @@
     width: 100%;
     height: 200px;
   }
+  .page-header {
+    padding: 2rem 1rem;
+  }
+  .page-title {
+    font-size: 1.75rem;
+  }
+  .page-subtitle {
+    font-size: 0.95rem;
+  }
+  .events-container {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title { font-size: 1.4rem; }
+  .events-grid-large { gap: 1rem; }
+  .event-image-large { height: 160px; }
 }
