@@ -1,78 +1,86 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { SipenaAPI } from '../lib/api';
 
-// ─── Data awal kegiatan (sumber tunggal/single source of truth) ─────────────
-const INITIAL_EVENTS = [
-  {
-    id: 1,
-    judul: 'Seminar Literasi Digital 2026',
-    tanggal: '2026-08-10',
-    jamKegiatan: '09:00 - 12:00',
-    batasDaftar: '08:30', // H-30 menit dari mulai acara
-    lokasi: 'Aula Perpusnas, Jakarta',
-    urlZoom: '',
-    narasumber: ['Dr. Budi Santoso'],
-    penjelasan: 'Seminar tentang literasi digital di era AI.',
-    status: 'Akan Datang',
-    peserta: 120,
-    waktuBuka: '08:00',
-    waktuTutup: '10:00',
-    kode: 'LITDIG26',
-  },
-  {
-    id: 2,
-    judul: 'Workshop Penulisan Ilmiah',
-    tanggal: '2026-07-20',
-    jamKegiatan: '13:00 - 15:00',
-    batasDaftar: '12:30', // H-30 menit dari mulai acara
-    lokasi: 'Online (Zoom)',
-    urlZoom: 'https://zoom.us/j/123456789',
-    narasumber: ['Prof. Rina Wijaya', 'Dr. Andi Hermawan'],
-    penjelasan: 'Teknik penulisan ilmiah standar nasional.',
-    status: 'Segera',
-    peserta: 85,
-    waktuBuka: '12:30',
-    waktuTutup: '13:30',
-    kode: 'WRKILM',
-  },
-];
+const mapToFrontend = (b) => ({
+  id: b.id,
+  judul: b.title,
+  tanggal: b.date,
+  jamKegiatan: b.time,
+  batasDaftar: b.registrationDeadline,
+  lokasi: b.location,
+  urlZoom: b.zoomUrl,
+  narasumber: b.speakers || [],
+  penjelasan: b.description,
+  status: b.status || 'Akan Datang',
+  peserta: b.maxParticipants || 0,
+  waktuBuka: b.presenceOpenTime,
+  waktuTutup: b.presenceCloseTime,
+  kode: b.presencePin
+});
 
-// ─── Data peserta awal ───────────────────────────────────────────────────────
-const INITIAL_PESERTA = {
-  1: [
-    { id: 1, nama: 'Sari Indah',   email: 'sari@email.com',  instansi: 'Umum',       status: 'Hadir'       },
-    { id: 2, nama: 'Rizki Fauzan', email: 'rizki@email.com', instansi: 'Mahasiswa',  status: 'Tidak Hadir' },
-    { id: 3, nama: 'Budi Santoso', email: 'budi@email.com',  instansi: 'Guru',       status: 'Tidak Hadir' },
-  ],
-  2: [],
-};
+const mapToBackend = (f) => ({
+  title: f.judul,
+  date: f.tanggal,
+  time: f.jamKegiatan,
+  registrationDeadline: f.batasDaftar,
+  location: f.lokasi,
+  zoomUrl: f.urlZoom,
+  speakers: f.narasumber,
+  description: f.penjelasan,
+  status: f.status,
+  maxParticipants: parseInt(f.peserta) || 0,
+  presenceOpenTime: f.waktuBuka,
+  presenceCloseTime: f.waktuTutup,
+  presencePin: f.kode
+});
 
 const EventContext = createContext(null);
 
 export const EventProvider = ({ children }) => {
-  const [events, setEvents]   = useState(INITIAL_EVENTS);
-  const [peserta, setPeserta] = useState(INITIAL_PESERTA); // { [eventId]: [...] }
-  const [nextEventId, setNextEventId] = useState(INITIAL_EVENTS.length + 1);
-  const [nextPesertaId, setNextPesertaId] = useState(10);
+  const [events, setEvents] = useState([]);
+  const [peserta, setPeserta] = useState({}); // Masih dummy peserta di lokal krn API blm spesifik utk peserta event
+  const [loading, setLoading] = useState(true);
 
-  // ── Admin: tambah / edit / hapus kegiatan ───────────────────────────────
-  const addEvent = (form) => {
-    const id = nextEventId;
-    setEvents(prev => [...prev, { ...form, id }]);
-    setPeserta(prev => ({ ...prev, [id]: [] }));
-    setNextEventId(n => n + 1);
+  const fetchEvents = async () => {
+    try {
+      const data = await SipenaAPI.getEvents();
+      setEvents(data.map(mapToFrontend));
+    } catch (err) {
+      console.error("Gagal mengambil events", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateEvent = (form) => {
-    setEvents(prev => prev.map(e => e.id === form.id ? form : e));
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const addEvent = async (form) => {
+    try {
+      await SipenaAPI.createEvent(mapToBackend(form));
+      await fetchEvents();
+    } catch (err) {
+      console.error("Gagal tambah event", err);
+    }
   };
 
-  const deleteEvent = (id) => {
-    setEvents(prev => prev.filter(e => e.id !== id));
-    setPeserta(prev => {
-      const copy = { ...prev };
-      delete copy[id];
-      return copy;
-    });
+  const updateEvent = async (form) => {
+    try {
+      await SipenaAPI.updateEvent(form.id, mapToBackend(form));
+      await fetchEvents();
+    } catch (err) {
+      console.error("Gagal update event", err);
+    }
+  };
+
+  const deleteEvent = async (id) => {
+    try {
+      await SipenaAPI.deleteEvent(id);
+      await fetchEvents();
+    } catch (err) {
+      console.error("Gagal hapus event", err);
+    }
   };
 
   // ── Admin: toggle status hadir peserta ──────────────────────────────────
@@ -122,7 +130,7 @@ export const EventProvider = ({ children }) => {
     if (pesertaEventIni.some(p => p.email === userData.email)) return { success: false, msg: 'Anda sudah terdaftar.' };
 
     const newPeserta = {
-      id: nextPesertaId,
+      id: Math.random().toString(36).substr(2, 9),
       nama: userData.namaLengkap || userData.username || 'Pengunjung',
       email: userData.email,
       instansi: userData.instansi || 'Umum',
@@ -133,7 +141,6 @@ export const EventProvider = ({ children }) => {
       ...prev,
       [eventId]: [...(prev[eventId] || []), newPeserta],
     }));
-    setNextPesertaId(n => n + 1);
     return { success: true, msg: '' };
   };
 
@@ -154,7 +161,6 @@ export const EventProvider = ({ children }) => {
     const [bH, bM] = (event.waktuBuka || '00:00').split(':').map(Number);
     const [tH, tM] = (event.waktuTutup || '23:59').split(':').map(Number);
 
-    // Ambil tanggal kegiatan
     const eventDate = new Date(event.tanggal);
     const openTime  = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), bH, bM, 0);
     const closeTime = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), tH, tM, 0);
@@ -171,11 +177,9 @@ export const EventProvider = ({ children }) => {
     return { open: true, msg: '' };
   };
 
-  // ── Helper: cek apakah user sudah terdaftar di suatu event ──────────────
   const isUserRegistered = (eventId, userEmail) =>
     (peserta[eventId] || []).some(p => p.email === userEmail);
 
-  // ── Helper: cek apakah user sudah hadir di suatu event ──────────────────
   const isUserHadir = (eventId, userEmail) =>
     (peserta[eventId] || []).some(p => p.email === userEmail && p.status === 'Hadir');
 
@@ -193,6 +197,7 @@ export const EventProvider = ({ children }) => {
       isUserRegistered,
       isUserHadir,
       isRegistrationOpen,
+      loading
     }}>
       {children}
     </EventContext.Provider>

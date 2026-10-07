@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './AdminLayout.css';
 import { ExternalLink, Image as ImageIcon, FileText, Edit, Trash2, Eye, CheckCircle, BookOpen } from 'lucide-react';
 
@@ -6,6 +6,8 @@ const INITIAL_BOOKS = [
   { id: 1, judul: 'Sejarah Perpustakaan Nasional RI', penulis: 'Dr. Ahmad Fauzi', tahun: 2026, isbnCetak: '978-602-001', isbnDigital: '978-602-001-E', sampul: true, pdf: true, youtube: 'https://youtube.com/...' },
   { id: 2, judul: 'Pedoman Katalogisasi Perpustakaan', penulis: 'Dra. Siti Rahayu', tahun: 2026, isbnCetak: '978-602-002', isbnDigital: '', sampul: true, pdf: false, youtube: '' },
 ];
+
+import { SipenaAPI } from '../../lib/api';
 
 const EMPTY_FORM = { judul: '', penulis: '', tahun: new Date().getFullYear(), isbnCetak: '', isbnDigital: '', sampul: null, pdf: null, youtube: '' };
 
@@ -89,6 +91,10 @@ const ModalBuku = ({ data, onSave, onClose }) => {
               </div>
             </div>
             <div>
+              <label style={labelStyle}>Sinopsis / Deskripsi Buku</label>
+              <textarea rows="4" style={{ ...inputStyle, resize: 'vertical' }} value={form.sinopsis || ''} onChange={e => setForm(p => ({ ...p, sinopsis: e.target.value }))} placeholder="Tuliskan sinopsis singkat buku ini..."></textarea>
+            </div>
+            <div>
               <label style={labelStyle}>Link Youtube Audiobook</label>
               <input style={inputStyle} type="url" value={form.youtube} onChange={e => setForm(p => ({ ...p, youtube: e.target.value }))} placeholder="https://youtube.com/..." />
             </div>
@@ -105,16 +111,61 @@ const ModalBuku = ({ data, onSave, onClose }) => {
 
 // ── AdminKatalog ────────────────────────────────────────────────────────────
 const AdminKatalog = () => {
-  const [books, setBooks] = useState(INITIAL_BOOKS);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modal, setModal] = useState(null); // null | { mode: 'tambah'|'edit', data: obj }
+  const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
-  const [nextId, setNextId] = useState(INITIAL_BOOKS.length + 1);
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(''), 3500);
   };
+
+  const fetchBooks = async () => {
+    try {
+      setLoading(true);
+      const data = await SipenaAPI.getBooks();
+      const mapped = data.map(b => ({
+        id: b.id,
+        judul: b.title,
+        penulis: b.authorName || 'Tidak diketahui',
+        tahun: b.year,
+        isbnCetak: b.isbn,
+        isbnDigital: b.isbnDigital,
+        sampul: b.coverUrl,
+        pdf: b.fileUrl,
+        youtube: b.audioUrl,
+        sinopsis: b.synopsis
+      }));
+      setBooks(mapped);
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal mengambil data buku dari server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBooks();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'add') {
+      const data = {
+        ...EMPTY_FORM,
+        judul: params.get('judul') || '',
+        penulis: params.get('penulis') || '',
+        isbnCetak: params.get('isbn') || '',
+        sinopsis: params.get('sinopsis') || ''
+      };
+      setModal({ mode: 'tambah', data });
+      // Remove query params from URL without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const filtered = books.filter(b =>
     b.judul.toLowerCase().includes(search.toLowerCase()) ||
@@ -124,25 +175,46 @@ const AdminKatalog = () => {
   const handleOpenTambah = () => setModal({ mode: 'tambah', data: null });
   const handleOpenEdit = (book) => setModal({ mode: 'edit', data: { ...book } });
 
-  const handleHapus = (id) => {
+  const handleHapus = async (id) => {
     const book = books.find(b => b.id === id);
     if (window.confirm(`Apakah Anda yakin ingin menghapus buku "${book.judul}"?\n\nTindakan ini tidak dapat dibatalkan.`)) {
-      setBooks(prev => prev.filter(b => b.id !== id));
-      showToast(`Buku "${book.judul}" berhasil dihapus.`);
+      try {
+        await SipenaAPI.deleteBook(id);
+        showToast(`Buku "${book.judul}" berhasil dihapus.`);
+        fetchBooks();
+      } catch (err) {
+        showToast('Gagal menghapus buku.');
+      }
     }
   };
 
-  const handleSave = (formData) => {
-    if (modal.mode === 'edit') {
-      setBooks(prev => prev.map(b => b.id === formData.id ? { ...formData } : b));
-      showToast(`Data buku "${formData.judul}" berhasil diperbarui.`);
-    } else {
-      const newBook = { ...formData, id: nextId };
-      setBooks(prev => [...prev, newBook]);
-      setNextId(n => n + 1);
-      showToast(`Buku "${formData.judul}" berhasil ditambahkan ke katalog.`);
+  const handleSave = async (formData) => {
+    const payload = {
+      title: formData.judul,
+      authorName: formData.penulis,
+      year: formData.tahun,
+      isbn: formData.isbnCetak,
+      isbnDigital: formData.isbnDigital,
+      synopsis: formData.sinopsis,
+      coverUrl: formData.sampul === true ? '/default-cover.jpg' : formData.sampul,
+      fileUrl: formData.pdf === true ? '/default-pdf.pdf' : formData.pdf,
+      audioUrl: formData.youtube
+    };
+
+    try {
+      if (modal.mode === 'edit') {
+        await SipenaAPI.updateBook(formData.id, payload);
+        showToast(`Data buku "${formData.judul}" berhasil diperbarui.`);
+      } else {
+        await SipenaAPI.createBook(payload);
+        showToast(`Buku "${formData.judul}" berhasil ditambahkan ke katalog.`);
+      }
+      fetchBooks();
+      setModal(null);
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal menyimpan data buku.');
     }
-    setModal(null);
   };
 
   return (

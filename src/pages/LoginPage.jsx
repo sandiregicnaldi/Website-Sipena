@@ -190,32 +190,35 @@ const LoginPage = () => {
     navigate(from, { replace: true });
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!form.email.trim() || !form.password.trim()) return;
 
-    // login() matches hardcoded admin accounts by email+password, returns the resolved user data
-    const resolvedUser = login({
-      username: form.email.split('@')[0],
-      email: form.email,
-      password: form.password,
-      role: roleType,
-    });
+    try {
+      const resolvedUser = await login({
+        email: form.email,
+        password: form.password,
+      });
 
-    // Redirect based on the resolved role (returned synchronously from login())
-    if (resolvedUser && resolvedUser.role === 'admin') {
-      navigate('/admin', { replace: true });
-    } else {
-      const from = location.state?.from?.pathname;
-      navigate(from || '/', { replace: true });
+      if (resolvedUser && (resolvedUser.role === 'admin' || resolvedUser.role === 'personil' || resolvedUser.role === 'pegawai')) {
+        navigate('/admin', { replace: true });
+      } else {
+        const from = location.state?.from?.pathname;
+        navigate(from || '/', { replace: true });
+      }
+    } catch (err) {
+      alert("Login gagal, periksa kembali email dan password.");
     }
   };
 
-
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    register(form, roleType);
-    redirectAfter();
+    try {
+      await register(form, roleType);
+      redirectAfter();
+    } catch (err) {
+      alert("Pendaftaran gagal.");
+    }
   };
 
   const switchMode = (newMode) => {

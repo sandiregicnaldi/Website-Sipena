@@ -233,9 +233,11 @@ const AuthorDashboard = () => {
               <button className={`dash-tab ${activeTab === 'biodata' ? 'active' : ''}`} onClick={() => setActiveTab('biodata')}>
                 <User size={16} /> Biodata & Profil
               </button>
-              <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
-                <FileText size={16} /> Pengajuan Naskah
-              </button>
+              {isAuthor && (
+                <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
+                  <FileText size={16} /> Pengajuan Naskah
+                </button>
+              )}
               <button className={`dash-tab ${activeTab === 'kegiatan' ? 'active' : ''}`} onClick={() => setActiveTab('kegiatan')}>
                 <Calendar size={16} /> Kegiatan Saya
               </button>
@@ -375,7 +377,7 @@ const AuthorDashboard = () => {
             )}
 
             {/* ── TAB PENGUJUAN NASKAH ─────────────────────────────────── */}
-            {activeTab === 'naskah' && (
+            {activeTab === 'naskah' && isAuthor && (
               <div className="tab-panel">
                 <p className="tab-desc">Ajukan draf naskah baru dan pantau status naskah yang sedang dalam proses review.</p>
                 
