@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, BookOpen, Download } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, BookOpen, Download, X, Star, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './HeroCarousel.css';
 
 const slides = [
@@ -67,6 +68,24 @@ const HeroCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const timerRef = useRef(null);
 
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [showRatingPopup, setShowRatingPopup] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [downloadPopupRating, setDownloadPopupRating] = useState(0);
+
+  const handleDownload = () => {
+    if (!isLoggedIn) {
+      setShowLoginPrompt(true);
+    } else {
+      window.open('/sample.pdf', '_blank');
+      setTimeout(() => setShowRatingPopup(true), 500);
+    }
+  };
+
   const resetTimer = () => {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -113,9 +132,9 @@ const HeroCarousel = () => {
               <Link to={slide.bookLink} className="hero-btn-primary">
                 <BookOpen size={18} /> Baca Sekarang
               </Link>
-              <Link to="/buku" className="hero-btn-secondary">
+              <button onClick={handleDownload} className="hero-btn-secondary" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                 <Download size={18} /> Unduh PDF
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -148,6 +167,124 @@ const HeroCarousel = () => {
           <span className="slide-counter">{currentSlide + 1} / {slides.length}</span>
         </div>
       </div>
+
+      {/* Download Rating Popup */}
+      {showRatingPopup && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', 
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary, #fff)', padding: '2.5rem', borderRadius: '1rem', 
+            width: '100%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            textAlign: 'center', position: 'relative'
+          }}>
+            <button onClick={() => setShowRatingPopup(false)} style={{
+              position: 'absolute', top: '1rem', right: '1rem', background: 'none', 
+              border: 'none', cursor: 'pointer', color: 'var(--text-tertiary, #64748b)'
+            }}>
+              <X size={20} />
+            </button>
+            
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary, #0f172a)', fontSize: '1.25rem' }}>Buku Berhasil Diunduh!</h3>
+            <p style={{ color: 'var(--text-secondary, #475569)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              Sambil menunggu unduhan selesai, yuk berikan rating untuk buku <strong>"{slide.title}"</strong>. Penilaian Anda sangat berarti bagi kami.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star 
+                  key={star} 
+                  size={32} 
+                  fill={(hoverRating || downloadPopupRating) >= star ? "#fbbf24" : "transparent"} 
+                  color={(hoverRating || downloadPopupRating) >= star ? "#fbbf24" : "#cbd5e1"} 
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setDownloadPopupRating(star)}
+                  style={{cursor: 'pointer', transition: 'transform 0.2s', transform: (hoverRating || downloadPopupRating) >= star ? 'scale(1.15)' : 'scale(1)'}}
+                />
+              ))}
+            </div>
+
+            <button 
+              className="hero-btn-primary" 
+              style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: 'none', cursor: 'pointer' }}
+              disabled={downloadPopupRating === 0}
+              onClick={() => {
+                setShowRatingPopup(false);
+                alert(`Terima kasih atas rating ${downloadPopupRating} bintang Anda!`);
+              }}
+            >
+              Kirim Penilaian
+            </button>
+            <button 
+              onClick={() => setShowRatingPopup(false)} 
+              style={{ 
+                width: '100%', padding: '0.75rem', marginTop: '0.5rem', 
+                background: 'none', border: 'none', color: 'var(--text-tertiary, #64748b)', 
+                cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600
+              }}
+            >
+              Nanti Saja
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Login Prompt Popup */}
+      {showLoginPrompt && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', 
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary, #fff)', padding: '2.5rem', borderRadius: '1rem', 
+            width: '100%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            textAlign: 'center', position: 'relative'
+          }}>
+            <button onClick={() => setShowLoginPrompt(false)} style={{
+              position: 'absolute', top: '1rem', right: '1rem', background: 'none', 
+              border: 'none', cursor: 'pointer', color: 'var(--text-tertiary, #64748b)'
+            }}>
+              <X size={20} />
+            </button>
+            
+            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--bg-secondary, #f1f5f9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Lock size={32} color={slide.accentColor || '#2563eb'} />
+              </div>
+            </div>
+
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary, #0f172a)', fontSize: '1.25rem' }}>Akses Terkunci</h3>
+            <p style={{ color: 'var(--text-secondary, #475569)', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: 1.5 }}>
+              Fitur ini memerlukan akses akun. Silakan masuk (login) atau daftar terlebih dahulu untuk mengunduh dan memberikan rating.
+            </p>
+
+            <button 
+              className="hero-btn-primary" 
+              style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: 'none', cursor: 'pointer', background: slide.accentColor || '#2563eb', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+              onClick={() => {
+                setShowLoginPrompt(false);
+                navigate('/login', { state: { from: location } });
+              }}
+            >
+              Masuk ke Akun
+            </button>
+            <button 
+              onClick={() => setShowLoginPrompt(false)} 
+              style={{ 
+                width: '100%', padding: '0.75rem', marginTop: '0.5rem', 
+                background: 'none', border: 'none', color: 'var(--text-tertiary, #64748b)', 
+                cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600
+              }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

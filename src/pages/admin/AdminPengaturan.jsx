@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Settings, Shield, Save, Key, CheckCircle, XCircle } from 'lucide-react';
+import { Settings, Shield, Save, Key, CheckCircle, XCircle, Power } from 'lucide-react';
 import './AdminLayout.css';
 
 // ── Toast ──────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -15,6 +15,7 @@ import TentangKami from './pages/TentangKami';
 import FAQPage from './pages/FAQPage';
 import PanduanPenerbitan from './pages/PanduanPenerbitan';
 import AdminLayout from './pages/admin/AdminLayout';
+import ManagementLayout from './pages/admin/manajemen/ManagementLayout';
 import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
@@ -39,7 +40,11 @@ function App() {
       <Router>
         <ScrollToTop />
         <Routes>
-          {/* ── Admin routes (no Header/Footer) ── */}
+          {/* ── Dedicated Workspace: Manajemen Penerbitan ── */}
+          <Route path="/admin/manajemen/*" element={<ManagementLayout />} />
+          <Route path="/manajemen/*" element={<Navigate to="/admin/manajemen" replace />} />
+
+          {/* ── Admin SiPena Portal ── */}
           <Route path="/admin/*" element={<AdminLayout />} />
 
           {/* ── Public routes (Header + Footer via PublicLayout) ── */}

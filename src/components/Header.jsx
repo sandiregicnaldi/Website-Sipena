@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogIn, LogOut, User as UserIcon, LayoutDashboard, Search, ShieldCheck, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
@@ -7,6 +7,7 @@ import './Header.css';
 const Header = () => {
   const { user, logout, isLoggedIn, isAuthor, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -48,7 +49,7 @@ const Header = () => {
             <Search size={18} className="search-icon" />
           </div>
 
-          <Link to="/login" className="btn-terbitkan">TERBITKAN BUKU</Link>
+          <Link to="/login" state={{ from: location }} className="btn-terbitkan">TERBITKAN BUKU</Link>
 
           <div className="auth-section">
             {isLoggedIn ? (
@@ -58,9 +59,14 @@ const Header = () => {
                 </span>
                 <div className="user-dropdown-menu">
                   {isAdmin && (
-                    <Link to="/admin" className="dropdown-item">
-                      <ShieldCheck size={14} /> Panel Admin
-                    </Link>
+                    <>
+                      <Link to="/admin" className="dropdown-item">
+                        <ShieldCheck size={14} /> Admin SiPena
+                      </Link>
+                      <Link to="/admin/manajemen" className="dropdown-item">
+                        <LayoutDashboard size={14} /> Manajemen Penerbitan
+                      </Link>
+                    </>
                   )}
                   {!isAdmin && (
                     <Link to="/profil-saya" className="dropdown-item">
@@ -73,7 +79,7 @@ const Header = () => {
                 </div>
               </div>
             ) : (
-              <Link to="/login" className="login-link">
+              <Link to="/login" state={{ from: location }} className="login-link">
                 <UserIcon size={18} /> Masuk
               </Link>
             )}
@@ -130,7 +136,7 @@ const Header = () => {
                 </button>
               </>
             ) : (
-              <Link to="/login" className="mobile-nav-item" onClick={closeMenu}>
+              <Link to="/login" state={{ from: location }} className="mobile-nav-item" onClick={closeMenu}>
                 <UserIcon size={16} /> Masuk
               </Link>
             )}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+// SiPena Admin Pages
 import AdminDashboard from './AdminDashboard';
 import AdminKatalog from './AdminKatalog';
 import AdminPengguna from './AdminPengguna';
@@ -9,6 +10,7 @@ import AdminKonten from './AdminKonten';
 import AdminLaporan from './AdminLaporan';
 import AdminPengaturan from './AdminPengaturan';
 import AdminNaskah from './AdminNaskah';
+
 import './AdminLayout.css';
 
 // ── Icons as inline SVG ─────────────────────────────────────────────────────
@@ -48,8 +50,9 @@ const SVGIcon = ({ name, size = 18 }) => {
 
 // ── Sidebar nav config ───────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { label: 'Beranda',     path: '/admin',             icon: 'home' },
-  { label: 'Katalog Buku', path: '/admin/katalog',    icon: 'book',
+  { label: 'Beranda',               path: '/admin',             icon: 'home' },
+  { label: 'Manajemen Penerbitan',  path: '/admin/manajemen',   icon: 'layout' },
+  { label: 'Katalog Buku',          path: '/admin/katalog',     icon: 'book',
     sub: [
       { label: 'Daftar Buku',      path: '/admin/katalog' },
     ]
@@ -81,17 +84,17 @@ const NAV_ITEMS = [
       { label: 'Pengguna Sistem',  path: '/admin/pengaturan/sistem' },
     ]
   },
-  { label: 'Manajemen Penerbitan', path: 'https://manajemen-penerbitan.perpusnas.go.id/', icon: 'layout', external: true }
 ];
 
 // ── NavItem ──────────────────────────────────────────────────────────────────
 const NavItem = ({ item, collapsed }) => {
   const location = useLocation();
   const [open, setOpen] = useState(() =>
-    item.sub?.some(s => location.pathname.startsWith(s.path))
+    item.sub?.some(s => location.pathname === s.path || (s.path !== '/admin' && s.path !== '/admin/manajemen' && location.pathname.startsWith(s.path)))
   );
+  
   const isActive = item.sub
-    ? item.sub.some(s => location.pathname.startsWith(s.path))
+    ? item.sub.some(s => location.pathname === s.path || (s.path !== '/admin' && s.path !== '/admin/manajemen' && location.pathname.startsWith(s.path)))
     : location.pathname === item.path;
 
   if (item.sub) {
@@ -126,26 +129,14 @@ const NavItem = ({ item, collapsed }) => {
 
   return (
     <li>
-      {item.external ? (
-        <a
-          href={item.path}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="nav-link"
-        >
-          <SVGIcon name={item.icon} size={18} />
-          {!collapsed && <span>{item.label}</span>}
-        </a>
-      ) : (
-        <Link
-          to={item.path}
-          className={`nav-link ${isActive ? 'active' : ''}`}
-          title={collapsed ? item.label : ''}
-        >
-          <SVGIcon name={item.icon} size={18} />
-          {!collapsed && <span>{item.label}</span>}
-        </Link>
-      )}
+      <Link
+        to={item.path}
+        className={`nav-link ${isActive ? 'active' : ''}`}
+        title={collapsed ? item.label : ''}
+      >
+        <SVGIcon name={item.icon} size={18} />
+        {!collapsed && <span>{item.label}</span>}
+      </Link>
     </li>
   );
 };
@@ -154,6 +145,7 @@ const NavItem = ({ item, collapsed }) => {
 const AdminLayout = () => {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
   if (!isAdmin) {
@@ -161,7 +153,7 @@ const AdminLayout = () => {
       <div className="admin-unauth">
         <h2>Akses Ditolak</h2>
         <p>Anda tidak memiliki izin untuk mengakses halaman admin.</p>
-        <button onClick={() => navigate('/login')} className="btn btn-primary">
+        <button onClick={() => navigate('/login', { state: { from: location } })} className="btn btn-primary">
           Kembali ke Login
         </button>
       </div>
@@ -175,87 +167,95 @@ const AdminLayout = () => {
 
   return (
     <div className={`admin-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
-      {/* ── SIDEBAR ── */}
-      <aside className="admin-sidebar">
-        <div className="sidebar-brand">
-          {!collapsed && (
-            <div className="brand-block">
-              <span className="brand-star">★</span>
-              <div>
-                <div className="brand-name">SiPena</div>
-                <div className="brand-tagline">SISTEM INFORMASI PENERBITAN</div>
+        {/* ── SIDEBAR ── */}
+        <aside className="admin-sidebar">
+          <div className="sidebar-brand">
+            {!collapsed && (
+              <Link to="/" className="brand-block" style={{ textDecoration: 'none', cursor: 'pointer' }} title="Kembali ke Tampilan Publik">
+                <span className="brand-star">★</span>
+                <div>
+                  <div className="brand-name">SiPena</div>
+                  <div className="brand-tagline">SISTEM INFORMASI PENERBITAN</div>
+                </div>
+              </Link>
+            )}
+            <button className="collapse-btn" onClick={() => setCollapsed(c => !c)} title="Toggle Sidebar">
+              <SVGIcon name="menu" size={20} />
+            </button>
+          </div>
+
+          {/* User mini-profile */}
+          <div className="sidebar-user">
+            <div className="sidebar-avatar">
+              <SVGIcon name="user" size={22} />
+            </div>
+            {!collapsed && (
+              <div className="sidebar-user-info">
+                <div className="sidebar-user-name">{user?.username}</div>
+                <div className="sidebar-user-role">Administrator</div>
+              </div>
+            )}
+          </div>
+
+          <nav className="sidebar-nav">
+            <ul>
+              {NAV_ITEMS.map(item => (
+                <NavItem key={item.label + item.path} item={item} collapsed={collapsed} />
+              ))}
+            </ul>
+          </nav>
+
+          <div className="sidebar-footer">
+            <button className="nav-link nav-link--logout" onClick={handleLogout}>
+              <SVGIcon name="logout" size={18} />
+              {!collapsed && <span>Keluar</span>}
+            </button>
+          </div>
+        </aside>
+
+        {/* ── MAIN CONTENT ── */}
+        <div className="admin-main">
+          {/* Topbar */}
+          <header className="admin-topbar">
+            <div className="topbar-left">
+              <div className="topbar-logo-text">
+                <span className="topbar-star">★</span>
+                <span className="topbar-perpusnas">PERPUSNAS PRESS</span>
+                <span className="topbar-full">Perpustakaan Nasional RI</span>
               </div>
             </div>
-          )}
-          <button className="collapse-btn" onClick={() => setCollapsed(c => !c)} title="Toggle Sidebar">
-            <SVGIcon name="menu" size={20} />
-          </button>
-        </div>
-
-        {/* User mini-profile */}
-        <div className="sidebar-user">
-          <div className="sidebar-avatar">
-            <SVGIcon name="user" size={22} />
-          </div>
-          {!collapsed && (
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{user?.username}</div>
-              <div className="sidebar-user-role">Administrator</div>
+            <div className="topbar-right">
+              <div className="topbar-user">
+                <div className="topbar-avatar"><SVGIcon name="user" size={18} /></div>
+                <span>{user?.username}</span>
+                <span className="topbar-badge">Administrator</span>
+              </div>
             </div>
-          )}
+          </header>
+
+          {/* Page content */}
+          <main className="admin-content">
+            <Routes>
+              <Route index element={<AdminDashboard />} />
+              <Route path="katalog/*" element={<AdminKatalog />} />
+              <Route path="naskah/*" element={<AdminNaskah />} />
+              <Route path="pengguna/*" element={<AdminPengguna />} />
+              <Route path="kegiatan/*" element={<AdminKegiatan />} />
+              <Route path="konten/*" element={<AdminKonten />} />
+              <Route path="laporan" element={<AdminLaporan />} />
+              <Route path="pengaturan/*" element={<AdminPengaturan />} />
+
+              {/* Redirect any legacy publishing sub-routes to the dedicated workspace */}
+              <Route path="manajemen/*" element={<Navigate to="/admin/manajemen" replace />} />
+              <Route path="proyek/*" element={<Navigate to="/admin/manajemen/proyek" replace />} />
+              <Route path="nip/*" element={<Navigate to="/admin/manajemen/nip" replace />} />
+              <Route path="dokumen/*" element={<Navigate to="/admin/manajemen/dokumen" replace />} />
+              <Route path="chat/*" element={<Navigate to="/admin/manajemen/chat" replace />} />
+              <Route path="arsip/*" element={<Navigate to="/admin/manajemen/arsip" replace />} />
+            </Routes>
+          </main>
         </div>
-
-        <nav className="sidebar-nav">
-          <ul>
-            {NAV_ITEMS.map(item => (
-              <NavItem key={item.path} item={item} collapsed={collapsed} />
-            ))}
-          </ul>
-        </nav>
-
-        <div className="sidebar-footer">
-          <button className="nav-link nav-link--logout" onClick={handleLogout}>
-            <SVGIcon name="logout" size={18} />
-            {!collapsed && <span>Keluar</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* ── MAIN CONTENT ── */}
-      <div className="admin-main">
-        {/* Topbar */}
-        <header className="admin-topbar">
-          <div className="topbar-left">
-            <div className="topbar-logo-text">
-              <span className="topbar-star">★</span>
-              <span className="topbar-perpusnas">PERPUSNAS PRESS</span>
-              <span className="topbar-full">Perpustakaan Nasional RI</span>
-            </div>
-          </div>
-          <div className="topbar-right">
-            <div className="topbar-user">
-              <div className="topbar-avatar"><SVGIcon name="user" size={18} /></div>
-              <span>{user?.username}</span>
-              <span className="topbar-badge">Administrator</span>
-            </div>
-          </div>
-        </header>
-
-        {/* Page content */}
-        <main className="admin-content">
-          <Routes>
-            <Route index element={<AdminDashboard />} />
-            <Route path="katalog/*" element={<AdminKatalog />} />
-            <Route path="naskah/*" element={<AdminNaskah />} />
-            <Route path="pengguna/*" element={<AdminPengguna />} />
-            <Route path="kegiatan/*" element={<AdminKegiatan />} />
-            <Route path="konten/*" element={<AdminKonten />} />
-            <Route path="laporan" element={<AdminLaporan />} />
-            <Route path="pengaturan/*" element={<AdminPengaturan />} />
-          </Routes>
-        </main>
       </div>
-    </div>
   );
 };
 

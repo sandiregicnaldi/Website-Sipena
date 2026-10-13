@@ -1,44 +1,71 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, BookOpen, Loader2 } from 'lucide-react';
+import { SipenaAPI } from '../lib/api';
 import '../components/BookRow.css';
 import './BooksPage.css';
 
+const CATEGORIES = ['Semua', 'Sastra', 'Sejarah', 'Budaya', 'Fiksi', 'Anak', 'Hukum', 'Pendidikan'];
+
+const CATEGORY_COLORS = {
+  'Sastra': '#1e3a8a',
+  'Sejarah': '#b91c1c',
+  'Budaya': '#047857',
+  'Anak': '#0ea5e9',
+  'Fiksi': '#be123c',
+  'Hukum': '#6b21a8',
+  'Pendidikan': '#92400e',
+  'Umum': '#475569'
+};
+
 const BooksPage = () => {
-  const allBooks = [
-    { id: 1,  title: 'Syair Ulama Saleh',                        author: 'Penulis Anonim',          color: '#1e293b' },
-    { id: 2,  title: 'Alih Bahasa Rapport von het Vernigen',      author: 'Johannes de Hartogh',     color: '#b91c1c' },
-    { id: 3,  title: 'USANA, SAGARA, BANAWA',                    author: 'Pande Putu Abdi Jaya',    color: '#1d4ed8' },
-    { id: 4,  title: 'Hikayat Tuanku nan Muda Pagaruyung',       author: 'M. Yusuf',                color: '#047857' },
-    { id: 5,  title: 'Mari Mengenal Lebih Dekat HATIBALI',       author: 'Perpusnas Press',         color: '#6d28d9' },
-    { id: 6,  title: 'Babad Diponegoro',                         author: 'Kyai Mojo',               color: '#0f766e' },
-    { id: 7,  title: 'Sejarah Nasional Indonesia',                author: 'Sartono Kartodirdjo',     color: '#c2410c' },
-    { id: 8,  title: 'Kesusastraan Melayu Klasik',               author: 'Liaw Yock Fang',          color: '#7c3aed' },
-    { id: 9,  title: 'Kitab Primbon Jawa',                       author: 'Kanjeng Pangeran',        color: '#0f4c75' },
-    { id: 10, title: 'Serat Centhini',                            author: 'Paku Buwana V',           color: '#991b1b' },
-    { id: 11, title: 'Hikayat Merong Mahawangsa',                author: 'Anonim',                  color: '#065f46' },
-    { id: 12, title: 'Naskah Kuna Palembang',                    author: 'Tim Perpusnas',           color: '#1e3a8a' },
-    { id: 13, title: 'Tata Bahasa Jawa Kuno',                    author: 'P.J. Zoetmulder',         color: '#92400e' },
-    { id: 14, title: 'Kumpulan Pantun Melayu',                   author: 'R.O. Winstedt',           color: '#3b0764' },
-    { id: 15, title: 'Pararaton (Ken Arok)',                      author: 'Kern & Krom',             color: '#134e4a' },
-    { id: 16, title: 'Kakawin Ramayana',                          author: 'Mpu Yogiswara',           color: '#7f1d1d' },
-    { id: 17, title: 'Lontar Usana Bali',                         author: 'Tim Balai Bahasa',        color: '#1a2e05' },
-    { id: 18, title: 'Nagarakretagama',                           author: 'Mpu Prapanca',            color: '#0c4a6e' },
-    { id: 19, title: 'Suluk Wujil',                               author: 'Sunan Bonang',            color: '#581c87' },
-    { id: 20, title: 'Hikayat Hang Tuah',                        author: 'Anonim',                  color: '#14532d' },
-    { id: 21, title: 'Sair Perang Menteng',                       author: 'Ali Haji',                color: '#1e3a8a' },
-    { id: 22, title: 'Babat Tanah Jawi',                          author: 'Paku Buwana III',         color: '#7c2d12' },
-    { id: 23, title: 'Arjunawiwaha',                              author: 'Mpu Kanwa',               color: '#064e3b' },
-    { id: 24, title: 'Desawarnana',                               author: 'Mpu Prapanca',            color: '#312e81' },
-    { id: 25, title: 'Sejarah Melayu',                            author: 'Tun Sri Lanang',          color: '#422006' },
-    { id: 26, title: 'Panji Angreni',                             author: 'Anonim',                  color: '#0f172a' },
-    { id: 27, title: 'Kutaramanawa',                              author: 'Tim Filologi',            color: '#6b21a8' },
-    { id: 28, title: 'Tambo Minangkabau',                         author: 'Tim Peneliti',            color: '#166534' },
-    { id: 29, title: 'Undang-Undang Melaka',                      author: 'Anonim',                  color: '#1e3a5f' },
-    { id: 30, title: 'Cerita Panji Jawa',                         author: 'Poerbatjaraka',           color: '#831843' },
-    { id: 31, title: 'Naskah Wangsakerta',                        author: 'Pangeran Wangsakerta',    color: '#365314' },
-    { id: 32, title: 'Hikayat Sri Rama',                          author: 'Anonim',                  color: '#1c1917' },
-  ];
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('Semua');
+
+  const fetchBooks = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page,
+        limit: 12,
+        search: search.trim() || undefined,
+        category: category !== 'Semua' ? category : undefined,
+      };
+
+      const res = await SipenaAPI.getBooks(params);
+      if (res && res.data) {
+        setBooks(res.data);
+        setTotalPages(res.pagination?.totalPages || 1);
+        setTotal(res.pagination?.total || 0);
+      } else if (Array.isArray(res)) {
+        setBooks(res);
+        setTotal(res.length);
+        setTotalPages(1);
+      }
+    } catch (err) {
+      console.error('Failed to fetch books:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBooks();
+  }, [page, category]);
+
+  // Debounced search trigger
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPage(1);
+      fetchBooks();
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   return (
     <main className="books-page">
@@ -50,34 +77,124 @@ const BooksPage = () => {
       </div>
 
       <div className="container books-content">
-        {/* Book Grid */}
-        <div className="books-grid">
-          {allBooks.map((book) => (
-            <Link to={`/buku/${book.id}`} key={book.id} className="row-card">
-              <div className="row-cover" style={{ backgroundColor: book.color || '#1e3a8a' }}>
-                <span className="row-cover-title">{book.title}</span>
-                <div className="row-cover-overlay">
-                  <span className="overlay-play">▶ Baca</span>
-                </div>
-              </div>
-              <div className="row-info">
-                <p className="row-book-title">{book.title}</p>
-                <p className="row-book-author">{book.author}</p>
-              </div>
-            </Link>
-          ))}
+        {/* Search & Category Filter Toolbar */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between',
+          alignItems: 'center', marginBottom: '2rem'
+        }}>
+          {/* Category Pills */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => { setCategory(cat); setPage(1); }}
+                style={{
+                  padding: '0.45rem 1rem', borderRadius: '2rem', fontSize: '0.875rem', fontWeight: 500,
+                  cursor: 'pointer', border: '1px solid',
+                  backgroundColor: category === cat ? 'var(--accent-color, #2563eb)' : 'transparent',
+                  color: category === cat ? '#fff' : 'var(--text-secondary)',
+                  borderColor: category === cat ? 'var(--accent-color, #2563eb)' : 'var(--border-color, #cbd5e1)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Box */}
+          <div style={{ position: 'relative', width: '280px' }}>
+            <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+            <input
+              type="text"
+              placeholder="Cari judul atau penulis..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: '100%', padding: '0.55rem 0.75rem 0.55rem 2.25rem',
+                border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)',
+                fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
         </div>
 
-        {/* Pagination */}
-        <div className="pagination">
-          <button className="page-btn" disabled><ChevronLeft size={16} /></button>
-          <button className="page-btn active">1</button>
-          <button className="page-btn">2</button>
-          <button className="page-btn">3</button>
-          <span className="page-dots">...</span>
-          <button className="page-btn">10</button>
-          <button className="page-btn"><ChevronRight size={16} /></button>
+        {/* Results Counter */}
+        <div style={{ marginBottom: '1.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+          Menampilkan <strong>{books.length}</strong> dari <strong>{total}</strong> koleksi buku
         </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
+            <Loader2 size={36} className="animate-spin" color="var(--accent-color, #2563eb)" />
+            <span style={{ color: 'var(--text-secondary)' }}>Memuat katalog buku dari database...</span>
+          </div>
+        ) : books.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-secondary)' }}>
+            <BookOpen size={48} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+            <h3>Tidak ada buku yang ditemukan</h3>
+            <p>Coba gunakan kata kunci pencarian lain atau pilih kategori Semua.</p>
+          </div>
+        ) : (
+          /* Book Grid */
+          <div className="books-grid">
+            {books.map((book) => {
+              const bgColor = CATEGORY_COLORS[book.category] || '#1e3a8a';
+              return (
+                <Link to={`/buku/${book.id}`} key={book.id} className="row-card">
+                  <div className="row-cover" style={{ backgroundColor: bgColor }}>
+                    <span className="row-cover-title">{book.title}</span>
+                    <div className="row-cover-overlay">
+                      <span className="overlay-play">▶ Baca</span>
+                    </div>
+                  </div>
+                  <div className="row-info">
+                    <p className="row-book-title">{book.title}</p>
+                    <p className="row-book-author">{book.authorName || 'Penulis Anonim'}</p>
+                    {book.ratingAvg > 0 && (
+                      <span style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '0.2rem', display: 'block' }}>
+                        ★ {book.ratingAvg.toFixed(1)} ({book.ratingCount || 0})
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Real Dynamic Pagination */}
+        {totalPages > 1 && (
+          <div className="pagination" style={{ marginTop: '2.5rem' }}>
+            <button
+              className="page-btn"
+              disabled={page <= 1}
+              onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo(0, 0); }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                className={`page-btn ${p === page ? 'active' : ''}`}
+                onClick={() => { setPage(p); window.scrollTo(0, 0); }}
+              >
+                {p}
+              </button>
+            ))}
+
+            <button
+              className="page-btn"
+              disabled={page >= totalPages}
+              onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo(0, 0); }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
 import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const INITIAL_USERS = {
   pengunjung: [
@@ -48,6 +49,7 @@ const INITIAL_USERS = {
   ],
   pegawai: [
     { id: 1, nama: 'Hendra Wijaya', email: 'hendra@perpusnas.id', instansi: 'Perpusnas', bergabung: '2023-09-01', statusAkun: 'Aktif' },
+    { id: 2, nama: 'Rian Pratama', email: 'rian@perpusnas.id', instansi: 'Perpusnas Press', bergabung: '2026-10-10', statusAkun: 'Menunggu' },
   ],
 };
 
@@ -222,6 +224,7 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
 };
 
 const UserTable = ({ type, title, onUsersChange, users }) => {
+  const { isSuperAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
@@ -234,6 +237,21 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
     u.nama.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleSetujuiPegawai = (u) => {
+    if (window.confirm(`Setujui pendaftaran akun pegawai "${u.nama}" (${u.email})?`)) {
+      const updated = {
+        ...users,
+        pegawai: users.pegawai.map(x =>
+          (x.id === u.id && x.email === u.email)
+            ? { ...x, statusAkun: 'Aktif' }
+            : x
+        )
+      };
+      onUsersChange(updated);
+      showToast(`Akun pegawai ${u.nama} berhasil disetujui & diaktifkan.`);
+    }
+  };
 
   const handleSetujuiPenulis = (u) => {
     if (window.confirm(`Verifikasi ${u.nama} sebagai Penulis resmi?\n\nMereka akan dapat menampilkan karya eksternal di halaman beranda.`)) {
@@ -322,6 +340,25 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
         </h1>
         <p>Kelola akun {title.toLowerCase()} yang terdaftar di SiPena.</p>
       </div>
+      {type === 'pegawai' && !isSuperAdmin && (
+        <div style={{
+          background: '#eff6ff',
+          border: '1px solid #bfdbfe',
+          borderRadius: 'var(--radius-md)',
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+          fontSize: '0.85rem',
+          color: '#1e40af',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.6rem'
+        }}>
+          <AlertTriangle size={18} color="#2563eb" style={{ flexShrink: 0 }} />
+          <span>
+            <strong>Informasi Otoritas:</strong> Persetujuan pendaftaran akun pegawai baru, pengaktifan, dan penghapusan personil hanya dapat dilakukan oleh <strong>Super Administrator</strong>. Anda hanya dapat melihat daftar pegawai.
+          </span>
+        </div>
+      )}
       <div className="admin-card">
         <div className="admin-card-header">
           <input
@@ -459,22 +496,38 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
                         <td><span className="badge badge-gray">Pegawai</span></td>
                         <td><span className={`badge ${STATUS_BADGE[u.statusAkun] || 'badge-gray'}`}>{u.statusAkun}</span></td>
                         <td>
-                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                            <button
-                              onClick={() => handleNonaktifkan(u)}
-                              className="btn btn-outline"
-                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem', color: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)', borderColor: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)' }}
-                            >
-                              <Power size={12}/> {u.statusAkun === 'Nonaktif' ? 'Aktifkan' : 'Nonaktifkan'}
-                            </button>
-                            <button
-                              onClick={() => handleHapus(u)}
-                              className="btn btn-outline"
-                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#64748b', borderColor: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
-                            >
-                              <Trash2 size={12}/> Hapus
-                            </button>
-                          </div>
+                          {isSuperAdmin ? (
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {u.statusAkun === 'Menunggu' && (
+                                <button
+                                  onClick={() => handleSetujuiPegawai(u)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                  title="Setujui Akun Pegawai"
+                                >
+                                  <Check size={12}/> Setujui
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleNonaktifkan(u)}
+                                className="btn btn-outline"
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem', color: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)', borderColor: u.statusAkun === 'Nonaktif' ? '#2563eb' : 'var(--danger)' }}
+                              >
+                                <Power size={12}/> {u.statusAkun === 'Nonaktif' ? 'Aktifkan' : 'Nonaktifkan'}
+                              </button>
+                              <button
+                                onClick={() => handleHapus(u)}
+                                className="btn btn-outline"
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#64748b', borderColor: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                              >
+                                <Trash2 size={12}/> Hapus
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                              Khusus Super Admin
+                            </span>
+                          )}
                         </td>
                       </>
                     )}

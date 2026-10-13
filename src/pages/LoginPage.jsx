@@ -185,9 +185,42 @@ const LoginPage = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const redirectAfter = () => {
-    const from = location.state?.from?.pathname || '/';
-    navigate(from, { replace: true });
+  const redirectAfter = (resolvedUser) => {
+    const fromPath = typeof location.state?.from === 'string'
+      ? location.state.from
+      : location.state?.from?.pathname;
+
+    // 1. Jika sedang membaca atau mengunduh buku tertentu (misal: /buku/12), kembalikan ke buku tersebut
+    const isViewingBook = fromPath && (fromPath.startsWith('/buku/') || fromPath.startsWith('/book/'));
+    if (isViewingBook) {
+      navigate(fromPath, { replace: true });
+      return;
+    }
+
+    // 2. Cek apakah pengguna merupakan admin / personil / pegawai
+    const isStaff = resolvedUser && (
+      resolvedUser.role === 'admin' ||
+      resolvedUser.role === 'personil' ||
+      resolvedUser.role === 'pegawai'
+    );
+
+    if (isStaff) {
+      // Jika sebelumnya membuka halaman admin spesifik (misal: /admin/manajemen)
+      if (fromPath && fromPath.startsWith('/admin')) {
+        navigate(fromPath, { replace: true });
+      } else {
+        // Login biasa dari website publik -> langsung ke Dasbor Admin untuk bekerja
+        navigate('/admin', { replace: true });
+      }
+      return;
+    }
+
+    // 3. Untuk pengguna umum / pengunjung publik
+    if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin')) {
+      navigate(fromPath, { replace: true });
+      return;
+    }
+    navigate('/', { replace: true });
   };
 
   const handleLogin = async (e) => {
@@ -200,12 +233,7 @@ const LoginPage = () => {
         password: form.password,
       });
 
-      if (resolvedUser && (resolvedUser.role === 'admin' || resolvedUser.role === 'personil' || resolvedUser.role === 'pegawai')) {
-        navigate('/admin', { replace: true });
-      } else {
-        const from = location.state?.from?.pathname;
-        navigate(from || '/', { replace: true });
-      }
+      redirectAfter(resolvedUser);
     } catch (err) {
       alert("Login gagal, periksa kembali email dan password.");
     }
@@ -214,8 +242,8 @@ const LoginPage = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      await register(form, roleType);
-      redirectAfter();
+      const resolvedUser = await register(form, roleType);
+      redirectAfter(resolvedUser);
     } catch (err) {
       alert("Pendaftaran gagal.");
     }

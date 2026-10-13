@@ -18,7 +18,11 @@ export const api = axios.create({
 // Helper functions untuk mempermudah pemanggilan
 export const SipenaAPI = {
     // Books
-    getBooks: () => api.get('/sipena/books').then(res => res.data),
+    getBooks: (params) => api.get('/sipena/books', { params }).then(res => res.data),
+    getBookById: (id) => api.get(`/sipena/books/${id}`).then(res => res.data),
+    getRelatedBooks: (id) => api.get(`/sipena/books/${id}/related`).then(res => res.data),
+    rateBook: (id, data) => api.post(`/sipena/books/${id}/rating`, data).then(res => res.data),
+    downloadBook: (id) => api.post(`/sipena/books/${id}/download`).then(res => res.data),
     createBook: (data) => api.post('/sipena/books', data).then(res => res.data),
     updateBook: (id, data) => api.patch(`/sipena/books/${id}`, data).then(res => res.data),
     deleteBook: (id) => api.delete(`/sipena/books/${id}`).then(res => res.data),

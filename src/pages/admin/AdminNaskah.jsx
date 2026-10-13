@@ -1,20 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AdminLayout.css';
 import { ExternalLink, Check, X, FileText } from 'lucide-react';
-
-const INITIAL_NASKAH = [
-  { id: 1, judul: 'Sejarah Kopi Nusantara', penulis: 'Sari Indah', tanggal: '2026-07-01', status: 'Menunggu', alasan: '', linkDrive: 'https://drive.google.com/...' },
-  { id: 2, judul: 'Teknik Penulisan Fiksi', penulis: 'Budi (Pengunjung)', tanggal: '2026-07-05', status: 'Disetujui', alasan: '', linkDrive: 'https://drive.google.com/...' },
-  { id: 3, judul: 'Misteri Gunung Merapi', penulis: 'Rizki Fauzan', tanggal: '2026-07-10', status: 'Ditolak', alasan: 'Tema tidak sesuai dengan fokus penerbitan Perpusnas Press tahun ini.', linkDrive: 'https://drive.google.com/...' },
-];
+import { SipenaAPI } from '../../lib/api';
 
 const AdminNaskah = () => {
-  const [naskah, setNaskah] = useState(INITIAL_NASKAH);
+  const [naskah, setNaskah] = useState([]);
   const [rejectModal, setRejectModal] = useState({ isOpen: false, id: null, alasan: '' });
+  const [loading, setLoading] = useState(true);
 
-  const handleApprove = (id) => {
+  useEffect(() => {
+    fetchNaskah();
+  }, []);
+
+  const fetchNaskah = async () => {
+    try {
+      setLoading(true);
+      const data = await SipenaAPI.getManuscripts();
+      const mapped = data.map(n => ({
+        id: n.id,
+        judul: n.title,
+        penulis: n.author ? n.author.name : 'Anonim',
+        tanggal: new Date(n.createdAt).toISOString().split('T')[0],
+        status: n.status === 'pending' ? 'Menunggu' : n.status === 'approved' ? 'Disetujui' : n.status === 'rejected' ? 'Ditolak' : n.status,
+        alasan: n.reviewerNotes || '',
+        linkDrive: n.fileUrl
+      }));
+      setNaskah(mapped);
+    } catch (err) {
+      console.error("Gagal mengambil data naskah", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (id) => {
     if(window.confirm('Apakah Anda yakin ingin menyetujui naskah ini?')) {
-      setNaskah(prev => prev.map(n => n.id === id ? { ...n, status: 'Disetujui' } : n));
+      try {
+        await SipenaAPI.updateManuscriptStatus(id, { status: 'approved' });
+        fetchNaskah();
+      } catch (err) {
+        alert('Gagal menyetujui naskah');
+      }
     }
   };
 
@@ -22,9 +48,14 @@ const AdminNaskah = () => {
     setRejectModal({ isOpen: true, id, alasan: '' });
   };
 
-  const handleConfirmReject = () => {
-    setNaskah(prev => prev.map(n => n.id === rejectModal.id ? { ...n, status: 'Ditolak', alasan: rejectModal.alasan } : n));
-    setRejectModal({ isOpen: false, id: null, alasan: '' });
+  const handleConfirmReject = async () => {
+    try {
+      await SipenaAPI.updateManuscriptStatus(rejectModal.id, { status: 'rejected', reviewerNotes: rejectModal.alasan });
+      setRejectModal({ isOpen: false, id: null, alasan: '' });
+      fetchNaskah();
+    } catch (err) {
+      alert('Gagal menolak naskah');
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -45,6 +76,9 @@ const AdminNaskah = () => {
       </div>
 
       <div className="admin-card">
+        {loading ? (
+           <p style={{ padding: '2rem', textAlign: 'center' }}>Memuat naskah...</p>
+        ) : (
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
@@ -59,6 +93,9 @@ const AdminNaskah = () => {
               </tr>
             </thead>
             <tbody>
+              {naskah.length === 0 && (
+                <tr><td colSpan="7" style={{ textAlign: 'center' }}>Tidak ada naskah yang diajukan.</td></tr>
+              )}
               {naskah.map((item) => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 600 }}>{item.judul}</td>
@@ -111,6 +148,7 @@ const AdminNaskah = () => {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Reject Modal */}

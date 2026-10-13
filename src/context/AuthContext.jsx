@@ -12,7 +12,11 @@ export const AuthProvider = ({ children }) => {
     id: session.user.id,
     email: session.user.email,
     username: session.user.name,
+    name: session.user.name,
     role: session.user.role, // 'admin', 'personil' (pegawai), atau 'pengunjung'
+    isReviewer: session.user.isReviewer === true || session.user.role === 'admin' || session.user.role === 'reviewer',
+    isSuperAdmin: session.user.role === 'admin',
+    skills: session.user.skills || [],
     isVerifiedAuthor: session.user.role === 'penulis', // Asumsi jika ada role penulis
     
     // Data Profil (dari kolom database tambahan)
@@ -110,7 +114,10 @@ export const AuthProvider = ({ children }) => {
       updateProfile,
       isLoggedIn: !!user,
       isAuthor: user?.isVerifiedAuthor === true,
-      isAdmin: user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai',
+      isAdmin: user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer',
+      isSuperAdmin: user?.role === 'admin',
+      isReviewer: user?.isReviewer === true,
+      isStaff: user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer',
       isPending, // Bisa dipakai untuk loading state
     }}>
       {children}
