@@ -1,6 +1,6 @@
 # 📘 DOKUMENTASI LENGKAP PENGEMBANGAN SIPENA & MANAJEMEN PENERBITAN
-**Tanggal Penyusunan:** 12 Oktober 2026  
-**Status Lingkungan:** Lokal (Local Development Only — *Dilarang push/deploy ke produksi*)
+**Tanggal Penyusunan:** 12 - 14 Oktober 2026  
+**Status Lingkungan:** Lokal & Ter-push ke Git (Local Development & Synchronized to GitHub)
 
 ---
 
@@ -13,7 +13,16 @@
 6. [Perancangan & Penyesuaian Skema Database Terintegrasi](#6-perancangan--penyesuaian-skema-database-terintegrasi)
 7. [Hierarki Hak Akses 3 Tingkat (Super Admin vs Reviewer vs Pegawai)](#7-hierarki-hak-akses-3-tingkat-super-admin-vs-reviewer-vs-pegawai)
 8. [Daftar File yang Diubah](#8-daftar-file-yang-diubah)
-9. [Panduan Pengujian Lengkap (Testing Guide Besok)](#9-panduan-pengujian-lengkap-testing-guide-besok)
+9. [Panduan Pengujian Lengkap (Testing Guide Awal)](#9-panduan-pengujian-lengkap-testing-guide-besok)
+10. [Pembaruan Lanjutan: Menu Bantuan & Standarisasi Kolom Pencarian UI](#10-pembaruan-lanjutan-menu-bantuan--standarisasi-kolom-pencarian-ui)
+11. [Pembaruan Visual: Presisi Flexbox Search Bar & Perapihan Timeline Tahapan Proyek](#11-pembaruan-visual-presisi-flexbox-search-bar--perapihan-timeline-tahapan-proyek)
+12. [Restorasi Penuh UI/UX Asli Dasbor Manajemen Penerbitan (Paritas Penuh C:\dev\dasbor-penerbitan2)](#12-restorasi-penuh-uiux-asli-dasbor-manajemen-penerbitan-paritas-penuh-cdevdasbor-penerbitan2)
+13. [Investigasi & Solusi Tabrakan CSS (Admin SiPena vs Dasbor Penerbitan)](#13-investigasi--solusi-tabrakan-css-admin-sipena-vs-dasbor-penerbitan)
+14. [Sinkronisasi Paritas Penuh Detail Proyek (ProjectDetail.jsx) & Stabilitas Timeline](#14-sinkronisasi-paritas-penuh-detail-proyek-projectdetailjsx--stabilitas-timeline)
+15. [Strategi Isolasi Backend & Database SiPena (Total Decoupling Strategy)](#15-strategi-isolasi-backend--database-sipena-total-decoupling-strategy)
+16. [Sinkronisasi Fitur "Hak Admin Reviewer" & Level Akun ke Dasbor Produksi (dasbor-penerbitan2)](#16-sinkronisasi-fitur-hak-admin-reviewer--level-akun-ke-dasbor-produksi-dasbor-penerbitan2)
+17. [Investigasi & Solusi Tuntas Tombol QC ("Setujui" & "Tolak / Revisi") pada Akun Reviewer di localhost:5173](#17-investigasi--solusi-tuntas-tombol-qc-setujui--tolak--revisi-pada-akun-reviewer-di-localhost5173)
+18. [Riwayat Commit & Push Git ke Dua Repositori Terpisah](#18-riwayat-commit--push-git-ke-dua-repositori-terpisah)
 
 ---
 
@@ -40,8 +49,8 @@ Sebelumnya, sistem terpisah menjadi dua entitas:
 - **Masalah**: Penggabungan file CSS alur kerja (`manajemen.css`) ke `main.jsx` merusak gaya visual halaman publik SiPena dan form login karena adanya CSS reset global (`body`, `*`, `input`, `.btn-primary`).
 - **Solusi**:
   1. Impor `manajemen.css` dicabut dari `main.jsx`.
-  2. Seluruh aturan CSS alur kerja dibungkus ketat di bawah selektor `.admin-shell`.
-  3. File styling alur kerja hanya dimuat pada layout admin/manajemen (`AdminLayout.jsx` dan `ManagementLayout.jsx`), menjamin **100% tampilan publik tidak terpengaruh**.
+  2. Seluruh aturan CSS alur kerja dibungkus ketat di bawah selektor `.manajemen-scope` menggunakan `:where(.manajemen-scope)` dengan spesifisitas nol (disempurnakan di Bab 12 & 13).
+  3. File styling alur kerja hanya dimuat pada layout manajemen (`ManagementLayout.jsx`), menjamin **100% tampilan publik SiPena maupun Dasbor Admin SiPena tidak terpengaruh**.
 
 ---
 
@@ -426,6 +435,161 @@ Pengguna menghendaki ruang kerja **Dasbor Manajemen Penerbitan** memiliki tampil
 1. **Efek Menggelembung**: Terjadi akibat perbedaan padding horizontal (`padding: 0.625rem 0` vs `padding-left: 0.5rem; padding-right: 0.5rem` saat hover/selected) yang dianimasikan dengan `transition: all`. Kini ditetapkan konstan `padding: 0.625rem 0.5rem;` dan transisi dibatasi hanya pada `background-color`, sehingga saat diklik tidak ada perubahan dimensi fisik satu piksel pun.
 2. **Paritas Penuh `ProjectDetail.jsx`**: Kode `ProjectDetail.jsx` disinkronkan 100% dari aslinya di `C:\dev\dasbor-penerbitan2\src\pages\ProjectDetail.jsx`. Semua kartu deskripsi tugas, progress bar continuous biru, meta penugasan, dan card timeline telah kembali persis seperti Gambar 1.
 
+---
 
+## 15. Strategi Isolasi Backend & Database SiPena (Total Decoupling Strategy)
 
+**Tanggal Analisis & Perancangan:** 13 Oktober 2026 (Sesi 5)  
 
+### A. Latar Belakang & Analisis Risiko Produksi:
+Dalam proses integrasi, frontend `website-sipena` (port `5174`) melakukan proxy request API (`/api` dan `/uploads`) ke `http://localhost:5000`. Server backend yang berjalan di port 5000 tersebut berlokasi di direktori **`C:\dev\dasbor-penerbitan2\server`** dan terhubung langsung ke database PostgreSQL **`dasbor_penerbitan`**.
+
+Pengguna menyampaikan kekhawatiran yang sangat tepat dan relevan: *jika selama proses pembangunan Website SiPena terdapat perubahan logika backend, penambahan endpoint, atau migrasi skema tabel baru di `dasbor-penerbitan2/server`, hal tersebut berisiko merusak atau mencemari backend Dasbor Manajemen Penerbitan yang sudah beroperasi di produksi.*
+
+### B. Solusi Arsitektur 3 Pilar (Decoupling Penuh):
+Untuk menjamin folder `C:\dev\dasbor-penerbitan2` **100% AMAN, BEKU (FROZEN), DAN TIDAK TERSENTUH**, dirancang pemisahan lingkungan mandiri untuk SiPena:
+
+```mermaid
+graph TD
+    subgraph PRODUKSI ["1. Lingkungan Produksi (Aman, Beku, Cadangan Utama)"]
+        ProdFE["Frontend Dasbor: 5173<br/>(C:\dev\dasbor-penerbitan2)"]
+        ProdBE["Backend Server: 5000<br/>(C:\dev\dasbor-penerbitan2\server)"]
+        ProdDB[("Database PostgreSQL:<br/>dasbor_penerbitan")]
+        ProdFE --> ProdBE --> ProdDB
+    end
+
+    subgraph SIPENA ["2. Lingkungan Mandiri SiPena (Bebas Kembang Fitur)"]
+        DevFE["Frontend SiPena: 5174<br/>(C:\dev\website-sipena)"]
+        DevBE["Backend SiPena: 5001<br/>(C:\dev\website-sipena\server)"]
+        DevDB[("Database PostgreSQL:<br/>sipena_dev")]
+        DevFE --> DevBE --> DevDB
+    end
+
+    style PRODUKSI fill:#e2e8f0,stroke:#64748b,stroke-width:2px
+    style SIPENA fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
+```
+
+1. **Pilar 1 - Isolasi Kode Backend (Clone Server ke SiPena)**:
+   - Menyalin folder `server` dari `C:\dev\dasbor-penerbitan2\server` ke dalam `C:\dev\website-sipena\server`.
+   - Menjadikan repositori `Website-Sipena` mandiri (*monorepo fullstack*). Semua penambahan API khusus SiPena publik, webhook, atau logika bisnis baru dilakukan di folder SiPena sendiri. Folder produksi `dasbor-penerbitan2` tidak disentuh sama sekali.
+2. **Pilar 2 - Isolasi Database (Database Khusus `sipena_dev`)**:
+   - Membuat database baru di PostgreSQL lokal bernama `sipena_dev`.
+   - Mengisi data skema awal (buku, alur kerja, pengguna) dari dump `dasbor_penerbitan`.
+   - File `.env` di backend SiPena diarahkan ke `postgresql://.../sipena_dev`, sehingga perubahan atau manipulasi data dummy di SiPena 100% tidak akan menyentuh data produksi `dasbor_penerbitan`.
+3. **Pilar 3 - Isolasi Port & Proxy (Dual Running Tanpa Bentrok)**:
+   - Backend SiPena dijalankan pada port **`5001`** (bukan 5000).
+   - Target proxy pada `c:\dev\website-sipena\vite.config.js` diubah ke `http://localhost:5001`.
+   - Pengembang dapat menjalankan kedua aplikasi secara bersamaan di satu mesin:
+     - Dasbor Produksi: Frontend `5173` & Backend `5000`
+     - Website SiPena: Frontend `5174` & Backend `5001`
+
+---
+
+## 16. Sinkronisasi Fitur "Hak Admin Reviewer" & Level Akun ke Dasbor Produksi (`dasbor-penerbitan2`)
+
+**Tanggal Pengerjaan:** 13 Oktober 2026 (Sesi 5)  
+
+### A. Latar Belakang Masalah (Ketidaksinkronan UI):
+Pengguna menemukan anomali: di `http://localhost:5174/admin/manajemen/users` (SiPena), fitur pemberian hak admin reviewer dan dropdown level akun (*Personil Redaksi* & *Super Administrator*) sudah tampil rapi. Namun saat membuka `http://localhost:5173/admin/users` (Dasbor Manajemen Produksi), fitur tersebut belum muncul sama sekali.
+
+### B. Investigasi Akar Masalah:
+- **Backend & Database**: Kolom `is_reviewer` pada tabel PostgreSQL `user` dan endpoint backend `adminController.updateUser` di `dasbor-penerbitan2/server` **sudah siap dan mendukung**.
+- **Frontend UI**: File komponen [`UserManagement.jsx`](file:///c:/dev/dasbor-penerbitan2/src/pages/UserManagement.jsx) di folder produksi masih merupakan versi lama (terakhir disentuh Juli 2026) karena perubahan sebelumnya baru ditulis ke repositori `website-sipena`.
+
+### C. Solusi & Sinkronisasi:
+File [`UserManagement.jsx`](file:///c:/dev/dasbor-penerbitan2/src/pages/UserManagement.jsx) diperbarui dan diselaraskan:
+1. **Sakelar Hak Admin Reviewer (Penerbitan)**: Menambahkan kartu izin khusus ber-toggle switch untuk mengaktifkan/menonaktifkan hak review Kanban tanpa memberikan peran Super Admin.
+2. **Pilihan Dropdown Akun**:
+   - `Pegawai (Personil Redaksi)` (`role: 'personil'`)
+   - `Super Administrator` (`role: 'admin'`)
+3. **Modern Search Bar**: Mengadopsi container flexbox presisi dengan SVG icon dan tombol clear.
+4. **Proteksi Komponen**: Membatasi aksi ubah status, ubah role, dan hapus akun hanya untuk `isSuperAdmin`.
+
+---
+
+## 17. Investigasi & Solusi Tuntas Tombol QC ("Setujui" & "Tolak / Revisi") pada Akun Reviewer di `localhost:5173`
+
+**Tanggal Pengerjaan:** 13 Oktober 2026 (Sesi 6)  
+
+### A. Gejala yang Ditemukan Pengguna:
+Setelah sinkronisasi `UserManagement.jsx`, pengguna berhasil memberikan hak reviewer pada akun personil. Namun saat login sebagai personil tersebut di `http://localhost:5173` dan membuka detail proyek dengan tahapan berstatus **Review**, tombol aksi **Setujui** dan **Tolak / Revisi** tidak muncul. Sementara itu, pada `http://localhost:5174`, tombol aksi tersebut muncul sempurna.
+
+### B. Akar Masalah Teknis (Deep Trace):
+1. **Ketidakcocokan Naming Attribute Sesi Better-Auth**:
+   Database PostgreSQL menyimpan kolom sebagai `is_reviewer` (*snake_case*). Saat endpoint sesi (`/api/auth/get-session`) mengembalikan data user, atribut tersebut belum dinormalisasi ke `isReviewer` (*camelCase*). Akibatnya, pada objek `currentUser` di memori React, `currentUser.isReviewer` bernilai `undefined` atau `false`.
+2. **Penyelarasan Variabel Otoritas Alur Kerja (`isAdmin`)**:
+   Di `website-sipena/src/context/AppContext.jsx`, terdapat logika penyelarasan `const isAdmin = isReviewer`. Seluruh komponen alur kerja (seperti pembacaan `canReviewStage` dan QC Panel di `ProjectDetail.jsx`) mengecek `isAdmin`. Sementara di `dasbor-penerbitan2`, `isAdmin` sebelumnya masih terkunci kaku hanya mengecek `currentUser?.role === 'admin'`.
+3. **Ketiadaan Ekspor State di Context Provider**:
+   Di `dasbor-penerbitan2/src/context/AppContext.jsx`, variabel `isReviewer` dan `isSuperAdmin` belum diekspor ke objek `value` context provider, sehingga hook `const { isReviewer } = useApp()` pada halaman manapun selalu bernilai `undefined`.
+4. **Proteksi Rute Sensitif**:
+   Jika `isAdmin` diselaraskan dengan `isReviewer` demi membuka Panel QC bagi reviewer, maka rute khusus administrator (seperti `/admin/users` dan `/bantuan`) serta menu sidebar harus dipisahkan secara tegas menggunakan `isSuperAdmin`.
+
+### C. Solusi Tuntas yang Diterapkan di `dasbor-penerbitan2`:
+1. **Normalisasi Sesi di [`src/context/AppContext.jsx`](file:///c:/dev/dasbor-penerbitan2/src/context/AppContext.jsx)**:
+   Baik pada pemuatan sesi awal maupun fungsi `login`, atribut `isReviewer` dinormalisasi secara defensif:
+   ```javascript
+   const u = session.user
+   const isRev = u.isReviewer === true || u.is_reviewer === true || u.role === 'admin' || u.role === 'reviewer'
+   setCurrentUser({ ...u, isReviewer: isRev })
+   ```
+2. **Pemisahan Otoritas Tingkat Sistem & Alur Kerja**:
+   ```javascript
+   const isSuperAdmin = currentUser?.role === 'admin'
+   const isReviewer = currentUser?.role === 'admin' || 
+                      currentUser?.role === 'reviewer' || 
+                      currentUser?.isReviewer === true || 
+                      currentUser?.is_reviewer === true
+   const isAdmin = isReviewer // Memberikan hak operasional alur kerja/QC kepada reviewer
+   ```
+   Menyertakan `isSuperAdmin`, `isReviewer`, dan `isAdmin` ke dalam `value` yang diekspor oleh `AppContext`.
+3. **Perlindungan Rute Sensitif di [`src/App.jsx`](file:///c:/dev/dasbor-penerbitan2/src/App.jsx) & [`src/components/Sidebar.jsx`](file:///c:/dev/dasbor-penerbitan2/src/components/Sidebar.jsx)**:
+   - Komponen `AdminRoute` kini memeriksa `isSuperAdmin`:
+     ```javascript
+     function AdminRoute({ children }) {
+         const { currentUser, isSuperAdmin } = useApp()
+         if (!currentUser) return <Navigate to="/login" replace />
+         if (!isSuperAdmin) return <Navigate to="/" replace />
+         return children
+     }
+     ```
+   - Menu **Manajemen Pengguna** dan **Admin SiPena Publik** di `Sidebar.jsx` dikunci menggunakan `isSuperAdmin ? ADMIN_ITEMS : []`. Personil redaksi dengan hak reviewer tidak akan bisa melihat atau mengakses menu pengelolaan akun.
+4. **Aktivasi Panel QC di [`src/pages/ProjectDetail.jsx`](file:///c:/dev/dasbor-penerbitan2/src/pages/ProjectDetail.jsx)**:
+   Logika `canReviewStage` disempurnakan:
+   ```javascript
+   const canReviewStage = isReviewer || currentUser?.isReviewer === true || currentUser?.is_reviewer === true || currentUser?.role === 'reviewer' || isTataLetakReviewer || isAdmin;
+   ```
+   Tombol hijau **Setujui** dan tombol merah **Tolak / Revisi** kini muncul dan aktif 100% pada tahapan berstatus `review` di `http://localhost:5173`.
+
+---
+
+## 18. Riwayat Commit & Push Git ke Dua Repositori Terpisah
+
+**Tanggal Eksekusi:** 13 Oktober 2026 (Sesi 7)  
+
+Seluruh kode teruji bersih (*0 build error*) dan telah di-push ke masing-masing remote GitHub:
+
+| Parameter | Repositori 1: `dasbor-penerbitan2` | Repositori 2: `Website-Sipena` |
+| :--- | :--- | :--- |
+| **URL Remote GitHub** | `https://github.com/sandiregicnaldi/dasbor-penerbitan2.git` | `https://github.com/sandiregicnaldi/Website-Sipena.git` |
+| **Branch Target** | `main` | `main` |
+| **ID Commit** | `7752f2d` | `c8325c2` |
+| **Pesan Commit** | `feat: sinkronisasi hak akses reviewer dan pemisahan otentikasi super admin` | `feat: integrasi dasbor manajemen penerbitan ke ruang kerja admin sipena dan perbaikan ui` |
+| **File Diubah** | 6 file (AppContext, Sidebar, App, ProjectDetail, createAdmin, seedBooks) | 54 file (Seluruh ruang kerja `/admin/manajemen/*`, CSS scoped, layout, auth) |
+| **Status Akhir** | `working tree clean` | `working tree clean` |
+
+---
+
+### Skenario 9: Uji Penyelarasan Hak Reviewer di Lingkungan Produksi (`localhost:5173`)
+1. Buka browser di `http://localhost:5173`.
+2. Login sebagai Super Administrator (`admin@perpusnas.go.id`).
+3. Buka menu **Manajemen Pengguna** (`/admin/users`).
+4. Berikan centang pada kartu **Hak Admin Reviewer (Penerbitan)** untuk salah satu akun personil redaksi (misal: `Developer Personil`), lalu simpan.
+5. Logout dan login kembali menggunakan akun personil redaksi tersebut.
+6. Periksa antarmuka Sidebar:
+   - Menu **Manajemen Pengguna** tidak muncul di sidebar (terproteksi khusus Super Admin).
+   - Menu **Bantuan** tidak muncul di sidebar.
+7. Buka menu **Proyek** &rarr; Pilih proyek yang memiliki tahapan berstatus **Review** (misal tahapan *Penyuntingan*).
+8. **Hasil**:
+   - **Panel QC** muncul di sebelah kanan.
+   - Tombol hijau **Setujui** dan tombol merah **Tolak / Revisi** tampil jelas dan dapat diklik.
+   - Saat diklik Setujui / Tolak, tahapan berhasil diproses tanpa error otorisasi 403.
