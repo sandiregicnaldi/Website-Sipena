@@ -25,11 +25,12 @@ async function createAdmin() {
 
         console.log("Creating new admin account...");
         
-        const response = await fetch("http://localhost:5000/api/auth/sign-up/email", {
+        const port = process.env.PORT || 5001;
+        const response = await fetch(`http://localhost:${port}/api/auth/sign-up/email`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Origin": "http://localhost:5173"
+                "Origin": "http://localhost:5174"
             },
             body: JSON.stringify({
                 email: "admin@perpusnas.go.id",

@@ -2,7 +2,8 @@ import axios from 'axios';
 import { createAuthClient } from "better-auth/react";
 
 // Tentukan URL backend berdasarkan environment
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+// Di browser, gunakan window.location.origin agar otomatis melewati proxy Vite (/api) ke port backend (5001)
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : "http://localhost:5001");
 
 // Setup Better Auth Client untuk frontend SiPena
 export const authClient = createAuthClient({
