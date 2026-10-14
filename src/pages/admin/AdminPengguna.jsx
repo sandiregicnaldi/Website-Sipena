@@ -1,59 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
-import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users, ArrowUpCircle, ArrowDownCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-const INITIAL_USERS = {
-  pengunjung: [
-    { 
-      id: 1, 
-      nama: 'Sari Indah', 
-      email: 'sari@email.com', 
-      tempatLahir: 'Jakarta', 
-      tanggalLahir: '15/04/1992', 
-      pekerjaan: 'Pegawai Swasta', 
-      instansi: 'PT Mencari Cinta Sejati', 
-      alamat: 'Jl. Melati No 12, RT 01/RW 02', 
-      provinsi: 'DKI Jakarta', 
-      kota: 'Jakarta Selatan', 
-      kecamatan: 'Tebet', 
-      kelurahan: 'Tebet Barat', 
-      bergabung: '2026-07-14', 
-      statusAkun: 'Aktif', 
-      isVerifiedAuthor: false,
-      pengajuanPenulis: true
-    },
-    { 
-      id: 2, 
-      nama: 'Dr. Ahmad Fauzi', 
-      email: 'ahmad@email.com', 
-      tempatLahir: 'Bandung', 
-      tanggalLahir: '10/08/1985', 
-      pekerjaan: 'Dosen', 
-      instansi: 'Universitas Indonesia', 
-      alamat: 'Perumahan Dosen UI No 5', 
-      provinsi: 'Jawa Barat', 
-      kota: 'Depok', 
-      kecamatan: 'Beji', 
-      kelurahan: 'Pondok Cina', 
-      bergabung: '2024-03-10', 
-      statusAkun: 'Aktif', 
-      isVerifiedAuthor: true,
-      bio: 'Pengajar, peneliti, dan penulis aktif yang fokus pada sejarah Nusantara.',
-      website: 'https://ahmadfauzi.id',
-      karyaEksternal: [
-        { id: 1, judul: 'Sejarah Maritim Nusantara', penerbit: 'Pustaka Jaya', tahun: '2021', url: 'https://tokopedia.com' }
-      ]
-    },
-  ],
-  pegawai: [
-    { id: 1, nama: 'Hendra Wijaya', email: 'hendra@perpusnas.id', instansi: 'Perpusnas', bergabung: '2023-09-01', statusAkun: 'Aktif' },
-    { id: 2, nama: 'Rian Pratama', email: 'rian@perpusnas.id', instansi: 'Perpusnas Press', bergabung: '2026-10-10', statusAkun: 'Menunggu' },
-  ],
-};
+import { api } from '../../services/api';
 
 const STATUS_BADGE = { 'Aktif': 'badge-green', 'Menunggu': 'badge-amber', 'Nonaktif': 'badge-red' };
+
+const getRoleBadge = (u) => {
+  if (u.role === 'admin') {
+    return <span className="badge badge-blue">Super Admin</span>;
+  }
+  if (u.isReviewer || u.role === 'reviewer') {
+    return <span className="badge badge-purple">Reviewer / QC</span>;
+  }
+  return <span className="badge badge-gray">Personil Redaksi</span>;
+};
+
 
 const Toast = ({ msg, type = 'success', onClose }) => (
   <div style={{
@@ -223,7 +186,7 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
   );
 };
 
-const UserTable = ({ type, title, onUsersChange, users }) => {
+const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   const { isSuperAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState(null);
@@ -238,97 +201,93 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
     u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSetujuiPegawai = (u) => {
+  const handleSetujuiPegawai = async (u) => {
     if (window.confirm(`Setujui pendaftaran akun pegawai "${u.nama}" (${u.email})?`)) {
-      const updated = {
-        ...users,
-        pegawai: users.pegawai.map(x =>
-          (x.id === u.id && x.email === u.email)
-            ? { ...x, statusAkun: 'Aktif' }
-            : x
-        )
-      };
-      onUsersChange(updated);
-      showToast(`Akun pegawai ${u.nama} berhasil disetujui & diaktifkan.`);
+      try {
+        await api.admin.updateUser(u.id, { status: 'active' });
+        if (reloadUsers) await reloadUsers();
+        showToast(`Akun pegawai ${u.nama} berhasil disetujui & diaktifkan.`);
+      } catch (err) {
+        showToast(`Gagal menyetujui akun: ${err.message}`, 'error');
+      }
     }
   };
 
-  const handleSetujuiPenulis = (u) => {
+  const handleSetujuiPenulis = async (u) => {
     if (window.confirm(`Verifikasi ${u.nama} sebagai Penulis resmi?\n\nMereka akan dapat menampilkan karya eksternal di halaman beranda.`)) {
-      const updated = {
-        ...users,
-        pengunjung: users.pengunjung.map(x => 
-          x.id === u.id ? { ...x, statusAkun: 'Aktif', isVerifiedAuthor: true } : x
-        )
-      };
-      onUsersChange(updated);
-      showToast(`${u.nama} berhasil diverifikasi sebagai Penulis.`);
+      try {
+        await api.admin.updateUser(u.id, { role: 'penulis', status: 'active' });
+        if (reloadUsers) await reloadUsers();
+        showToast(`${u.nama} berhasil diverifikasi sebagai Penulis.`);
+      } catch (err) {
+        showToast(`Gagal verifikasi penulis: ${err.message}`, 'error');
+      }
     }
   };
 
-  const handleUpgradePenulis = (u) => {
+  const handleUpgradePenulis = async (u) => {
     if (window.confirm(`Upgrade ${u.nama} menjadi Penulis?\n\nVerifikasi ini diberikan karena naskah yang diajukan sudah berhasil diterbitkan.`)) {
-      const updated = {
-        ...users,
-        pengunjung: users.pengunjung.map(x => 
-          x.id === u.id ? { ...x, isVerifiedAuthor: true } : x
-        )
-      };
-      onUsersChange(updated);
-      showToast(`${u.nama} berhasil di-upgrade menjadi Penulis (Terverifikasi).`);
+      try {
+        await api.admin.updateUser(u.id, { role: 'penulis', status: 'active' });
+        if (reloadUsers) await reloadUsers();
+        showToast(`${u.nama} berhasil di-upgrade menjadi Penulis (Terverifikasi).`);
+      } catch (err) {
+        showToast(`Gagal upgrade penulis: ${err.message}`, 'error');
+      }
     }
   };
 
-  const handleDowngradePengunjung = (u) => {
+  const handleDowngradePengunjung = async (u) => {
     if (window.confirm(`Cabut status Penulis dari ${u.nama}?\n\nAkun akan dikembalikan ke status Pengunjung biasa.`)) {
-      const updated = {
-        ...users,
-        pengunjung: users.pengunjung.map(x => 
-          x.id === u.id ? { ...x, isVerifiedAuthor: false } : x
-        )
-      };
-      onUsersChange(updated);
-      showToast(`Status penulis ${u.nama} berhasil dicabut.`);
+      try {
+        await api.admin.updateUser(u.id, { role: 'pengunjung' });
+        if (reloadUsers) await reloadUsers();
+        showToast(`Status penulis ${u.nama} berhasil dicabut.`);
+      } catch (err) {
+        showToast(`Gagal downgrade: ${err.message}`, 'error');
+      }
     }
   };
 
-  const handleNonaktifkan = (u) => {
+  const handleNonaktifkan = async (u) => {
     const isNonaktif = u.statusAkun === 'Nonaktif';
     const label = isNonaktif ? 'Aktifkan' : 'Nonaktifkan';
     if (window.confirm(`${label} akun ${u.nama}?`)) {
-      const updated = {
-        ...users,
-        [type]: users[type].map(x =>
-          (x.id === u.id && x.email === u.email)
-            ? { ...x, statusAkun: isNonaktif ? 'Aktif' : 'Nonaktif' }
-            : x
-        )
-      };
-      onUsersChange(updated);
-      showToast(`Akun ${u.nama} berhasil ${isNonaktif ? 'diaktifkan' : 'dinonaktifkan'}.`);
+      try {
+        const nextStatus = isNonaktif ? 'active' : 'disabled';
+        await api.admin.updateUser(u.id, { status: nextStatus });
+        if (reloadUsers) await reloadUsers();
+        showToast(`Akun ${u.nama} berhasil ${isNonaktif ? 'diaktifkan' : 'dinonaktifkan'}.`);
+      } catch (err) {
+        showToast(`Gagal mengubah status: ${err.message}`, 'error');
+      }
     }
   };
 
-  const handleSaveAuthorProfile = (data) => {
-    const updated = {
-      ...users,
-      pengunjung: users.pengunjung.map(x => 
-        x.id === editAuthorModal.id ? { ...x, bio: data.bio, website: data.website, karyaEksternal: data.karyaEksternal } : x
-      )
-    };
-    onUsersChange(updated);
-    setEditAuthorModal(null);
-    showToast(`Profil publik ${editAuthorModal.nama} berhasil diperbarui.`);
+  const handleSaveAuthorProfile = async (data) => {
+    try {
+      await api.admin.updateUser(editAuthorModal.id, {
+        bio: data.bio,
+        website: data.website,
+        karyaEksternal: data.karyaEksternal
+      });
+      if (reloadUsers) await reloadUsers();
+      setEditAuthorModal(null);
+      showToast(`Profil publik ${editAuthorModal.nama} berhasil diperbarui.`);
+    } catch (err) {
+      showToast(`Gagal memperbarui profil: ${err.message}`, 'error');
+    }
   };
 
-  const handleHapus = (u) => {
+  const handleHapus = async (u) => {
     if (window.confirm(`Hapus akun "${u.nama}" (${u.email}) secara permanen?\n\nTindakan ini tidak dapat dibatalkan.`)) {
-      const updated = {
-        ...users,
-        [type]: users[type].filter(x => !(x.id === u.id && x.email === u.email))
-      };
-      onUsersChange(updated);
-      showToast(`Akun ${u.nama} berhasil dihapus.`);
+      try {
+        await api.admin.deleteUser(u.id);
+        if (reloadUsers) await reloadUsers();
+        showToast(`Akun ${u.nama} berhasil dihapus.`);
+      } catch (err) {
+        showToast(`Gagal menghapus akun: ${err.message}`, 'error');
+      }
     }
   };
 
@@ -493,7 +452,7 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
                         <td style={{ fontWeight: 600 }}>{u.nama}</td>
                         <td style={{ fontSize: '0.82rem' }}>{u.email}</td>
                         <td>{u.instansi}</td>
-                        <td><span className="badge badge-gray">Pegawai</span></td>
+                        <td>{getRoleBadge(u)}</td>
                         <td><span className={`badge ${STATUS_BADGE[u.statusAkun] || 'badge-gray'}`}>{u.statusAkun}</span></td>
                         <td>
                           {isSuperAdmin ? (
@@ -546,37 +505,101 @@ const UserTable = ({ type, title, onUsersChange, users }) => {
 };
 
 const AdminPengguna = () => {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState({ pengunjung: [], pegawai: [] });
+  const [loading, setLoading] = useState(true);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const rawUsers = await api.admin.getUsers();
+      const mapped = { pengunjung: [], pegawai: [] };
+
+      (rawUsers || []).forEach(u => {
+        const isPengunjungOrPenulis = u.role === 'pengunjung' || u.role === 'penulis' || u.role === 'calon_penulis';
+        const formattedUser = {
+          id: u.id,
+          nama: u.name,
+          email: u.email,
+          role: u.role,
+          tempatLahir: u.tempatLahir || '-',
+          tanggalLahir: u.tanggalLahir || '-',
+          pekerjaan: u.pekerjaan || '-',
+          instansi: u.instansi || (u.role === 'admin' ? 'Perpusnas (Super Admin)' : (u.role === 'personil' ? 'Perpusnas Press' : '-')),
+          alamat: u.alamatLengkap || '-',
+          provinsi: u.provinsi || '-',
+          kota: u.kota || '-',
+          kecamatan: u.kecamatan || '-',
+          kelurahan: u.kelurahan || '-',
+          bergabung: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '-',
+          statusAkun: u.status === 'active' ? 'Aktif' : (u.status === 'disabled' ? 'Nonaktif' : 'Menunggu'),
+          isVerifiedAuthor: u.role === 'penulis',
+          pengajuanPenulis: u.role === 'calon_penulis',
+          isReviewer: u.isReviewer,
+          bio: u.bio || '',
+          website: u.website || '',
+          karyaEksternal: Array.isArray(u.karyaEksternal) ? u.karyaEksternal : []
+        };
+
+        if (isPengunjungOrPenulis) {
+          mapped.pengunjung.push(formattedUser);
+        } else {
+          mapped.pegawai.push(formattedUser);
+        }
+      });
+
+      setUsers(mapped);
+    } catch (err) {
+      console.error('Failed to load users in AdminPengguna:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const tabs = [
-    { path: '/admin/pengguna/pengunjung',    label: 'Pengunjung',    type: 'pengunjung' },
-    { path: '/admin/pengguna/pegawai',       label: 'Pegawai',       type: 'pegawai' },
+    { path: '/admin/pengguna/pengunjung',    label: 'Pengunjung & Penulis',    type: 'pengunjung' },
+    { path: '/admin/pengguna/pegawai',       label: 'Pegawai & Redaksi',       type: 'pegawai' },
   ];
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '2px solid var(--border-color)' }}>
-        {tabs.map(t => (
-          <NavLink
-            key={t.path} to={t.path}
-            style={({ isActive }) => ({
-              padding: '0.5rem 1.1rem', fontSize: '0.875rem', fontWeight: 600,
-              borderBottom: isActive ? '2px solid var(--accent-color)' : '2px solid transparent',
-              color: isActive ? 'var(--accent-color)' : 'var(--text-secondary)',
-              marginBottom: '-2px', transition: 'all 0.15s', textDecoration: 'none',
-            })}
-          >
-            {t.label}
-            <span style={{ marginLeft: '0.4rem', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontSize: '0.72rem', padding: '0 0.4rem', borderRadius: '50px' }}>
-              {users[t.type]?.length || 0}
-            </span>
-          </NavLink>
-        ))}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '2px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {tabs.map(t => (
+            <NavLink
+              key={t.path} to={t.path}
+              style={({ isActive }) => ({
+                padding: '0.5rem 1.1rem', fontSize: '0.875rem', fontWeight: 600,
+                borderBottom: isActive ? '2px solid var(--accent-color)' : '2px solid transparent',
+                color: isActive ? 'var(--accent-color)' : 'var(--text-secondary)',
+                marginBottom: '-2px', transition: 'all 0.15s', textDecoration: 'none',
+              })}
+            >
+              {t.label}
+              <span style={{ marginLeft: '0.4rem', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontSize: '0.72rem', padding: '0 0.4rem', borderRadius: '50px' }}>
+                {users[t.type]?.length || 0}
+              </span>
+            </NavLink>
+          ))}
+        </div>
+        <button
+          onClick={fetchUsers}
+          disabled={loading}
+          className="btn btn-outline"
+          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          title="Segarkan data pengguna dari database"
+        >
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          {loading ? 'Memuat...' : 'Segarkan Data'}
+        </button>
       </div>
       <Routes>
-        <Route path="pengunjung"    element={<UserTable type="pengunjung"    title="Pengunjung & Penulis"    users={users} onUsersChange={setUsers} />} />
-        <Route path="pegawai"       element={<UserTable type="pegawai"       title="Pegawai"       users={users} onUsersChange={setUsers} />} />
-        <Route index                element={<UserTable type="pengunjung"    title="Pengunjung & Penulis"       users={users} onUsersChange={setUsers} />} />
+        <Route path="pengunjung"    element={<UserTable type="pengunjung"    title="Pengunjung & Penulis"    users={users} reloadUsers={fetchUsers} loading={loading} />} />
+        <Route path="pegawai"       element={<UserTable type="pegawai"       title="Pegawai & Redaksi"       users={users} reloadUsers={fetchUsers} loading={loading} />} />
+        <Route index                element={<UserTable type="pengunjung"    title="Pengunjung & Penulis"    users={users} reloadUsers={fetchUsers} loading={loading} />} />
       </Routes>
     </div>
   );

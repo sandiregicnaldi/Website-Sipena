@@ -19,6 +19,18 @@ export class AdminController {
                     isReviewer: users.isReviewer,
                     skills: users.skills,
                     createdAt: users.createdAt,
+                    tempatLahir: users.tempatLahir,
+                    tanggalLahir: users.tanggalLahir,
+                    pekerjaan: users.pekerjaan,
+                    instansi: users.instansi,
+                    alamatLengkap: users.alamatLengkap,
+                    provinsi: users.provinsi,
+                    kota: users.kota,
+                    kecamatan: users.kecamatan,
+                    kelurahan: users.kelurahan,
+                    bio: users.bio,
+                    website: users.website,
+                    karyaEksternal: users.karyaEksternal,
                 })
                 .from(users)
                 .orderBy(users.createdAt);
@@ -35,10 +47,20 @@ export class AdminController {
             const { id } = req.params;
 
             const schema = z.object({
-                role: z.enum(["admin", "personil", "pegawai", "reviewer"]).optional(),
+                role: z.enum(["admin", "personil", "pegawai", "reviewer", "penulis", "pengunjung", "calon_penulis"]).optional(),
                 status: z.enum(["pending", "active", "disabled"]).optional(),
                 isReviewer: z.boolean().optional(),
                 skills: z.array(z.string()).optional(),
+                bio: z.string().optional(),
+                website: z.string().optional(),
+                karyaEksternal: z.any().optional(),
+                instansi: z.string().optional(),
+                pekerjaan: z.string().optional(),
+                alamatLengkap: z.string().optional(),
+                provinsi: z.string().optional(),
+                kota: z.string().optional(),
+                kecamatan: z.string().optional(),
+                kelurahan: z.string().optional(),
             });
 
             const data = schema.parse(req.body);
@@ -49,6 +71,16 @@ export class AdminController {
             if (data.status !== undefined) updateObj.status = data.status;
             if (data.isReviewer !== undefined) updateObj.isReviewer = data.isReviewer;
             if (data.skills !== undefined) updateObj.skills = data.skills;
+            if (data.bio !== undefined) updateObj.bio = data.bio;
+            if (data.website !== undefined) updateObj.website = data.website;
+            if (data.karyaEksternal !== undefined) updateObj.karyaEksternal = data.karyaEksternal;
+            if (data.instansi !== undefined) updateObj.instansi = data.instansi;
+            if (data.pekerjaan !== undefined) updateObj.pekerjaan = data.pekerjaan;
+            if (data.alamatLengkap !== undefined) updateObj.alamatLengkap = data.alamatLengkap;
+            if (data.provinsi !== undefined) updateObj.provinsi = data.provinsi;
+            if (data.kota !== undefined) updateObj.kota = data.kota;
+            if (data.kecamatan !== undefined) updateObj.kecamatan = data.kecamatan;
+            if (data.kelurahan !== undefined) updateObj.kelurahan = data.kelurahan;
 
             if (Object.keys(updateObj).length === 0) {
                 return res.status(400).json({ error: "No fields to update" });
@@ -68,6 +100,18 @@ export class AdminController {
                     status: users.status,
                     isReviewer: users.isReviewer,
                     skills: users.skills,
+                    tempatLahir: users.tempatLahir,
+                    tanggalLahir: users.tanggalLahir,
+                    pekerjaan: users.pekerjaan,
+                    instansi: users.instansi,
+                    alamatLengkap: users.alamatLengkap,
+                    provinsi: users.provinsi,
+                    kota: users.kota,
+                    kecamatan: users.kecamatan,
+                    kelurahan: users.kelurahan,
+                    bio: users.bio,
+                    website: users.website,
+                    karyaEksternal: users.karyaEksternal,
                 });
 
             if (!updated) {
