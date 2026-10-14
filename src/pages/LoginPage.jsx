@@ -310,9 +310,11 @@ const LoginPage = () => {
               <div className="info-note" style={{marginTop:'0.75rem'}}>
                 <span>🔑</span>
                 <div style={{fontSize:'0.78rem', display:'flex', flexDirection:'column', gap:'0.25rem'}}>
-                  <p>Admin: <strong>admin@sipena.id</strong> / <strong>admin123</strong></p>
-                  <p>Pengunjung: <strong>pengunjung@sipena.id</strong> / <strong>pengunjung123</strong></p>
+                  <p>Super Admin: <strong>admin@perpusnas.go.id</strong> / <strong>adminpassword123</strong></p>
+                  <p>Reviewer (QC): <strong>personil@dev.local</strong> / <strong>developer123</strong></p>
+                  <p>Personil Redaksi: <strong>editor@penerbitan.com</strong> / <strong>password123</strong></p>
                   <p>Penulis: <strong>penulis@sipena.id</strong> / <strong>penulis123</strong></p>
+                  <p>Pengunjung: <strong>pengunjung@sipena.id</strong> / <strong>pengunjung123</strong></p>
                 </div>
               </div>
             </form>

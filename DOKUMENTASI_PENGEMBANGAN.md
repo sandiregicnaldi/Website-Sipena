@@ -23,6 +23,7 @@
 16. [Sinkronisasi Fitur "Hak Admin Reviewer" & Level Akun ke Dasbor Produksi (dasbor-penerbitan2)](#16-sinkronisasi-fitur-hak-admin-reviewer--level-akun-ke-dasbor-produksi-dasbor-penerbitan2)
 17. [Investigasi & Solusi Tuntas Tombol QC ("Setujui" & "Tolak / Revisi") pada Akun Reviewer di localhost:5173](#17-investigasi--solusi-tuntas-tombol-qc-setujui--tolak--revisi-pada-akun-reviewer-di-localhost5173)
 18. [Riwayat Commit & Push Git ke Dua Repositori Terpisah](#18-riwayat-commit--push-git-ke-dua-repositori-terpisah)
+19. [Daftar Akun Dummy Pengujian Seluruh Peran (Role Credentials)](#19-daftar-akun-dummy-pengujian-seluruh-peran-role-credentials)
 
 ---
 
@@ -601,3 +602,23 @@ Seluruh kode teruji bersih (*0 build error*) dan telah di-push ke masing-masing 
    - **Panel QC** muncul di sebelah kanan.
    - Tombol hijau **Setujui** dan tombol merah **Tolak / Revisi** tampil jelas dan dapat diklik.
    - Saat diklik Setujui / Tolak, tahapan berhasil diproses tanpa error otorisasi 403.
+
+---
+
+## 19. Daftar Akun Dummy Pengujian Seluruh Peran (Role Credentials)
+
+Tabel berikut memuat akun dummy yang telah teruji valid (*200 OK*) pada database `sipena_dev` dan server port `5001`:
+
+| Peran (Role) | Email | Kata Sandi | Status & Hak Akses | Ruang Lingkup Pengujian Alur Kerja |
+| :--- | :--- | :--- | :--- | :--- |
+| **Super Administrator** | `admin@perpusnas.go.id` | `adminpassword123` | `role: 'admin'`<br/>`isReviewer: true` | • Akses penuh seluruh portal (Publik, Admin SiPena, Dasbor Penerbitan).<br/>• Kelola pengguna (`/admin/users`), ganti status akun, dan berikan hak reviewer.<br/>• Kelola kategori, pengaturan global, dan buat proyek baru. |
+| **Reviewer / QC (Penerbitan)** | `personil@dev.local` | `developer123` | `role: 'personil'`<br/>`is_reviewer: true` | • Akses Dasbor Manajemen Penerbitan (`/admin/manajemen`).<br/>• **Akses Panel QC**: Muncul tombol hijau **Setujui** dan tombol merah **Tolak / Revisi** pada tahapan berstatus `Review`.<br/>• Terproteksi dari rute sensitif super admin (`/admin/users`). |
+| **Personil Redaksi (Staf/Editor)** | `editor@penerbitan.com` | `password123` | `role: 'personil'`<br/>`is_reviewer: false` | • Akses Dasbor Manajemen Penerbitan (`/admin/manajemen`).<br/>• Menjalankan tugas pengerjaan naskah (upload dokumen, ajukan review).<br/>• **Tidak memiliki** tombol persetujuan QC (hanya memantau status naskah). |
+| **Penulis Naskah (Author)** | `penulis@sipena.id` | `penulis123` | `role: 'penulis'`<br/>`status: 'active'` | • Akses Portal Publik & Ruang Penulis (`/author-dashboard`).<br/>• Pengajuan naskah online baru ke Perpusnas Press.<br/>• Pantau status seleksi naskah secara mandiri. |
+| **Pengunjung Umum (Visitor)** | `pengunjung@sipena.id` | `pengunjung123` | `role: 'pengunjung'`<br/>`status: 'active'` | • Akses katalog buku digital terbuka di portal publik.<br/>• Unduh naskah / e-book dan berikan rating ulasan buku. |
+
+> [!TIP]
+> Akun alternatif untuk pengujian developer cepat di lingkungan lokal:
+> - Super Admin: `admin@dev.local` / `developer123` atau `admin@penerbitan.com` / `password123`
+> - Staf Penerbitan: `user@penerbitan.com` / `password123`
+
