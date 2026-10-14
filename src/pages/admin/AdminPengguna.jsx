@@ -3,6 +3,7 @@ import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
 import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users, ArrowUpCircle, ArrowDownCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useDialog } from '../../context/DialogContext';
 import { api } from '../../services/api';
 
 const STATUS_BADGE = { 'Aktif': 'badge-green', 'Menunggu': 'badge-amber', 'Nonaktif': 'badge-red' };
@@ -188,12 +189,16 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
 
 const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   const { isSuperAdmin } = useAuth();
+  const { showConfirm, showToast: triggerToast } = useDialog();
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
   const [editAuthorModal, setEditAuthorModal] = useState(null);
 
-  const showToast = (msg, t = 'success') => { setToast({ msg, type: t }); setTimeout(() => setToast(null), 3500); };
+  const showToast = (msg, t = 'success') => { 
+    setToast({ msg, type: t }); 
+    setTimeout(() => setToast(null), 3500); 
+  };
 
   const data = users[type] || [];
   const filtered = data.filter(u =>
@@ -202,7 +207,13 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   );
 
   const handleSetujuiPegawai = async (u) => {
-    if (window.confirm(`Setujui pendaftaran akun pegawai "${u.nama}" (${u.email})?`)) {
+    const ok = await showConfirm({
+      title: 'Setujui Pendaftaran Pegawai',
+      message: `Setujui pendaftaran akun pegawai "${u.nama}" (${u.email})?\nAkun ini akan langsung berstatus Aktif.`,
+      type: 'info',
+      confirmText: 'Setujui Pegawai'
+    });
+    if (ok) {
       try {
         await api.admin.updateUser(u.id, { status: 'active' });
         if (reloadUsers) await reloadUsers();
@@ -214,7 +225,13 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   };
 
   const handleSetujuiPenulis = async (u) => {
-    if (window.confirm(`Verifikasi ${u.nama} sebagai Penulis resmi?\n\nMereka akan dapat menampilkan karya eksternal di halaman beranda.`)) {
+    const ok = await showConfirm({
+      title: 'Verifikasi Penulis Resmi',
+      message: `Verifikasi ${u.nama} sebagai Penulis resmi Perpusnas Press?\nMereka akan dapat menampilkan karya di profil publik dan portal penerbitan.`,
+      type: 'info',
+      confirmText: 'Verifikasi Penulis'
+    });
+    if (ok) {
       try {
         await api.admin.updateUser(u.id, { role: 'penulis', status: 'active' });
         if (reloadUsers) await reloadUsers();
@@ -226,7 +243,13 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   };
 
   const handleUpgradePenulis = async (u) => {
-    if (window.confirm(`Upgrade ${u.nama} menjadi Penulis?\n\nVerifikasi ini diberikan karena naskah yang diajukan sudah berhasil diterbitkan.`)) {
+    const ok = await showConfirm({
+      title: 'Upgrade Status Penulis',
+      message: `Upgrade status ${u.nama} menjadi Penulis Terverifikasi?\nVerifikasi ini diberikan atas kelayakan naskah yang telah dipublikasikan.`,
+      type: 'info',
+      confirmText: 'Upgrade ke Penulis'
+    });
+    if (ok) {
       try {
         await api.admin.updateUser(u.id, { role: 'penulis', status: 'active' });
         if (reloadUsers) await reloadUsers();
@@ -238,7 +261,13 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   };
 
   const handleDowngradePengunjung = async (u) => {
-    if (window.confirm(`Cabut status Penulis dari ${u.nama}?\n\nAkun akan dikembalikan ke status Pengunjung biasa.`)) {
+    const ok = await showConfirm({
+      title: 'Cabut Status Penulis',
+      message: `Cabut status Penulis dari ${u.nama}?\nAkun akan dikembalikan ke status Pengunjung biasa.`,
+      type: 'warning',
+      confirmText: 'Cabut Status'
+    });
+    if (ok) {
       try {
         await api.admin.updateUser(u.id, { role: 'pengunjung' });
         if (reloadUsers) await reloadUsers();
@@ -252,7 +281,13 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   const handleNonaktifkan = async (u) => {
     const isNonaktif = u.statusAkun === 'Nonaktif';
     const label = isNonaktif ? 'Aktifkan' : 'Nonaktifkan';
-    if (window.confirm(`${label} akun ${u.nama}?`)) {
+    const ok = await showConfirm({
+      title: `${label} Akun Pengguna`,
+      message: `Apakah Anda yakin ingin me-${label.toLowerCase()} akun "${u.nama}"?`,
+      type: isNonaktif ? 'info' : 'warning',
+      confirmText: `Ya, ${label}`
+    });
+    if (ok) {
       try {
         const nextStatus = isNonaktif ? 'active' : 'disabled';
         await api.admin.updateUser(u.id, { status: nextStatus });
@@ -280,7 +315,13 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   };
 
   const handleHapus = async (u) => {
-    if (window.confirm(`Hapus akun "${u.nama}" (${u.email}) secara permanen?\n\nTindakan ini tidak dapat dibatalkan.`)) {
+    const ok = await showConfirm({
+      title: 'Hapus Akun Pengguna',
+      message: `Hapus akun "${u.nama}" (${u.email}) secara permanen?\n\nTindakan ini tidak dapat dibatalkan.`,
+      type: 'danger',
+      confirmText: 'Hapus Permanen'
+    });
+    if (ok) {
       try {
         await api.admin.deleteUser(u.id);
         if (reloadUsers) await reloadUsers();

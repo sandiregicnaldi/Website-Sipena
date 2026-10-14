@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { CheckCircle, Image, Layout, Edit, Trash2, Plus, Save, Compass, Target, BarChart2, History, Users, MapPin, HelpCircle, BookMarked, FileText, Upload, ClipboardCheck, MessageSquare, BookOpen, Package, Award, Globe, DollarSign, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePanduan } from '../../context/PanduanContext';
+import { useDialog } from '../../context/DialogContext';
 import './AdminLayout.css';
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ const Toast = ({ msg, onClose }) => (
 const EMPTY_BANNER = { kategori: '', judul: '', subjudul: '', deskripsi: '', btn1Label: 'Baca Sekarang', btn1Url: '', btn2Label: 'Unduh PDF', btn2Url: '' };
 
 const BannerEditor = () => {
+  const { showConfirm } = useDialog();
   const [banners, setBanners] = useState([
     { id: 1, kategori: 'BUDAYA · ENSIKLOPEDIA', judul: 'SERAT CENTHINI', subjudul: 'Ensiklopedia Budaya Jawa', deskripsi: 'Mahakarya sastra Jawa yang merangkum pengetahuan, kepercayaan, dan adat istiadat masyarakat Jawa secara lengkap.', btn1Label: 'Baca Sekarang', btn1Url: '#', btn2Label: 'Unduh PDF', btn2Url: '#', aktif: true },
     { id: 2, kategori: 'TEKNOLOGI', judul: 'Literasi Digital 2026', subjudul: 'Membangun Masyarakat Cerdas Informasi', deskripsi: 'Panduan dan wawasan terbaru seputar dunia literasi digital di era transformasi kecerdasan buatan.', btn1Label: 'Selengkapnya', btn1Url: '#', btn2Label: '', btn2Url: '', aktif: true },
@@ -48,8 +50,15 @@ const BannerEditor = () => {
     }
     setModal(null);
   };
-  const handleHapus = (id) => {
-    if(window.confirm('Hapus banner ini?')) {
+  const handleHapus = async (id) => {
+    const b = banners.find(x => x.id === id);
+    const ok = await showConfirm({
+      title: 'Hapus Banner',
+      message: `Hapus banner "${b?.judul || 'ini'}" dari tampilan beranda?`,
+      type: 'danger',
+      confirmText: 'Ya, Hapus'
+    });
+    if (ok) {
       setBanners(prev => prev.filter(b => b.id !== id));
       showToast('Banner berhasil dihapus.');
     }
@@ -402,6 +411,7 @@ const INITIAL_FAQS = [
 ];
 
 const FAQEditor = () => {
+  const { showConfirm } = useDialog();
   const [faqs, setFaqs] = useState(INITIAL_FAQS);
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
@@ -424,9 +434,16 @@ const FAQEditor = () => {
     setModal(null);
   };
 
-  const handleHapus = (id) => {
+  const handleHapus = async (id) => {
     const faq = faqs.find(f => f.id === id);
-    if (window.confirm(`Hapus FAQ: "${faq.pertanyaan}"?`)) {
+    if (!faq) return;
+    const ok = await showConfirm({
+      title: 'Hapus Pertanyaan FAQ',
+      message: `Hapus pertanyaan "${faq.pertanyaan}"?`,
+      type: 'danger',
+      confirmText: 'Ya, Hapus FAQ'
+    });
+    if (ok) {
       setFaqs(prev => prev.filter(f => f.id !== id));
       showToast('FAQ berhasil dihapus.');
     }

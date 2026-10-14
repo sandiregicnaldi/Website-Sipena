@@ -3,12 +3,14 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Clock, ArrowLeft, Users, Share2, CheckCircle, Download, KeyRound, Lock, ExternalLink, Ticket, ClipboardCheck, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEvent } from '../context/EventContext';
+import { useDialog } from '../context/DialogContext';
 import jsPDF from 'jspdf';
 import './EventDetail.css';
 
 const EventDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const { showAlert, showToast } = useDialog();
   const navigate = useNavigate();
   const {
     events,
@@ -52,8 +54,9 @@ const EventDetail = () => {
     const result = daftarKegiatan(eventId, user);
     if (result.success) {
       setJustRegistered(true);
+      showToast({ message: 'Pendaftaran kegiatan berhasil! Silakan simpan jadwal acara.', type: 'success' });
     } else {
-      alert(result.msg);
+      showAlert({ title: 'Pemberitahuan Pendaftaran', message: result.msg, type: 'warning' });
     }
   };
 
@@ -310,7 +313,10 @@ const EventDetail = () => {
 
                 <button className="btn btn-outline w-100 mt-2"
                   style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '0.75rem' }}
-                  onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Tautan berhasil disalin!'); }}>
+                  onClick={() => { 
+                    navigator.clipboard.writeText(window.location.href); 
+                    showToast({ message: 'Tautan kegiatan berhasil disalin ke clipboard!', type: 'info' }); 
+                  }}>
                   <Share2 size={16} /> Bagikan
                 </button>
               </div>

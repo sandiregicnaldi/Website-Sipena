@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useApp } from '../../../context/AppContext'
+import { useDialog } from '../../../context/DialogContext'
 import api from '../../../services/api'
 
 // Helper nada ping untuk pesan/catatan baru
@@ -43,6 +44,7 @@ function formatRelativeTime(iso) {
 
 export default function Chat() {
     const { currentUser, isAdmin, projects, addStageNote } = useApp()
+    const { showAlert, showConfirm, showToast } = useDialog()
     const [searchParams, setSearchParams] = useSearchParams()
     const navigate = useNavigate()
     
@@ -377,7 +379,7 @@ export default function Chat() {
             setLastSeenVersion(v => v + 1)
         } catch (err) {
             console.error('Failed to send stage note:', err)
-            alert('Gagal mengirim catatan tahapan: ' + (err.message || 'Error'))
+            showAlert({ title: 'Gagal Mengirim Catatan', message: 'Gagal mengirim catatan tahapan: ' + (err.message || 'Error'), type: 'error' })
         } finally {
             setSendingStageNote(false)
         }
@@ -417,7 +419,7 @@ export default function Chat() {
             fetchConversations()
         } catch (err) {
             console.error('Failed to send message:', err)
-            alert('Gagal mengirim pesan atau lampiran.')
+            showAlert({ title: 'Gagal Mengirim Pesan', message: 'Gagal mengirim pesan atau lampiran. Silakan coba kembali.', type: 'error' })
         } finally {
             setSending(false)
         }
@@ -499,7 +501,7 @@ export default function Chat() {
             await fetchConversations()
         } catch (err) {
             console.error('Failed to delete conversation:', err)
-            alert(err.message || 'Gagal menghapus obrolan')
+            showAlert({ title: 'Gagal Menghapus Obrolan', message: err.message || 'Terjadi kesalahan saat menghapus percakapan.', type: 'error' })
         } finally {
             setDeleting(false)
         }
@@ -1096,9 +1098,16 @@ export default function Chat() {
                                                 {(isMe || isAdmin) && (
                                                     <button
                                                         onClick={async () => {
-                                                            if (window.confirm('Hapus pesan ini?')) {
+                                                            const ok = await showConfirm({
+                                                                title: 'Hapus Pesan',
+                                                                message: 'Hapus pesan ini dari ruang obrolan?',
+                                                                type: 'danger',
+                                                                confirmText: 'Ya, Hapus'
+                                                            })
+                                                            if (ok) {
                                                                 await api.chat.deleteMessage(msg.id)
                                                                 setMessages(prev => prev.filter(m => m.id !== msg.id))
+                                                                showToast({ message: 'Pesan telah dihapus.', type: 'info' })
                                                             }
                                                         }}
                                                         className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 rounded transition-opacity"

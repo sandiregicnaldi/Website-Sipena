@@ -21,6 +21,7 @@ import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import { TentangProvider } from './context/TentangContext';
 import { PanduanProvider } from './context/PanduanContext';
+import { DialogProvider } from './context/DialogContext';
 
 // Wrapper: public pages use Header + Footer
 const PublicLayout = () => (
@@ -37,33 +38,35 @@ function App() {
       <EventProvider>
         <TentangProvider>
           <PanduanProvider>
-      <Router>
-        <ScrollToTop />
-        <Routes>
-          {/* ── Dedicated Workspace: Manajemen Penerbitan ── */}
-          <Route path="/admin/manajemen/*" element={<ManagementLayout />} />
-          <Route path="/manajemen/*" element={<Navigate to="/admin/manajemen" replace />} />
+            <DialogProvider>
+              <Router>
+                <ScrollToTop />
+                <Routes>
+                  {/* ── Dedicated Workspace: Manajemen Penerbitan ── */}
+                  <Route path="/admin/manajemen/*" element={<ManagementLayout />} />
+                  <Route path="/manajemen/*" element={<Navigate to="/admin/manajemen" replace />} />
 
-          {/* ── Admin SiPena Portal ── */}
-          <Route path="/admin/*" element={<AdminLayout />} />
+                  {/* ── Admin SiPena Portal ── */}
+                  <Route path="/admin/*" element={<AdminLayout />} />
 
-          {/* ── Public routes (Header + Footer via PublicLayout) ── */}
-          <Route element={<PublicLayout />}>
-            <Route path="/"            element={<Home />} />
-            <Route path="/login"       element={<LoginPage />} />
-            <Route path="/buku"        element={<BooksPage />} />
-            <Route path="/buku/:id"    element={<BookDetail />} />
-            <Route path="/penulis"     element={<AuthorsPage />} />
-            <Route path="/penulis/:id" element={<AuthorProfile />} />
-            <Route path="/event"       element={<EventsPage />} />
-            <Route path="/event/:id"   element={<EventDetail />} />
-            <Route path="/profil-saya" element={<AuthorDashboard />} />
-            <Route path="/tentang"            element={<TentangKami />} />
-            <Route path="/faq"                element={<FAQPage />} />
-            <Route path="/panduan-penerbitan" element={<PanduanPenerbitan />} />
-          </Route>
-        </Routes>
-      </Router>
+                  {/* ── Public routes (Header + Footer via PublicLayout) ── */}
+                  <Route element={<PublicLayout />}>
+                    <Route path="/"            element={<Home />} />
+                    <Route path="/login"       element={<LoginPage />} />
+                    <Route path="/buku"        element={<BooksPage />} />
+                    <Route path="/buku/:id"    element={<BookDetail />} />
+                    <Route path="/penulis"     element={<AuthorsPage />} />
+                    <Route path="/penulis/:id" element={<AuthorProfile />} />
+                    <Route path="/event"       element={<EventsPage />} />
+                    <Route path="/event/:id"   element={<EventDetail />} />
+                    <Route path="/profil-saya" element={<AuthorDashboard />} />
+                    <Route path="/tentang"            element={<TentangKami />} />
+                    <Route path="/faq"                element={<FAQPage />} />
+                    <Route path="/panduan-penerbitan" element={<PanduanPenerbitan />} />
+                  </Route>
+                </Routes>
+              </Router>
+            </DialogProvider>
           </PanduanProvider>
         </TentangProvider>
       </EventProvider>

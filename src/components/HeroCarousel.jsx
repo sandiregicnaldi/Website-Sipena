@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, BookOpen, Download, X, Star, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 import './HeroCarousel.css';
 
 const slides = [
@@ -65,6 +66,7 @@ const slides = [
 const AUTO_PLAY_INTERVAL = 5000;
 
 const HeroCarousel = () => {
+  const { showToast } = useDialog();
   const [currentSlide, setCurrentSlide] = useState(0);
   const timerRef = useRef(null);
 
@@ -213,7 +215,7 @@ const HeroCarousel = () => {
               disabled={downloadPopupRating === 0}
               onClick={() => {
                 setShowRatingPopup(false);
-                alert(`Terima kasih atas rating ${downloadPopupRating} bintang Anda!`);
+                showToast({ message: `Terima kasih atas rating ${downloadPopupRating} bintang Anda!`, type: 'success' });
               }}
             >
               Kirim Penilaian

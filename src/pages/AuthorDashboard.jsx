@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 import {
   User, Mail, MapPin, Calendar, Building2, Briefcase,
   Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download, PenTool
@@ -10,6 +11,7 @@ import './AuthorDashboard.css';
 
 const AuthorDashboard = () => {
   const { user, updateProfile, logout, isAuthor, isAdmin } = useAuth();
+  const { showAlert, showConfirm, showToast } = useDialog();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
@@ -95,16 +97,22 @@ const AuthorDashboard = () => {
   const handleAjukanNaskah = (e) => {
     e.preventDefault();
     if(!naskahBaru.judul || !naskahBaru.linkDrive) return;
+    const judulDiajukan = naskahBaru.judul;
     setNaskahList(prev => [...prev, {
       id: Date.now(),
-      judul: naskahBaru.judul,
+      judul: judulDiajukan,
       linkDrive: naskahBaru.linkDrive,
       tanggal: new Date().toISOString().split('T')[0],
       status: 'Menunggu',
       alasan: ''
     }]);
     setNaskahBaru({ judul: '', linkDrive: '' });
-    alert('Naskah berhasil diajukan!');
+    showAlert({
+      title: 'Naskah Berhasil Diajukan!',
+      message: `Naskah "${judulDiajukan}" berhasil dikirim ke sistem kurasi redaksi. Tim editor Perpusnas Press akan segera menelaah kelayakan naskah Anda.`,
+      type: 'success',
+      confirmText: 'Mengerti'
+    });
   };
 
   const downloadSertifikat = (kegiatan) => {
@@ -340,7 +348,10 @@ const AuthorDashboard = () => {
                     </div>
                   </div>
 
-                  <button className="btn btn-primary" onClick={() => alert('Profil berhasil diperbarui!')} style={{ marginTop: '1rem' }}>
+                  <button className="btn btn-primary" onClick={() => {
+                    handleSave();
+                    showToast({ message: 'Profil dan biodata berhasil diperbarui!', type: 'success' });
+                  }} style={{ marginTop: '1rem' }}>
                     <Save size={16} /> Simpan Perubahan
                   </button>
                 </div>
@@ -367,7 +378,23 @@ const AuthorDashboard = () => {
 
                   <button 
                     className="btn btn-primary" 
-                    onClick={() => alert('Pengajuan verifikasi berhasil dikirim! Admin akan segera memproses permintaan Anda.')}
+                    onClick={async () => {
+                      const confirmed = await showConfirm({
+                        title: 'Ajukan Verifikasi Penulis?',
+                        message: 'Data profil Anda akan diajukan ke tim admin redaksi Perpusnas Press untuk diverifikasi sebagai Penulis resmi.',
+                        type: 'info',
+                        confirmText: 'Ya, Kirim Pengajuan',
+                        cancelText: 'Batal'
+                      });
+                      if (confirmed) {
+                        showAlert({
+                          title: 'Pengajuan Berhasil Dikirim!',
+                          message: 'Pengajuan verifikasi penulis berhasil dikirim! Tim Admin Redaksi akan segera memverifikasi dan memproses permintaan Anda.',
+                          type: 'success',
+                          confirmText: 'Selesai'
+                        });
+                      }
+                    }}
                     style={{ padding: '0.75rem 1.5rem' }}
                   >
                     <CheckCircle size={18} /> Ajukan Diri Sebagai Penulis

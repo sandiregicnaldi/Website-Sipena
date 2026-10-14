@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import './AdminLayout.css';
 import { Users, FileDown, Calendar, Globe, Edit, Trash2, CheckCircle, Plus, Save } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
+import { useDialog } from '../../context/DialogContext';
 
 const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
@@ -27,6 +28,7 @@ const Toast = ({ msg, onClose }) => (
 
 const AdminKegiatan = () => {
   const { events, peserta, addEvent, updateEvent, deleteEvent, toggleKehadiran } = useEvent();
+  const { showConfirm } = useDialog();
 
   const [search, setSearch]         = useState('');
   const [modal, setModal]           = useState(null);
@@ -50,9 +52,16 @@ const AdminKegiatan = () => {
     setModal(null);
   };
 
-  const handleHapus = (id) => {
+  const handleHapus = async (id) => {
     const ev = events.find(e => e.id === id);
-    if (window.confirm(`Hapus kegiatan "${ev.judul}"?\n\nTindakan ini tidak dapat dibatalkan.`)) {
+    if (!ev) return;
+    const ok = await showConfirm({
+      title: 'Hapus Kegiatan',
+      message: `Hapus kegiatan "${ev.judul}"?\n\nTindakan ini tidak dapat dibatalkan.`,
+      type: 'danger',
+      confirmText: 'Ya, Hapus Kegiatan'
+    });
+    if (ok) {
       deleteEvent(id);
       showToast(`Kegiatan "${ev.judul}" berhasil dihapus.`);
     }

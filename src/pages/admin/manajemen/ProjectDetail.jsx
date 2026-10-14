@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp } from '../../../context/AppContext'
 import { CATEGORIES, STATUS_LABELS } from '../../../data/categories'
 import { api } from '../../../services/api'
+import { useDialog } from '../../../context/DialogContext'
 import Toast from '../../../components/Toast'
 
 export default function ProjectDetail() {
@@ -10,6 +11,7 @@ export default function ProjectDetail() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
     const { projects, updateProject, deleteProject, updateStage, addStageNote, createStage, addNotification, isAdmin, currentUser, categoriesMap, refreshData } = useApp()
+    const { showAlert, showConfirm } = useDialog()
     const discussionRef = useRef(null)
 
     const getStageDynamicScore = (proj, stg, catsMap = categoriesMap) => {
@@ -431,7 +433,11 @@ export default function ProjectDetail() {
     const handleSubmitReview = () => {
         if (!isStageEditable) return
         if (!resultLink && !activeStage.resultLink) {
-            alert('Wajib mengisi Link Hasil Kerja sebelum mengajukan review!')
+            showAlert({
+                title: 'Tautan Wajib Diisi',
+                message: 'Wajib mengisi Link Hasil Kerja sebelum mengajukan review!',
+                type: 'warning'
+            })
             return
         }
         updateStage(activeStage.id, {
@@ -623,7 +629,11 @@ export default function ProjectDetail() {
     const handleRevise = async () => {
         if (isApprovingQc) return
         if (!revisionNote.trim()) {
-            alert('Wajib mengisi catatan revisi!')
+            showAlert({
+                title: 'Catatan Revisi Wajib Diisi',
+                message: 'Wajib mengisi catatan revisi sebelum mengirimkan permintaan perbaikan!',
+                type: 'warning'
+            })
             return
         }
         setIsApprovingQc(true)
@@ -723,7 +733,11 @@ export default function ProjectDetail() {
             setNoteAttachment(null)
         } catch (e) {
             console.error('Failed to send note:', e)
-            alert('Gagal mengirim catatan atau mengunggah file. Coba lagi.')
+            showAlert({
+                title: 'Gagal Mengirim Catatan',
+                message: 'Gagal mengirim catatan atau mengunggah file. Silakan coba kembali.',
+                type: 'error'
+            })
         } finally {
             setIsUploadingNote(false)
         }
@@ -941,15 +955,22 @@ export default function ProjectDetail() {
 
     const handleDeleteStage = async (stageId, e) => {
         e.stopPropagation()
-        if (!window.confirm('Yakin ingin menghapus tahapan ini? Tindakan ini tidak dapat dibatalkan.')) return
+        const ok = await showConfirm({
+            title: 'Hapus Tahapan',
+            message: 'Yakin ingin menghapus tahapan ini? Tindakan ini tidak dapat dibatalkan.',
+            type: 'danger',
+            confirmText: 'Ya, Hapus Tahapan'
+        })
+        if (!ok) return
         
         try {
             await api.stages.delete(stageId)
             await refreshData() // Refresh to reflect deletion
             if (selectedStageIdx !== null) setSelectedStageIdx(null)
+            showToast('Tahapan berhasil dihapus.', 'success')
         } catch (error) {
             console.error('Failed to delete stage:', error)
-            alert('Gagal menghapus tahapan')
+            showAlert({ title: 'Gagal Menghapus', message: 'Gagal menghapus tahapan: ' + (error.message || 'Terjadi kesalahan'), type: 'error' })
         }
     }
 
@@ -961,9 +982,10 @@ export default function ProjectDetail() {
             await updateStage(stageId, { label: editingStageLabel.trim() })
             setEditingStageId(null)
             setEditingStageLabel('')
+            showToast('Nama tahapan berhasil diperbarui.', 'success')
         } catch (error) {
             console.error('Failed to update stage label:', error)
-            alert('Gagal mengubah nama tahapan')
+            showAlert({ title: 'Gagal Mengubah', message: 'Gagal mengubah nama tahapan: ' + (error.message || 'Terjadi kesalahan'), type: 'error' })
         }
     }
 
@@ -998,7 +1020,13 @@ export default function ProjectDetail() {
                         <button
                             className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
                             onClick={async () => {
-                                if (window.confirm(`Aktifkan kembali proyek "${project.title}" ke daftar proyek aktif?`)) {
+                                const ok = await showConfirm({
+                                    title: 'Aktifkan Kembali Proyek',
+                                    message: `Aktifkan kembali proyek "${project.title}" ke daftar proyek aktif?`,
+                                    type: 'info',
+                                    confirmText: 'Ya, Aktifkan'
+                                })
+                                if (ok) {
                                     try {
                                         await updateProject(project.id, { status: 'active' });
                                         showToast('Proyek berhasil diaktifkan kembali!', 'success');
@@ -1939,7 +1967,13 @@ export default function ProjectDetail() {
                                     className="btn btn-sm"
                                     style={{ background: '#b45309', color: '#fff', border: 'none', fontSize: '0.75rem' }}
                                     onClick={async () => {
-                                        if (!window.confirm(`Paksa tandai tahap "${activeStage.label}" sebagai SELESAI? Lakukan ini hanya jika tahap ini terkena bug status.`)) return
+                                        const ok = await showConfirm({
+                                            title: 'Paksa Tandai Selesai',
+                                            message: `Paksa tandai tahap "${activeStage.label}" sebagai SELESAI? Lakukan ini hanya jika tahap ini terkena bug status.`,
+                                            type: 'warning',
+                                            confirmText: 'Paksa Selesai'
+                                        })
+                                        if (!ok) return
                                         try {
                                             await updateStage(activeStage.id, { status: 'done', progress: 100 })
                                             showToast(`Tahap "${activeStage.label}" berhasil ditandai selesai.`, 'success')

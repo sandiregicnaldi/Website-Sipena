@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { api } from '../../../services/api'
 import { useApp } from '../../../context/AppContext'
 import { useAuth } from '../../../context/AuthContext'
+import { useDialog } from '../../../context/DialogContext'
 
 const SKILL_OPTIONS = [
     'administrasi', 'editor', 'isbn', 'penerjemah', 'distribusi',
@@ -47,6 +48,7 @@ const StatusDot = ({ status }) => {
 export default function UserManagement() {
     const { isAdmin } = useApp()
     const { isSuperAdmin } = useAuth()
+    const { showAlert, showToast } = useDialog()
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [selectedUser, setSelectedUser] = useState(null)
@@ -111,7 +113,7 @@ export default function UserManagement() {
                 isReviewer: editRole === 'admin' ? true : editIsReviewer
             }))
         } catch (e) {
-            alert('Gagal menyimpan: ' + e.message)
+            showAlert({ title: 'Gagal Menyimpan', message: 'Gagal menyimpan: ' + (e.message || 'Terjadi kesalahan'), type: 'error' })
         }
         setSaving(false)
     }
@@ -124,8 +126,9 @@ export default function UserManagement() {
                 setSelectedUser(prev => ({ ...prev, status: newStatus }))
                 setEditStatus(newStatus)
             }
+            showToast({ message: `Status pengguna berhasil diperbarui ke ${newStatus}.`, type: 'info' })
         } catch (e) {
-            alert('Gagal update status: ' + e.message)
+            showAlert({ title: 'Gagal Update Status', message: 'Gagal update status: ' + (e.message || 'Terjadi kesalahan'), type: 'error' })
         }
     }
 
@@ -136,6 +139,7 @@ export default function UserManagement() {
         try {
             const result = await api.admin.setPassword(passwordModal.id, newPassword)
             setPasswordSuccess(result.message || 'Password berhasil diatur!')
+            showToast({ message: 'Password berhasil diatur.', type: 'success' })
             setTimeout(() => {
                 setPasswordModal(null)
                 setNewPassword('')
@@ -145,7 +149,7 @@ export default function UserManagement() {
                 setShowConfirmPw(false)
             }, 2000)
         } catch (e) {
-            alert('Gagal mengatur password: ' + e.message)
+            showAlert({ title: 'Gagal Mengatur Password', message: 'Gagal mengatur password: ' + (e.message || 'Terjadi kesalahan'), type: 'error' })
         }
         setSettingPassword(false)
     }
@@ -158,8 +162,9 @@ export default function UserManagement() {
             await fetchUsers()
             if (selectedUser?.id === deleteModal.id) setSelectedUser(null)
             setDeleteModal(null)
+            showToast({ message: 'Pengguna berhasil dihapus.', type: 'success' })
         } catch (e) {
-            alert('Gagal menghapus: ' + e.message)
+            showAlert({ title: 'Gagal Menghapus', message: 'Gagal menghapus: ' + (e.message || 'Terjadi kesalahan'), type: 'error' })
         }
         setDeleting(false)
     }

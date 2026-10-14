@@ -622,3 +622,40 @@ Tabel berikut memuat akun dummy yang telah teruji valid (*200 OK*) pada database
 > - Super Admin: `admin@dev.local` / `developer123` atau `admin@penerbitan.com` / `password123`
 > - Staf Penerbitan: `user@penerbitan.com` / `password123`
 
+---
+
+## 20. Audit & Standarisasi Menyeluruh Pop-up Notifikasi & Dialog Konfirmasi
+
+**Tanggal Eksekusi:** 14 Oktober 2026  
+**Status:** Selesai Terintegrasi (*Zero Native Alerts / Confirms*)
+
+### A. Latar Belakang & Masalah
+Sebelumnya, sistem masih menggunakan dialog bawaan browser (`window.alert` dan `window.confirm`) di sejumlah alur penting pengguna. Masalah utama yang ditemukan:
+1. **Pengajuan Pengunjung Menjadi Penulis** (`/profil-saya` -> tab "Verifikasi Penulis"): Tombol *Ajukan Diri Sebagai Penulis* memicu alert bawaan browser yang memutus estetika antarmuka.
+2. **Pengajuan Naskah oleh Penulis** (`/profil-saya` -> tab "Pengajuan Naskah"): Pengiriman naskah baru menggunakan `alert('Naskah berhasil diajukan!')`.
+3. **Portal Admin & Ruang Kerja**: Konfirmasi persetujuan akun pegawai, verifikasi/upgrade penulis, penghapusan buku/kegiatan/konten, dan konfirmasi aksi manajemen penerbitan masih menggunakan dialog browser standar.
+
+### B. Solusi Arsitektur: `DialogContext` & `useDialog`
+Dibuat sistem modal & toast global mandiri di [`src/context/DialogContext.jsx`](file:///c:/dev/website-sipena/src/context/DialogContext.jsx) dengan karakteristik:
+- **`showAlert({ title, message, type = 'info'|'success'|'warning'|'error', confirmText })`**: Menampilkan modal dengan animasi fade/zoom, backdrop blur (`rgba(15,23,42,0.65)`), rounded card (20px), ikon tematik (Lucide: `CheckCircle`, `AlertTriangle`, `Info`), dan tipografi bersih.
+- **`showConfirm({ title, message, type, confirmText, cancelText })`**: Dialog konfirmasi interaktif berbasis Promise (`true`/`false`). Mendukung tombol "Batal" dan aksi konfirmasi berbahaya (merah crimson) atau informatif (biru SiPena).
+- **`showToast({ message, type, duration })`**: Toast melayang di kanan bawah layar dengan auto-dismiss dan border aksen berwarna.
+
+### C. Rangkuman File yang Diseragamkan
+1. **`AuthorDashboard.jsx`**:
+   - Pengajuan verifikasi penulis: Menggunakan `showConfirm` dilanjutkan dengan modal sukses `showAlert`.
+   - Pengajuan naskah penulis: Menggunakan modal sukses `showAlert` yang menginformasikan bahwa naskah telah masuk ke antrean kurasi.
+   - Simpan profil: Menggunakan `showToast`.
+2. **`AdminPengguna.jsx`**:
+   - Persetujuan pendaftaran pegawai & verifikasi/upgrade penulis: Menggunakan `showConfirm`.
+   - Penonaktifan dan penghapusan pengguna permanen: Menggunakan `showConfirm` (danger).
+3. **`AdminNaskah.jsx`**:
+   - Persetujuan naskah dan penolakan naskah dengan catatan reviewer: Menggunakan `showConfirm` dan `showToast`.
+4. **`AdminKatalog.jsx`, `AdminKegiatan.jsx`, `AdminKonten.jsx`**:
+   - Seluruh penghapusan buku, kegiatan, banner beranda, dan FAQ: Menggunakan `showConfirm` kustom.
+5. **`LoginPage.jsx`, `BookDetail.jsx`, `EventDetail.jsx`, `HeroCarousel.jsx`**:
+   - Penilaian rating, salin tautan buku/kegiatan, dan pesan kegagalan: Menggunakan `showAlert` dan `showToast`.
+6. **Workspace Manajemen Penerbitan** (`ProjectDetail.jsx`, `UserManagement.jsx`, `Trash.jsx`, `NIPGenerator.jsx`, `Chat.jsx`):
+   - Seluruh alert peringatan (validasi link, catatan revisi, error pengiriman) dan konfirmasi hapus tahapan/pesan/NIP diseragamkan dengan `showConfirm` dan `showAlert`.
+
+

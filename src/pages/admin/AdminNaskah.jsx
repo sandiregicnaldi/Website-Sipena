@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import './AdminLayout.css';
 import { ExternalLink, Check, X, FileText } from 'lucide-react';
 import { SipenaAPI } from '../../lib/api';
+import { useDialog } from '../../context/DialogContext';
 
 const AdminNaskah = () => {
+  const { showConfirm, showAlert, showToast } = useDialog();
   const [naskah, setNaskah] = useState([]);
   const [rejectModal, setRejectModal] = useState({ isOpen: false, id: null, alasan: '' });
   const [loading, setLoading] = useState(true);
@@ -34,12 +36,19 @@ const AdminNaskah = () => {
   };
 
   const handleApprove = async (id) => {
-    if(window.confirm('Apakah Anda yakin ingin menyetujui naskah ini?')) {
+    const ok = await showConfirm({
+      title: 'Setujui Naskah',
+      message: 'Apakah Anda yakin ingin menyetujui naskah ini? Naskah yang disetujui akan diproses ke tahap penerbitan.',
+      type: 'info',
+      confirmText: 'Ya, Setujui'
+    });
+    if (ok) {
       try {
         await SipenaAPI.updateManuscriptStatus(id, { status: 'approved' });
+        showToast({ message: 'Naskah berhasil disetujui.', type: 'success' });
         fetchNaskah();
       } catch (err) {
-        alert('Gagal menyetujui naskah');
+        showAlert({ title: 'Gagal Menyetujui', message: err.message || 'Terjadi kesalahan saat menyetujui naskah.', type: 'error' });
       }
     }
   };
@@ -52,9 +61,10 @@ const AdminNaskah = () => {
     try {
       await SipenaAPI.updateManuscriptStatus(rejectModal.id, { status: 'rejected', reviewerNotes: rejectModal.alasan });
       setRejectModal({ isOpen: false, id: null, alasan: '' });
+      showToast({ message: 'Naskah telah ditolak dengan catatan evaluasi.', type: 'info' });
       fetchNaskah();
     } catch (err) {
-      alert('Gagal menolak naskah');
+      showAlert({ title: 'Gagal Menolak', message: err.message || 'Terjadi kesalahan saat menolak naskah.', type: 'error' });
     }
   };
 

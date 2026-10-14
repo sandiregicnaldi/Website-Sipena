@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../../services/api'
 import { useApp } from '../../../context/AppContext'
+import { useDialog } from '../../../context/DialogContext'
 import { CATEGORIES } from '../../../data/categories'
 
 export default function Trash() {
     const { isAdmin } = useApp()
+    const { showAlert, showToast } = useDialog()
     const [activeTab, setActiveTab] = useState('projects')
     const [projects, setProjects] = useState([])
     const [documents, setDocuments] = useState([])
@@ -38,8 +40,9 @@ export default function Trash() {
             await api.projects.restore(id)
             fetchTrash()
             setConfirmModal({ open: false, type: '', item: null })
+            showToast({ message: 'Proyek berhasil dipulihkan.', type: 'success' })
         } catch (error) {
-            alert('Gagal memulihkan proyek.')
+            showAlert({ title: 'Gagal Memulihkan', message: 'Gagal memulihkan proyek: ' + (error.message || 'Terjadi kesalahan'), type: 'error' })
         }
     }
 
@@ -48,8 +51,9 @@ export default function Trash() {
             await api.projects.hardDelete(id)
             fetchTrash()
             setConfirmModal({ open: false, type: '', item: null })
+            showToast({ message: 'Proyek berhasil dihapus secara permanen.', type: 'success' })
         } catch (error) {
-            alert('Gagal menghapus proyek permanen.')
+            showAlert({ title: 'Gagal Menghapus', message: 'Gagal menghapus proyek permanen: ' + (error.message || 'Terjadi kesalahan'), type: 'error' })
         }
     }
 
@@ -58,8 +62,9 @@ export default function Trash() {
             await api.documents.restore(id)
             fetchTrash()
             setConfirmModal({ open: false, type: '', item: null })
+            showToast({ message: 'Dokumen berhasil dipulihkan.', type: 'success' })
         } catch (error) {
-            alert('Gagal memulihkan dokumen.')
+            showAlert({ title: 'Gagal Memulihkan', message: 'Gagal memulihkan dokumen: ' + (error.message || 'Terjadi kesalahan'), type: 'error' })
         }
     }
 
@@ -68,8 +73,9 @@ export default function Trash() {
             await api.documents.hardDelete(id)
             fetchTrash()
             setConfirmModal({ open: false, type: '', item: null })
+            showToast({ message: 'Dokumen berhasil dihapus secara permanen.', type: 'success' })
         } catch (error) {
-            alert('Gagal menghapus dokumen permanen.')
+            showAlert({ title: 'Gagal Menghapus', message: 'Gagal menghapus dokumen permanen: ' + (error.message || 'Terjadi kesalahan'), type: 'error' })
         }
     }
 

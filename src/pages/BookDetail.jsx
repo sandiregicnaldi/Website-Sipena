@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Download, BookOpen, Share2, Printer, Star, Lock, PlayCircle, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 import BookSection from '../components/BookSection';
 import { SipenaAPI } from '../lib/api';
 import './BookDetail.css';
@@ -20,6 +21,7 @@ const CATEGORY_COLORS = {
 const BookDetail = () => {
   const { id } = useParams();
   const { isLoggedIn } = useAuth();
+  const { showAlert, showToast } = useDialog();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -116,11 +118,15 @@ const BookDetail = () => {
           }));
         }
         setShowRatingPopup(false);
-        alert(`Terima kasih! Penilaian ${ratingVal} bintang Anda berhasil disimpan.`);
+        showToast({ message: `Terima kasih! Penilaian ${ratingVal} bintang Anda berhasil disimpan.`, type: 'success' });
       }
     } catch (err) {
       console.error('Failed to submit rating:', err);
-      alert('Gagal menyimpan rating. Pastikan Anda sudah login.');
+      showAlert({
+        title: 'Gagal Menyimpan Rating',
+        message: 'Pastikan Anda sudah login untuk memberikan ulasan dan rating buku.',
+        type: 'warning'
+      });
     } finally {
       setSubmittingRating(false);
     }
@@ -173,7 +179,7 @@ const BookDetail = () => {
                 className="btn btn-outline action-btn share-btn"
                 onClick={() => {
                   navigator.clipboard?.writeText(window.location.href);
-                  alert('Tautan buku berhasil disalin ke clipboard!');
+                  showToast({ message: 'Tautan buku berhasil disalin ke clipboard!', type: 'info' });
                 }}
               >
                 <Share2 size={18} /> Bagikan
@@ -245,7 +251,7 @@ const BookDetail = () => {
                 <h3><BookOpen size={20} /> Baca Online (PDF Reader)</h3>
                 <div className="pdf-header-actions" style={{ display: 'flex', gap: '1rem' }}>
                   <button className="icon-btn" title="Unduh PDF" onClick={handleDownload}><Download size={18} /></button>
-                  <button className="icon-btn" title="Cetak PDF" onClick={() => handleProtectedAction(() => alert('Fitur Cetak segera disiapkan!'))}><Printer size={18} /></button>
+                  <button className="icon-btn" title="Cetak PDF" onClick={() => handleProtectedAction(() => showAlert({ title: 'Fitur Segera Hadir', message: 'Fitur cetak dokumen langsung sedang disiapkan.', type: 'info' }))}><Printer size={18} /></button>
                 </div>
               </div>
               <div className="pdf-viewer-container">

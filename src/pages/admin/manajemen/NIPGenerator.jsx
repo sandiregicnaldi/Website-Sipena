@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../../../context/AppContext'
+import { useDialog } from '../../../context/DialogContext'
 import { api } from '../../../services/api'
 import { SOURCE_KEGIATAN, FORMAT_BUKU } from '../../../data/ddc'
 import { PROVINSI, KABUPATEN } from '../../../data/wilayah'
@@ -9,6 +10,7 @@ import PopupModal from '../../../components/PopupModal'
 
 export default function NIPGenerator() {
     const { ddcList } = useApp()
+    const { showConfirm, showToast } = useDialog()
     // Only show active DDC codes in the generator dropdown
     const ACTIVE_DDC = ddcList.filter(d => d.active)
     const [ddcCode, setDdcCode] = useState('')
@@ -298,21 +300,35 @@ export default function NIPGenerator() {
     }
 
     const handleDeleteNip = async (id, idx) => {
-        if (!window.confirm('Hapus NIP ini dari riwayat? Nomor urut tidak akan terpengaruh.')) return
+        const ok = await showConfirm({
+            title: 'Hapus NIP',
+            message: 'Hapus NIP ini dari riwayat? Nomor urut tidak akan terpengaruh.',
+            type: 'danger',
+            confirmText: 'Ya, Hapus'
+        })
+        if (!ok) return
         try {
             await api.nip.deleteOne(id)
             setNipHistory(prev => prev.filter((_, i) => i !== idx))
+            showToast({ message: 'NIP berhasil dihapus dari riwayat.', type: 'info' })
         } catch (e) {
             setPopupMessage({ type: 'error', text: 'Gagal menghapus NIP: ' + e.message })
         }
     }
 
     const handleResetNip = async () => {
-        if (!window.confirm('Reset nomor urut NIP? Seluruh riwayat akan dihapus dan nomor urut berikutnya akan dimulai dari 001.')) return
+        const ok = await showConfirm({
+            title: 'Reset Nomor Urut NIP',
+            message: 'Reset nomor urut NIP? Seluruh riwayat akan dihapus dan nomor urut berikutnya akan dimulai dari 001.',
+            type: 'danger',
+            confirmText: 'Ya, Reset Nomor Urut'
+        })
+        if (!ok) return
         try {
             await api.nip.reset()
             setNipHistory([])
             setGeneratedNip(null)
+            showToast({ message: 'Nomor urut NIP berhasil di-reset.', type: 'success' })
         } catch (e) {
             setPopupMessage({ type: 'error', text: 'Gagal reset NIP: ' + e.message })
         }

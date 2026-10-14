@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 import { Mail, Lock, ArrowRight, User, MapPin, Calendar, Briefcase, Building2, ChevronDown } from 'lucide-react';
 import './LoginPage.css';
 
@@ -177,6 +178,7 @@ const LoginPage = () => {
   const [form, setForm] = useState({ email: '', password: '', ...INITIAL_FORM });
 
   const { login, register } = useAuth();
+  const { showAlert } = useDialog();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -235,7 +237,11 @@ const LoginPage = () => {
 
       redirectAfter(resolvedUser);
     } catch (err) {
-      alert("Login gagal, periksa kembali email dan password.");
+      showAlert({
+        title: 'Login Gagal',
+        message: 'Kombinasi email atau kata sandi tidak sesuai. Silakan periksa kembali akun Anda.',
+        type: 'error'
+      });
     }
   };
 
@@ -245,7 +251,11 @@ const LoginPage = () => {
       const resolvedUser = await register(form, roleType);
       redirectAfter(resolvedUser);
     } catch (err) {
-      alert("Pendaftaran gagal.");
+      showAlert({
+        title: 'Pendaftaran Gagal',
+        message: err.message || 'Terjadi kesalahan saat memproses pendaftaran. Silakan periksa kelengkapan data Anda.',
+        type: 'error'
+      });
     }
   };
 

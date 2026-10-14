@@ -8,6 +8,7 @@ const INITIAL_BOOKS = [
 ];
 
 import { SipenaAPI } from '../../lib/api';
+import { useDialog } from '../../context/DialogContext';
 
 const EMPTY_FORM = { judul: '', penulis: '', tahun: new Date().getFullYear(), isbnCetak: '', isbnDigital: '', sampul: null, pdf: null, youtube: '' };
 
@@ -111,6 +112,7 @@ const ModalBuku = ({ data, onSave, onClose }) => {
 
 // ── AdminKatalog ────────────────────────────────────────────────────────────
 const AdminKatalog = () => {
+  const { showConfirm, showAlert } = useDialog();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -177,7 +179,14 @@ const AdminKatalog = () => {
 
   const handleHapus = async (id) => {
     const book = books.find(b => b.id === id);
-    if (window.confirm(`Apakah Anda yakin ingin menghapus buku "${book.judul}"?\n\nTindakan ini tidak dapat dibatalkan.`)) {
+    if (!book) return;
+    const ok = await showConfirm({
+      title: 'Hapus Buku dari Katalog',
+      message: `Apakah Anda yakin ingin menghapus buku "${book.judul}"?\n\nTindakan ini tidak dapat dibatalkan.`,
+      type: 'danger',
+      confirmText: 'Ya, Hapus Buku'
+    });
+    if (ok) {
       try {
         await SipenaAPI.deleteBook(id);
         showToast(`Buku "${book.judul}" berhasil dihapus.`);
