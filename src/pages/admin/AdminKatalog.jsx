@@ -16,8 +16,8 @@ const KATEGORI_BUKU_OPTIONS = [
 ];
 
 const INITIAL_BOOKS = [
-  { id: 1, judul: 'Sejarah Perpustakaan Nasional RI', penulis: 'Dr. Ahmad Fauzi', tahun: 2026, kategori: 'Humaniora', editor: 'Drs. Hendro Wibowo', desainSampul: 'Rian Pratama', penataLetak: 'Bagus Wicaksono', isbnCetak: '978-602-001', isbnDigital: '978-602-001-E', sampul: true, pdf: true, youtube: 'https://youtube.com/...' },
-  { id: 2, judul: 'Pedoman Katalogisasi Perpustakaan', penulis: 'Dra. Siti Rahayu', tahun: 2026, kategori: 'Inkubator Literasi', editor: 'M. Syarif', desainSampul: 'Dinda Caroline', penataLetak: 'Agus Santoso', isbnCetak: '978-602-002', isbnDigital: '', sampul: true, pdf: false, youtube: '' },
+  { id: 1, judul: 'Sejarah Perpustakaan Nasional RI', penulis: 'Dr. Ahmad Fauzi', tahun: 2026, kategori: 'Humaniora', nip: 'NIP. 2026.01.001', editor: 'Drs. Hendro Wibowo', desainSampul: 'Rian Pratama', penataLetak: 'Bagus Wicaksono', isbnCetak: '978-602-001', isbnDigital: '978-602-001-E', sampul: true, pdf: true, youtube: 'https://youtube.com/...' },
+  { id: 2, judul: 'Pedoman Katalogisasi Perpustakaan', penulis: 'Dra. Siti Rahayu', tahun: 2026, kategori: 'Inkubator Literasi', nip: 'NIP. 2026.02.002', editor: 'M. Syarif', desainSampul: 'Dinda Caroline', penataLetak: 'Agus Santoso', isbnCetak: '978-602-002', isbnDigital: '', sampul: true, pdf: false, youtube: '' },
 ];
 
 import { SipenaAPI } from '../../lib/api';
@@ -28,6 +28,7 @@ const EMPTY_FORM = {
   penulis: '', 
   tahun: new Date().getFullYear(), 
   kategori: 'Anak-anak', 
+  nip: '', 
   isbnCetak: '', 
   isbnDigital: '', 
   editor: '', 
@@ -113,6 +114,15 @@ const ModalBuku = ({ data, onSave, onClose }) => {
                 </select>
               </div>
             </div>
+            <div>
+              <label style={labelStyle}>NIP (Nomor Induk Perpusnas Press)</label>
+              <input 
+                style={inputStyle} 
+                value={form.nip || ''} 
+                onChange={e => setForm(p => ({ ...p, nip: e.target.value }))} 
+                placeholder="Contoh: NIP. 2026.01.001 (dari Dasbor Manajemen Penerbitan)" 
+              />
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={labelStyle}>ISBN Cetak</label>
@@ -190,6 +200,7 @@ const AdminKatalog = () => {
         penulis: b.authorName || 'Tidak diketahui',
         tahun: b.year,
         kategori: b.category || 'Anak-anak',
+        nip: b.nip || '',
         isbnCetak: b.isbn || '',
         isbnDigital: b.isbnDigital || '',
         editor: b.editor || '',
@@ -221,6 +232,7 @@ const AdminKatalog = () => {
         judul: params.get('judul') || '',
         penulis: params.get('penulis') || '',
         kategori: params.get('kategori') || 'Anak-anak',
+        nip: params.get('nip') || '',
         isbnCetak: params.get('isbn') || '',
         sinopsis: params.get('sinopsis') || ''
       };
@@ -234,6 +246,7 @@ const AdminKatalog = () => {
     b.judul.toLowerCase().includes(search.toLowerCase()) ||
     b.penulis.toLowerCase().includes(search.toLowerCase()) ||
     (b.kategori && b.kategori.toLowerCase().includes(search.toLowerCase())) ||
+    (b.nip && b.nip.toLowerCase().includes(search.toLowerCase())) ||
     (b.editor && b.editor.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -266,6 +279,7 @@ const AdminKatalog = () => {
       authorName: formData.penulis,
       year: formData.tahun,
       category: formData.kategori,
+      nip: formData.nip,
       isbn: formData.isbnCetak,
       isbnDigital: formData.isbnDigital,
       editor: formData.editor,
@@ -305,7 +319,7 @@ const AdminKatalog = () => {
       <div className="admin-card">
         <div className="admin-card-header">
           <input
-            type="text" placeholder="Cari judul, penulis, kategori..."
+            type="text" placeholder="Cari judul, penulis, kategori, NIP..."
             value={search} onChange={e => setSearch(e.target.value)}
             style={{ padding: '0.45rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', width: '260px' }}
           />
@@ -325,7 +339,7 @@ const AdminKatalog = () => {
                 <th>Kategori</th>
                 <th>Tahun</th>
                 <th>Tim Produksi</th>
-                <th>ISBN (Cetak/Digital)</th>
+                <th>NIP & ISBN</th>
                 <th>Aset File</th>
                 <th>Aksi</th>
               </tr>
@@ -352,9 +366,10 @@ const AdminKatalog = () => {
                     {!b.editor && !b.desainSampul && !b.penataLetak && <span style={{ color: 'var(--text-tertiary)' }}>-</span>}
                   </td>
                   <td style={{ fontSize: '0.85rem' }}>
+                    {b.nip && <div style={{ fontWeight: 600, color: 'var(--accent-color)', marginBottom: '0.2rem' }}>{b.nip}</div>}
                     {b.isbnCetak && <div>Cetak: {b.isbnCetak}</div>}
                     {b.isbnDigital && <div>Digital: {b.isbnDigital}</div>}
-                    {!b.isbnCetak && !b.isbnDigital && <span style={{ color: 'var(--text-tertiary)' }}>-</span>}
+                    {!b.nip && !b.isbnCetak && !b.isbnDigital && <span style={{ color: 'var(--text-tertiary)' }}>-</span>}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

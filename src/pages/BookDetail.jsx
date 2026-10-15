@@ -244,6 +244,12 @@ const BookDetail = () => {
                 <span className="meta-value">{book.category || 'Umum'}</span>
               </div>
               <div className="meta-item">
+                <span className="meta-label">Nomor Induk Perpusnas (NIP)</span>
+                <span className="meta-value" style={{ fontWeight: 600, color: 'var(--accent-color, #2563eb)' }}>
+                  {book.nip || '-'}
+                </span>
+              </div>
+              <div className="meta-item">
                 <span className="meta-label">ISBN Cetak / Digital</span>
                 <span className="meta-value">{book.isbn || '-'}{book.isbnDigital ? ` / ${book.isbnDigital}` : ''}</span>
               </div>

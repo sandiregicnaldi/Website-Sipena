@@ -182,6 +182,7 @@ export const books = pgTable("books", {
     year: integer("year"),
     isbn: text("isbn"),
     isbnDigital: text("isbn_digital"),
+    nip: text("nip"),
     coverUrl: text("cover_url"),
     fileUrl: text("file_url"), // PDF/EPUB link
     audioUrl: text("audio_url"),

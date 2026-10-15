@@ -848,12 +848,13 @@ Sesuai kebutuhan pengelolaan koleksi penerbitan Perpusnas Press dan acuan formul
    - Kesehatan
    - Komik
    - Lifestyle
-2. **Kelengkapan Tim Redaksi / Produksi Buku**: Menambahkan kolom input untuk mencatat kontributor buku:
+2. **Kelengkapan Tim Redaksi / Produksi Buku & Nomor Induk Penerbitan (NIP)**: Menambahkan kolom input untuk mencatat kontributor dan identitas resmi buku:
+   - **NIP (Nomor Induk Perpusnas Press)**: Nomor induk unik yang di-generate dari Dasbor Manajemen Penerbitan (`NIPGenerator.jsx`).
    - **Editor** (Penyunting naskah)
    - **Desain Sampul** (Desainer sampul / cover artist)
    - **Penata Letak** (Layouter tata letak isi buku)
 3. **Standarisasi Istilah "Abstrak"**: Mengubah kolom "Sinopsis" menjadi **"Abstrak"** baik pada label dan placeholder formulir admin maupun pada halaman publik detail buku.
-4. **Penyelarasan Tampilan Publik Info Detail Buku**: Menampilkan seluruh informasi baru (Editor, Desain Sampul, Penata Letak, Kategori, dan Abstrak) secara presisi pada halaman detail buku publik (`/buku/:id`).
+4. **Penyelarasan Tampilan Publik Info Detail Buku**: Menampilkan seluruh informasi baru (NIP, Editor, Desain Sampul, Penata Letak, Kategori, dan Abstrak) secara presisi pada halaman detail buku publik (`/buku/:id`).
 
 ---
 
@@ -861,10 +862,12 @@ Sesuai kebutuhan pengelolaan koleksi penerbitan Perpusnas Press dan acuan formul
 Telah dijalankan migrasi langsung pada tabel `books`:
 ```sql
 ALTER TABLE books
+ADD COLUMN IF NOT EXISTS nip text,
 ADD COLUMN IF NOT EXISTS editor text,
 ADD COLUMN IF NOT EXISTS cover_designer text,
 ADD COLUMN IF NOT EXISTS layout_designer text;
 ```
+- **`nip text`**: Nomor Induk Perpusnas Press (hasil generate dari Dasbor Manajemen).
 - **`editor text`**: Nama editor/penyunting buku.
 - **`cover_designer text`**: Nama perancang/desainer sampul buku.
 - **`layout_designer text`**: Nama penata letak/layouter buku.
@@ -875,21 +878,24 @@ ADD COLUMN IF NOT EXISTS layout_designer text;
 ### C. Implementasi Antarmuka Admin Katalog ([`AdminKatalog.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminKatalog.jsx))
 1. **Modal Tambah & Edit Buku (`ModalBuku`)**:
    - Menambahkan dropdown `<select>` **Kategori Buku** dengan 10 opsi resmi.
+   - Menambahkan input **NIP (Nomor Induk Perpusnas Press)** (*"Contoh: NIP. 2026.01.001"*).
    - Menambahkan kolom input grid responsif untuk **Editor**, **Desain Sampul**, dan **Penata Letak**.
    - Mengubah label dan placeholder sinopsis menjadi **"Abstrak"** (*"Tuliskan abstrak buku ini..."*).
 2. **Tabel Katalog Admin**:
    - Menambahkan kolom **Kategori** dengan badge berwarna biru rapi.
    - Menambahkan kolom **Tim Produksi** yang menampilkan ringkasan Ed (Editor), Sampul (Desain Sampul), dan Layout (Penata Letak).
-   - Memperluas fitur pencarian (`search`) agar dapat menyaring berdasarkan kategori dan nama tim produksi.
+   - Kolom identitas nomor buku kini menggabungkan **NIP & ISBN** (*NIP, ISBN Cetak, ISBN Digital*).
+   - Memperluas fitur pencarian (`search`) agar dapat menyaring berdasarkan judul, penulis, kategori, NIP, dan tim produksi.
 
 ---
 
 ### D. Penyelarasan Halaman Publik ([`BookDetail.jsx`](file:///c:/dev/website-sipena/src/pages/BookDetail.jsx) & [`BooksPage.jsx`](file:///c:/dev/website-sipena/src/pages/BooksPage.jsx))
 1. **`BookDetail.jsx`**:
-   - Pada kartu metadata buku (`.metadata-grid`), kini menampilkan 7 atribut:
+   - Pada kartu metadata buku (`.metadata-grid`), kini menampilkan 8 atribut lengkap:
      - Penerbit: `Perpusnas Press`
      - Tahun Terbit: `book.year`
      - Kategori: `book.category`
+     - **Nomor Induk Perpusnas (NIP)**: `book.nip || '-'` (warna aksen biru tebal)
      - ISBN Cetak / Digital: `book.isbn / book.isbnDigital`
      - **Editor**: `book.editor || '-'`
      - **Desain Sampul**: `book.coverDesigner || '-'`
@@ -902,8 +908,8 @@ ADD COLUMN IF NOT EXISTS layout_designer text;
 ---
 
 ### E. Hasil Pengujian End-to-End
-1. **Pengujian Pembuatan & Pengambilan Data Buku (`test_admin_create_book.cjs`)**:
-   - Berhasil membuat buku baru dengan seluruh kolom metadata terisi (Kategori: *Biografi & Memoar*, Editor: *Drs. Bambang Hidayat*, Desain Sampul: *Nurul Aulia, S.Sn*, Penata Letak: *Ahmad Rinaldi*, Abstrak terisi lengkap).
+1. **Pengujian Pembuatan & Pengambilan Data Buku (`test_book_nip.cjs`)**:
+   - Berhasil membuat buku baru dengan seluruh kolom metadata terisi (NIP: *NIP. 2026.08.088*, Kategori: *Humaniora*, Editor: *Drs. Hendro Wibowo*, Desain Sampul: *Rian Pratama*, Penata Letak: *Bagus Wicaksono*, Abstrak terisi lengkap).
    - Endpoint publik `GET /api/sipena/books/:id` berhasil mengembalikan seluruh field 100% utuh (*Status: 200 OK*).
 2. **Kompilasi Build**:
    - `npm run build` sukses 100% (*0 errors, exit code 0*).
