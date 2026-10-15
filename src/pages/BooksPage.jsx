@@ -5,14 +5,36 @@ import { SipenaAPI } from '../lib/api';
 import '../components/BookRow.css';
 import './BooksPage.css';
 
-const CATEGORIES = ['Semua', 'Sastra', 'Sejarah', 'Budaya', 'Fiksi', 'Anak', 'Hukum', 'Pendidikan'];
+const CATEGORIES = [
+  'Semua',
+  'Anak-anak',
+  'Biografi & Memoar',
+  'Ekonomi & Management',
+  'Fiksi',
+  'Hukum & Politik',
+  'Humaniora',
+  'Inkubator Literasi',
+  'Kesehatan',
+  'Komik',
+  'Lifestyle'
+];
 
 const CATEGORY_COLORS = {
+  'Anak-anak': '#0ea5e9',
+  'Biografi & Memoar': '#8b5cf6',
+  'Ekonomi & Management': '#059669',
+  'Fiksi': '#e11d48',
+  'Hukum & Politik': '#4f46e5',
+  'Humaniora': '#d97706',
+  'Inkubator Literasi': '#2563eb',
+  'Kesehatan': '#10b981',
+  'Komik': '#f59e0b',
+  'Lifestyle': '#ec4899',
+  // Backward compatibility
   'Sastra': '#1e3a8a',
   'Sejarah': '#b91c1c',
   'Budaya': '#047857',
   'Anak': '#0ea5e9',
-  'Fiksi': '#be123c',
   'Hukum': '#6b21a8',
   'Pendidikan': '#92400e',
   'Umum': '#475569'

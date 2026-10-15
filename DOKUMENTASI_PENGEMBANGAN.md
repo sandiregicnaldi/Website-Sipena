@@ -26,6 +26,7 @@
 19. [Daftar Akun Dummy Pengujian Seluruh Peran (Role Credentials)](#19-daftar-akun-dummy-pengujian-seluruh-peran-role-credentials)
 20. [Audit & Standarisasi Menyeluruh Pop-up Notifikasi & Dialog Konfirmasi](#20-audit--standarisasi-menyeluruh-pop-up-notifikasi--dialog-konfirmasi)
 21. [Alur Peningkatan Peran Penulis Terkurasi (Curated Author Upgrade) & Paritas Halaman Penulis Publik](#21-alur-peningkatan-peran-penulis-terkurasi-curated-author-upgrade--paritas-halaman-penulis-publik)
+22. [Penyempurnaan Formulir Katalog Buku & Penyelarasan Halaman Publik Info Detail Buku](#22-penyempurnaan-formulir-katalog-buku--penyelarasan-halaman-publik-info-detail-buku)
 
 ---
 
@@ -826,6 +827,86 @@ Telah dijalankan migrasi langsung pada tabel `"user"` PostgreSQL:
 2. Penulis yang terverifikasi tampil di urutan atas.
 3. Klik **Detail Profil** pada kartu penulis.
 4. Tampilan publik `/penulis/:id` merender data secara presisi 1:1 sesuai desain `media_1792035011313.png` lengkap dengan tombol *"Beli di {storeName} ↗"*.
+
+---
+
+## 22. Penyempurnaan Formulir Katalog Buku & Penyelarasan Halaman Publik Info Detail Buku
+
+**Tanggal Eksekusi:** 15 Oktober 2026  
+**Status:** Selesai Terintegrasi & Teruji (*Fully Tested & Production Ready*)
+
+### A. Latar Belakang & Permintaan Pengguna
+Sesuai kebutuhan pengelolaan koleksi penerbitan Perpusnas Press dan acuan formulir pada antarmuka admin katalog:
+1. **Dropdown Kategori Buku Terstandar**: Mengganti atau menambahkan kolom input Kategori Buku pada formulir pendaftaran katalog buku dengan format dropdown yang memuat 10 kategori resmi:
+   - Anak-anak
+   - Biografi & Memoar
+   - Ekonomi & Management
+   - Fiksi
+   - Hukum & Politik
+   - Humaniora
+   - Inkubator Literasi
+   - Kesehatan
+   - Komik
+   - Lifestyle
+2. **Kelengkapan Tim Redaksi / Produksi Buku**: Menambahkan kolom input untuk mencatat kontributor buku:
+   - **Editor** (Penyunting naskah)
+   - **Desain Sampul** (Desainer sampul / cover artist)
+   - **Penata Letak** (Layouter tata letak isi buku)
+3. **Standarisasi Istilah "Abstrak"**: Mengubah kolom "Sinopsis" menjadi **"Abstrak"** baik pada label dan placeholder formulir admin maupun pada halaman publik detail buku.
+4. **Penyelarasan Tampilan Publik Info Detail Buku**: Menampilkan seluruh informasi baru (Editor, Desain Sampul, Penata Letak, Kategori, dan Abstrak) secara presisi pada halaman detail buku publik (`/buku/:id`).
+
+---
+
+### B. Perubahan Skema Basis Data PostgreSQL (`sipena_dev`)
+Telah dijalankan migrasi langsung pada tabel `books`:
+```sql
+ALTER TABLE books
+ADD COLUMN IF NOT EXISTS editor text,
+ADD COLUMN IF NOT EXISTS cover_designer text,
+ADD COLUMN IF NOT EXISTS layout_designer text;
+```
+- **`editor text`**: Nama editor/penyunting buku.
+- **`cover_designer text`**: Nama perancang/desainer sampul buku.
+- **`layout_designer text`**: Nama penata letak/layouter buku.
+- Kolom **`category`** dan **`synopsis`** (berfungsi sebagai Abstrak) telah terintegrasi dalam skema.
+
+---
+
+### C. Implementasi Antarmuka Admin Katalog ([`AdminKatalog.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminKatalog.jsx))
+1. **Modal Tambah & Edit Buku (`ModalBuku`)**:
+   - Menambahkan dropdown `<select>` **Kategori Buku** dengan 10 opsi resmi.
+   - Menambahkan kolom input grid responsif untuk **Editor**, **Desain Sampul**, dan **Penata Letak**.
+   - Mengubah label dan placeholder sinopsis menjadi **"Abstrak"** (*"Tuliskan abstrak buku ini..."*).
+2. **Tabel Katalog Admin**:
+   - Menambahkan kolom **Kategori** dengan badge berwarna biru rapi.
+   - Menambahkan kolom **Tim Produksi** yang menampilkan ringkasan Ed (Editor), Sampul (Desain Sampul), dan Layout (Penata Letak).
+   - Memperluas fitur pencarian (`search`) agar dapat menyaring berdasarkan kategori dan nama tim produksi.
+
+---
+
+### D. Penyelarasan Halaman Publik ([`BookDetail.jsx`](file:///c:/dev/website-sipena/src/pages/BookDetail.jsx) & [`BooksPage.jsx`](file:///c:/dev/website-sipena/src/pages/BooksPage.jsx))
+1. **`BookDetail.jsx`**:
+   - Pada kartu metadata buku (`.metadata-grid`), kini menampilkan 7 atribut:
+     - Penerbit: `Perpusnas Press`
+     - Tahun Terbit: `book.year`
+     - Kategori: `book.category`
+     - ISBN Cetak / Digital: `book.isbn / book.isbnDigital`
+     - **Editor**: `book.editor || '-'`
+     - **Desain Sampul**: `book.coverDesigner || '-'`
+     - **Penata Letak**: `book.layoutDesigner || '-'`
+   - Mengubah judul bagian deskripsi dari `<h3>Sinopsis</h3>` menjadi `<h3>Abstrak</h3>`.
+   - Menyesuaikan pemetaan palet warna `CATEGORY_COLORS` untuk seluruh 10 kategori baru.
+2. **`BooksPage.jsx`**:
+   - Menyesuaikan pill filter kategori katalog publik agar mencakup 10 kategori resmi Perpusnas Press.
+
+---
+
+### E. Hasil Pengujian End-to-End
+1. **Pengujian Pembuatan & Pengambilan Data Buku (`test_admin_create_book.cjs`)**:
+   - Berhasil membuat buku baru dengan seluruh kolom metadata terisi (Kategori: *Biografi & Memoar*, Editor: *Drs. Bambang Hidayat*, Desain Sampul: *Nurul Aulia, S.Sn*, Penata Letak: *Ahmad Rinaldi*, Abstrak terisi lengkap).
+   - Endpoint publik `GET /api/sipena/books/:id` berhasil mengembalikan seluruh field 100% utuh (*Status: 200 OK*).
+2. **Kompilasi Build**:
+   - `npm run build` sukses 100% (*0 errors, exit code 0*).
 
 
 

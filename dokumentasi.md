@@ -25,6 +25,12 @@ Dokumentasi lengkap dan kronologi pengembangan sistem SiPena serta integrasi Man
    - Peninjauan admin redaksi di Dasbor Admin Pengguna (`/admin/pengguna`) dengan modal pratinjau lengkap dan tombol aksi setujui/tolak.
    - Paritas 1:1 input data profil penulis dengan desain publik acuan resmi (`media_1792035011313.png`), termasuk platform/toko resmi penjualan karya eksternal (*Gramedia.com, Tokopedia, Shopee, dsb.*).
    - Penayangan dinamis halaman publik penulis (`/penulis/:id`) dan pemuatan otomatis penulis terverifikasi pada Direktori Penulis (`/penulis`).
+10. **Bab 22**: Penyempurnaan Formulir Katalog Buku & Penyelarasan Halaman Publik Info Detail Buku:
+   - Input dropdown **Kategori Buku** dengan 10 kategori resmi Perpusnas Press.
+   - Penambahan kolom input kelengkapan tim produksi: **Editor**, **Desain Sampul**, dan **Penata Letak**.
+   - Standardisasi istilah **"Sinopsis"** menjadi **"Abstrak"** pada modal formulir admin dan halaman publik.
+   - Penyelarasan kartu metadata (`.metadata-grid`) dan info detail buku publik (`/buku/:id`) serta filter kategori (`/buku`).
+   - Migrasi skema database PostgreSQL `books` (`editor`, `cover_designer`, `layout_designer`).
 
 ---
 *Silakan buka [DOKUMENTASI_PENGEMBANGAN.md](./DOKUMENTASI_PENGEMBANGAN.md) untuk detail teknis, tabel skema, dan panduan pengujian alur kerja.*

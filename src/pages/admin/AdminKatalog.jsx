@@ -2,15 +2,42 @@ import React, { useState, useRef, useEffect } from 'react';
 import './AdminLayout.css';
 import { ExternalLink, Image as ImageIcon, FileText, Edit, Trash2, Eye, CheckCircle, BookOpen } from 'lucide-react';
 
+const KATEGORI_BUKU_OPTIONS = [
+  'Anak-anak',
+  'Biografi & Memoar',
+  'Ekonomi & Management',
+  'Fiksi',
+  'Hukum & Politik',
+  'Humaniora',
+  'Inkubator Literasi',
+  'Kesehatan',
+  'Komik',
+  'Lifestyle'
+];
+
 const INITIAL_BOOKS = [
-  { id: 1, judul: 'Sejarah Perpustakaan Nasional RI', penulis: 'Dr. Ahmad Fauzi', tahun: 2026, isbnCetak: '978-602-001', isbnDigital: '978-602-001-E', sampul: true, pdf: true, youtube: 'https://youtube.com/...' },
-  { id: 2, judul: 'Pedoman Katalogisasi Perpustakaan', penulis: 'Dra. Siti Rahayu', tahun: 2026, isbnCetak: '978-602-002', isbnDigital: '', sampul: true, pdf: false, youtube: '' },
+  { id: 1, judul: 'Sejarah Perpustakaan Nasional RI', penulis: 'Dr. Ahmad Fauzi', tahun: 2026, kategori: 'Humaniora', editor: 'Drs. Hendro Wibowo', desainSampul: 'Rian Pratama', penataLetak: 'Bagus Wicaksono', isbnCetak: '978-602-001', isbnDigital: '978-602-001-E', sampul: true, pdf: true, youtube: 'https://youtube.com/...' },
+  { id: 2, judul: 'Pedoman Katalogisasi Perpustakaan', penulis: 'Dra. Siti Rahayu', tahun: 2026, kategori: 'Inkubator Literasi', editor: 'M. Syarif', desainSampul: 'Dinda Caroline', penataLetak: 'Agus Santoso', isbnCetak: '978-602-002', isbnDigital: '', sampul: true, pdf: false, youtube: '' },
 ];
 
 import { SipenaAPI } from '../../lib/api';
 import { useDialog } from '../../context/DialogContext';
 
-const EMPTY_FORM = { judul: '', penulis: '', tahun: new Date().getFullYear(), isbnCetak: '', isbnDigital: '', sampul: null, pdf: null, youtube: '' };
+const EMPTY_FORM = { 
+  judul: '', 
+  penulis: '', 
+  tahun: new Date().getFullYear(), 
+  kategori: 'Anak-anak', 
+  isbnCetak: '', 
+  isbnDigital: '', 
+  editor: '', 
+  desainSampul: '', 
+  penataLetak: '', 
+  sampul: null, 
+  pdf: null, 
+  sinopsis: '', 
+  youtube: '' 
+};
 
 const Toast = ({ msg, onClose }) => (
   <div style={{
@@ -48,8 +75,8 @@ const ModalBuku = ({ data, onSave, onClose }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
     }}>
       <div style={{
-        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '600px',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column'
+        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '640px',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '92vh', display: 'flex', flexDirection: 'column'
       }}>
         <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -67,19 +94,48 @@ const ModalBuku = ({ data, onSave, onClose }) => {
               <label style={labelStyle}>Nama Penulis *</label>
               <input style={inputStyle} required value={form.penulis} onChange={e => setForm(p => ({ ...p, penulis: e.target.value }))} placeholder="Nama penulis/pengarang" />
             </div>
-            <div>
-              <label style={labelStyle}>Tahun Terbit *</label>
-              <input style={inputStyle} type="number" required min="1900" max="2100" value={form.tahun} onChange={e => setForm(p => ({ ...p, tahun: Number(e.target.value) }))} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={labelStyle}>Tahun Terbit *</label>
+                <input style={inputStyle} type="number" required min="1900" max="2100" value={form.tahun} onChange={e => setForm(p => ({ ...p, tahun: Number(e.target.value) }))} />
+              </div>
+              <div>
+                <label style={labelStyle}>Kategori Buku *</label>
+                <select 
+                  style={inputStyle} 
+                  required 
+                  value={form.kategori || 'Anak-anak'} 
+                  onChange={e => setForm(p => ({ ...p, kategori: e.target.value }))}
+                >
+                  {KATEGORI_BUKU_OPTIONS.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={labelStyle}>ISBN Cetak</label>
-                <input style={inputStyle} value={form.isbnCetak} onChange={e => setForm(p => ({ ...p, isbnCetak: e.target.value }))} placeholder="978-..." />
+                <input style={inputStyle} value={form.isbnCetak || ''} onChange={e => setForm(p => ({ ...p, isbnCetak: e.target.value }))} placeholder="978-..." />
               </div>
               <div>
                 <label style={labelStyle}>ISBN Digital</label>
-                <input style={inputStyle} value={form.isbnDigital} onChange={e => setForm(p => ({ ...p, isbnDigital: e.target.value }))} placeholder="978-..." />
+                <input style={inputStyle} value={form.isbnDigital || ''} onChange={e => setForm(p => ({ ...p, isbnDigital: e.target.value }))} placeholder="978-..." />
               </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={labelStyle}>Editor</label>
+                <input style={inputStyle} value={form.editor || ''} onChange={e => setForm(p => ({ ...p, editor: e.target.value }))} placeholder="Nama editor / penyunting" />
+              </div>
+              <div>
+                <label style={labelStyle}>Desain Sampul</label>
+                <input style={inputStyle} value={form.desainSampul || ''} onChange={e => setForm(p => ({ ...p, desainSampul: e.target.value }))} placeholder="Nama desainer sampul" />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Penata Letak</label>
+              <input style={inputStyle} value={form.penataLetak || ''} onChange={e => setForm(p => ({ ...p, penataLetak: e.target.value }))} placeholder="Nama penata letak / layouter" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
@@ -92,12 +148,12 @@ const ModalBuku = ({ data, onSave, onClose }) => {
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Sinopsis / Deskripsi Buku</label>
-              <textarea rows="4" style={{ ...inputStyle, resize: 'vertical' }} value={form.sinopsis || ''} onChange={e => setForm(p => ({ ...p, sinopsis: e.target.value }))} placeholder="Tuliskan sinopsis singkat buku ini..."></textarea>
+              <label style={labelStyle}>Abstrak</label>
+              <textarea rows="4" style={{ ...inputStyle, resize: 'vertical' }} value={form.sinopsis || ''} onChange={e => setForm(p => ({ ...p, sinopsis: e.target.value }))} placeholder="Tuliskan abstrak buku ini..."></textarea>
             </div>
             <div>
               <label style={labelStyle}>Link Youtube Audiobook</label>
-              <input style={inputStyle} type="url" value={form.youtube} onChange={e => setForm(p => ({ ...p, youtube: e.target.value }))} placeholder="https://youtube.com/..." />
+              <input style={inputStyle} type="url" value={form.youtube || ''} onChange={e => setForm(p => ({ ...p, youtube: e.target.value }))} placeholder="https://youtube.com/..." />
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} className="btn btn-outline">Batal</button>
@@ -133,12 +189,16 @@ const AdminKatalog = () => {
         judul: b.title,
         penulis: b.authorName || 'Tidak diketahui',
         tahun: b.year,
-        isbnCetak: b.isbn,
-        isbnDigital: b.isbnDigital,
+        kategori: b.category || 'Anak-anak',
+        isbnCetak: b.isbn || '',
+        isbnDigital: b.isbnDigital || '',
+        editor: b.editor || '',
+        desainSampul: b.coverDesigner || '',
+        penataLetak: b.layoutDesigner || '',
         sampul: b.coverUrl,
         pdf: b.fileUrl,
         youtube: b.audioUrl,
-        sinopsis: b.synopsis
+        sinopsis: b.synopsis || ''
       }));
       setBooks(mapped);
     } catch (err) {
@@ -160,6 +220,7 @@ const AdminKatalog = () => {
         ...EMPTY_FORM,
         judul: params.get('judul') || '',
         penulis: params.get('penulis') || '',
+        kategori: params.get('kategori') || 'Anak-anak',
         isbnCetak: params.get('isbn') || '',
         sinopsis: params.get('sinopsis') || ''
       };
@@ -171,7 +232,9 @@ const AdminKatalog = () => {
 
   const filtered = books.filter(b =>
     b.judul.toLowerCase().includes(search.toLowerCase()) ||
-    b.penulis.toLowerCase().includes(search.toLowerCase())
+    b.penulis.toLowerCase().includes(search.toLowerCase()) ||
+    (b.kategori && b.kategori.toLowerCase().includes(search.toLowerCase())) ||
+    (b.editor && b.editor.toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleOpenTambah = () => setModal({ mode: 'tambah', data: null });
@@ -202,8 +265,12 @@ const AdminKatalog = () => {
       title: formData.judul,
       authorName: formData.penulis,
       year: formData.tahun,
+      category: formData.kategori,
       isbn: formData.isbnCetak,
       isbnDigital: formData.isbnDigital,
+      editor: formData.editor,
+      coverDesigner: formData.desainSampul,
+      layoutDesigner: formData.penataLetak,
       synopsis: formData.sinopsis,
       coverUrl: formData.sampul === true ? '/default-cover.jpg' : formData.sampul,
       fileUrl: formData.pdf === true ? '/default-pdf.pdf' : formData.pdf,
@@ -238,7 +305,7 @@ const AdminKatalog = () => {
       <div className="admin-card">
         <div className="admin-card-header">
           <input
-            type="text" placeholder="Cari judul atau penulis..."
+            type="text" placeholder="Cari judul, penulis, kategori..."
             value={search} onChange={e => setSearch(e.target.value)}
             style={{ padding: '0.45rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', width: '260px' }}
           />
@@ -255,7 +322,9 @@ const AdminKatalog = () => {
             <thead>
               <tr>
                 <th>Judul & Penulis</th>
+                <th>Kategori</th>
                 <th>Tahun</th>
+                <th>Tim Produksi</th>
                 <th>ISBN (Cetak/Digital)</th>
                 <th>Aset File</th>
                 <th>Aksi</th>
@@ -263,14 +332,25 @@ const AdminKatalog = () => {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada buku yang sesuai.</td></tr>
+                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada buku yang sesuai.</td></tr>
               ) : filtered.map(b => (
                 <tr key={b.id}>
                   <td>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{b.judul}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Oleh: {b.penulis}</div>
                   </td>
+                  <td>
+                    <span className="badge badge-blue" style={{ fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {b.kategori}
+                    </span>
+                  </td>
                   <td>{b.tahun}</td>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                    {b.editor && <div><span style={{ color: 'var(--text-tertiary)' }}>Ed:</span> {b.editor}</div>}
+                    {b.desainSampul && <div><span style={{ color: 'var(--text-tertiary)' }}>Sampul:</span> {b.desainSampul}</div>}
+                    {b.penataLetak && <div><span style={{ color: 'var(--text-tertiary)' }}>Layout:</span> {b.penataLetak}</div>}
+                    {!b.editor && !b.desainSampul && !b.penataLetak && <span style={{ color: 'var(--text-tertiary)' }}>-</span>}
+                  </td>
                   <td style={{ fontSize: '0.85rem' }}>
                     {b.isbnCetak && <div>Cetak: {b.isbnCetak}</div>}
                     {b.isbnDigital && <div>Digital: {b.isbnDigital}</div>}

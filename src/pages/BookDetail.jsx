@@ -8,11 +8,20 @@ import { SipenaAPI } from '../lib/api';
 import './BookDetail.css';
 
 const CATEGORY_COLORS = {
+  'Anak-anak': '#0ea5e9',
+  'Biografi & Memoar': '#8b5cf6',
+  'Ekonomi & Management': '#059669',
+  'Fiksi': '#e11d48',
+  'Hukum & Politik': '#4f46e5',
+  'Humaniora': '#d97706',
+  'Inkubator Literasi': '#2563eb',
+  'Kesehatan': '#10b981',
+  'Komik': '#f59e0b',
+  'Lifestyle': '#ec4899',
   'Sastra': '#1e3a8a',
   'Sejarah': '#b91c1c',
   'Budaya': '#047857',
   'Anak': '#0ea5e9',
-  'Fiksi': '#be123c',
   'Hukum': '#6b21a8',
   'Pendidikan': '#92400e',
   'Umum': '#475569'
@@ -238,11 +247,23 @@ const BookDetail = () => {
                 <span className="meta-label">ISBN Cetak / Digital</span>
                 <span className="meta-value">{book.isbn || '-'}{book.isbnDigital ? ` / ${book.isbnDigital}` : ''}</span>
               </div>
+              <div className="meta-item">
+                <span className="meta-label">Editor</span>
+                <span className="meta-value">{book.editor || '-'}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">Desain Sampul</span>
+                <span className="meta-value">{book.coverDesigner || '-'}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">Penata Letak</span>
+                <span className="meta-value">{book.layoutDesigner || '-'}</span>
+              </div>
             </div>
 
             <div className="synopsis-section">
-              <h3>Sinopsis</h3>
-              <p>{book.synopsis || 'Belum ada sinopsis untuk buku ini.'}</p>
+              <h3>Abstrak</h3>
+              <p>{book.synopsis || 'Belum ada abstrak untuk buku ini.'}</p>
             </div>
 
             {/* Modern PDF Reader Section */}
