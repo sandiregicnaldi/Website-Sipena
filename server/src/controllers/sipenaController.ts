@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { appSettings, books, manuscripts, events, bookRatings, bookDownloads } from "../db/schema";
+import { appSettings, books, manuscripts, events, bookRatings, bookDownloads, users } from "../db/schema";
 import { eq, and, sql, desc, ilike, or, count } from "drizzle-orm";
 
 // ── KONTEN WEB (Banner, Tentang, FAQ, Panduan) ──
@@ -398,6 +398,159 @@ export const SipenaEventsController = {
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ error: "Failed to delete event" });
+        }
+    }
+};
+
+// ── PENULIS (AUTHORS) ──
+export const SipenaAuthorsController = {
+    getAll: async (req: Request, res: Response) => {
+        try {
+            const authorList = await db
+                .select({
+                    id: users.id,
+                    name: users.name,
+                    email: users.email,
+                    role: users.role,
+                    bio: users.bio,
+                    profesi: users.profesi,
+                    domisili: users.domisili,
+                    website: users.website,
+                    image: users.image,
+                    karyaEksternal: users.karyaEksternal,
+                })
+                .from(users)
+                .where(eq(users.role, "penulis"));
+            res.json(authorList);
+        } catch (error) {
+            console.error("SipenaAuthorsController.getAll error:", error);
+            res.status(500).json({ error: "Failed to fetch authors" });
+        }
+    },
+
+    getOne: async (req: Request, res: Response) => {
+        try {
+            const id = req.params.id as string;
+            const [author] = await db
+                .select({
+                    id: users.id,
+                    name: users.name,
+                    email: users.email,
+                    role: users.role,
+                    bio: users.bio,
+                    profesi: users.profesi,
+                    domisili: users.domisili,
+                    website: users.website,
+                    image: users.image,
+                    karyaEksternal: users.karyaEksternal,
+                })
+                .from(users)
+                .where(eq(users.id, id))
+                .limit(1);
+
+            if (!author) {
+                return res.status(404).json({ error: "Author not found" });
+            }
+
+            const perpusnasWorks = await db.query.books.findMany({
+                where: or(
+                    eq(books.authorId, id),
+                    ilike(books.authorName, `%${author.name}%`)
+                ),
+                orderBy: (b, { desc }) => [desc(b.createdAt)]
+            });
+
+            res.json({
+                ...author,
+                perpusnasWorks
+            });
+        } catch (error) {
+            console.error("SipenaAuthorsController.getOne error:", error);
+            res.status(500).json({ error: "Failed to fetch author" });
+        }
+    },
+
+    submitRequest: async (req: Request, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ error: "Silakan login terlebih dahulu" });
+            }
+
+            const { bio, profesi, domisili, website, karyaEksternal, image, token, name } = req.body;
+
+            const isInstantToken = token && typeof token === "string" && token.trim().toUpperCase() === "PERPUSNAS-PENULIS-2026";
+            const newRole = isInstantToken ? "penulis" : "calon_penulis";
+            const newStatus = isInstantToken ? "active" : "pending";
+
+            const updateData: Record<string, any> = {
+                role: newRole,
+                status: newStatus,
+                updatedAt: new Date()
+            };
+
+            if (name) updateData.name = name;
+            if (bio !== undefined) updateData.bio = bio;
+            if (profesi !== undefined) updateData.profesi = profesi;
+            if (domisili !== undefined) updateData.domisili = domisili;
+            if (website !== undefined) updateData.website = website;
+            if (karyaEksternal !== undefined) updateData.karyaEksternal = karyaEksternal;
+            if (image !== undefined) updateData.image = image;
+
+            const [updated] = await db
+                .update(users)
+                .set(updateData)
+                .where(eq(users.id, userId))
+                .returning();
+
+            res.json({
+                success: true,
+                role: updated.role,
+                status: updated.status,
+                isVerifiedAuthor: updated.role === "penulis",
+                instantApproved: isInstantToken,
+                message: isInstantToken 
+                    ? "Selamat! Akun Anda berhasil diverifikasi secara instan sebagai Penulis Resmi." 
+                    : "Pengajuan verifikasi penulis berhasil dikirim dan sedang ditinjau oleh tim redaksi."
+            });
+        } catch (error) {
+            console.error("SipenaAuthorsController.submitRequest error:", error);
+            res.status(500).json({ error: "Failed to submit author verification" });
+        }
+    },
+
+    updateAuthorProfile: async (req: Request, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ error: "Unauthorized" });
+            }
+
+            const { bio, profesi, domisili, website, karyaEksternal, image, name } = req.body;
+            const updateData: Record<string, any> = {
+                updatedAt: new Date()
+            };
+            if (name !== undefined) updateData.name = name;
+            if (bio !== undefined) updateData.bio = bio;
+            if (profesi !== undefined) updateData.profesi = profesi;
+            if (domisili !== undefined) updateData.domisili = domisili;
+            if (website !== undefined) updateData.website = website;
+            if (karyaEksternal !== undefined) updateData.karyaEksternal = karyaEksternal;
+            if (image !== undefined) updateData.image = image;
+
+            const [updated] = await db
+                .update(users)
+                .set(updateData)
+                .where(eq(users.id, userId))
+                .returning();
+
+            res.json({
+                success: true,
+                user: updated
+            });
+        } catch (error) {
+            console.error("SipenaAuthorsController.updateAuthorProfile error:", error);
+            res.status(500).json({ error: "Failed to update author profile" });
         }
     }
 };

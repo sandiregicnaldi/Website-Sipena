@@ -104,7 +104,8 @@ import {
     SipenaContentController, 
     SipenaBooksController, 
     SipenaManuscriptsController, 
-    SipenaEventsController 
+    SipenaEventsController,
+    SipenaAuthorsController 
 } from "./controllers/sipenaController";
 
 // Chat & Messaging
@@ -146,6 +147,12 @@ router.get("/sipena/events", SipenaEventsController.getAll); // Public access
 router.post("/sipena/events", requirePJOrAdmin, SipenaEventsController.create);
 router.patch("/sipena/events/:id", requirePJOrAdmin, SipenaEventsController.update);
 router.delete("/sipena/events/:id", requirePJOrAdmin, SipenaEventsController.delete);
+
+// Penulis (Authors)
+router.get("/sipena/authors", SipenaAuthorsController.getAll); // Public access
+router.get("/sipena/authors/:id", SipenaAuthorsController.getOne); // Public access
+router.post("/sipena/author-request", requireAuth, SipenaAuthorsController.submitRequest); // User submits verification
+router.patch("/sipena/author-profile", requireAuth, SipenaAuthorsController.updateAuthorProfile); // Author updates profile
 
 export default router;
 

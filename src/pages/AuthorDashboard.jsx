@@ -1,16 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
+import { SipenaAPI } from '../lib/api';
 import {
   User, Mail, MapPin, Calendar, Building2, Briefcase,
-  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download, PenTool
+  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download, PenTool, ExternalLink, Key, Sparkles, Clock, AlertCircle, BookOpen
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import './AuthorDashboard.css';
 
 const AuthorDashboard = () => {
-  const { user, updateProfile, logout, isAuthor, isAdmin } = useAuth();
+  const { user, updateProfile, logout, isAuthor, isApplicant, isAdmin } = useAuth();
   const { showAlert, showConfirm, showToast } = useDialog();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -23,7 +24,10 @@ const AuthorDashboard = () => {
   }
 
   const [form, setForm] = useState({
-    namaLengkap: user.namaLengkap || '',
+    namaLengkap: user.namaLengkap || user.name || '',
+    email: user.email || '',
+    profesi: user.profesi || '',
+    domisili: user.domisili || (user.kota ? `${user.kota}, ${user.provinsi}` : ''),
     bio: user.bio || '',
     website: user.website || '',
     tempatLahir: user.tempatLahir || '',
@@ -35,11 +39,13 @@ const AuthorDashboard = () => {
     kota: user.kota || '',
     kecamatan: user.kecamatan || '',
     kelurahan: user.kelurahan || '',
-    karyaEksternal: user.karyaEksternal || [],
-    fotoProfil: user.fotoProfil || null,
+    karyaEksternal: Array.isArray(user.karyaEksternal) ? user.karyaEksternal : [],
+    fotoProfil: user.fotoProfil || user.image || null,
   });
 
-  const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '' });
+  const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '', storeName: '' });
+  const [tokenAkselerasi, setTokenAkselerasi] = useState('');
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
   
   // State untuk form pengajuan naskah baru
   const [naskahBaru, setNaskahBaru] = useState({ judul: '', linkDrive: '' });
@@ -76,9 +82,13 @@ const AuthorDashboard = () => {
     if (!newKarya.judul.trim()) return;
     setForm(prev => ({
       ...prev,
-      karyaEksternal: [...prev.karyaEksternal, { ...newKarya, id: Date.now() }]
+      karyaEksternal: [...prev.karyaEksternal, { 
+        ...newKarya, 
+        storeName: newKarya.storeName.trim() || 'Toko Buku',
+        id: Date.now() 
+      }]
     }));
-    setNewKarya({ judul: '', penerbit: '', tahun: '', url: '' });
+    setNewKarya({ judul: '', penerbit: '', tahun: '', url: '', storeName: '' });
   };
 
   const handleRemoveKarya = (id) => {
@@ -88,10 +98,77 @@ const AuthorDashboard = () => {
     }));
   };
 
-  const handleSave = () => {
-    updateProfile(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    try {
+      await updateProfile(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      showToast({ message: 'Profil dan biodata berhasil diperbarui!', type: 'success' });
+    } catch (err) {
+      showToast({ message: 'Gagal memperbarui profil: ' + err.message, type: 'error' });
+    }
+  };
+
+  const handleKirimPengajuanPenulis = async () => {
+    if (!form.namaLengkap.trim()) {
+      showToast({ message: 'Mohon isi nama penulis/pena Anda', type: 'error' });
+      return;
+    }
+    if (!form.bio.trim()) {
+      showToast({ message: 'Mohon isi biografi singkat kepenulisan Anda', type: 'error' });
+      return;
+    }
+    if (form.karyaEksternal.length === 0) {
+      showToast({ message: 'Mohon tambahkan minimal 1 buku yang pernah Anda terbitkan', type: 'error' });
+      return;
+    }
+
+    const confirmed = await showConfirm({
+      title: 'Kirim Pengajuan Verifikasi Penulis?',
+      message: tokenAkselerasi.trim() 
+        ? 'Anda menyertakan Token Akselerasi. Sistem akan langsung memvalidasi token dan mengaktifkan status Penulis Anda.'
+        : 'Draf portofolio Anda akan dikirim ke Tim Redaksi Perpusnas Press untuk ditinjau.',
+      type: 'info',
+      confirmText: 'Ya, Kirim Pengajuan',
+      cancelText: 'Periksa Kembali'
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setIsSubmittingVerification(true);
+      const res = await SipenaAPI.submitAuthorRequest({
+        ...form,
+        token: tokenAkselerasi.trim()
+      });
+
+      if (res.instantApproved) {
+        await showAlert({
+          title: '🎉 Selamat! Akun Berhasil Diverifikasi',
+          message: 'Token Akselerasi valid! Akun Anda kini telah resmi menjadi Penulis Terverifikasi Perpusnas Press. Tab profil publik dan pengajuan naskah kini telah terbuka.',
+          type: 'success',
+          confirmText: 'Mulai Kelola Profil'
+        });
+        window.location.reload();
+      } else {
+        await showAlert({
+          title: 'Pengajuan Berhasil Dikirim',
+          message: 'Draf portofolio Anda telah tersimpan dan sedang dalam antrean review tim redaksi Perpusnas Press. Kami akan segera memperbarui status akun Anda.',
+          type: 'success',
+          confirmText: 'Selesai'
+        });
+        window.location.reload();
+      }
+    } catch (err) {
+      showAlert({
+        title: 'Pengajuan Gagal',
+        message: err.message || 'Terjadi kesalahan saat mengirim pengajuan verifikasi.',
+        type: 'danger',
+        confirmText: 'Tutup'
+      });
+    } finally {
+      setIsSubmittingVerification(false);
+    }
   };
 
   const handleAjukanNaskah = (e) => {
@@ -208,6 +285,10 @@ const AuthorDashboard = () => {
                   <>
                     <PenTool size={13} /> Penulis Terverifikasi
                   </>
+                ) : user?.isApplicant || user?.role === 'calon_penulis' ? (
+                  <span style={{ color: '#d97706', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Clock size={13} /> Menunggu Verifikasi
+                  </span>
                 ) : (
                   <>
                     <User size={13} /> Pengunjung
@@ -251,12 +332,17 @@ const AuthorDashboard = () => {
               </button>
               {isAuthor && (
                 <button className={`dash-tab ${activeTab === 'karya' ? 'active' : ''}`} onClick={() => setActiveTab('karya')}>
-                  <User size={16} /> Profil Penulis Publik
+                  <PenTool size={16} /> Profil Penulis Publik
                 </button>
               )}
               {!isAuthor && (
                 <button className={`dash-tab ${activeTab === 'pengajuan-penulis' ? 'active' : ''}`} onClick={() => setActiveTab('pengajuan-penulis')}>
                   <CheckCircle size={16} /> Verifikasi Penulis
+                  {(user?.isApplicant || user?.role === 'calon_penulis') && (
+                    <span style={{ fontSize: '0.72rem', padding: '0.1rem 0.45rem', borderRadius: '10px', background: '#fef3c7', color: '#b45309', marginLeft: '0.35rem', fontWeight: 600 }}>
+                      Review
+                    </span>
+                  )}
                 </button>
               )}
             </div>
@@ -358,48 +444,215 @@ const AuthorDashboard = () => {
               </div>
             )}
 
-            {/* ── TAB PENGAJUAN PENULIS ─────────────────────────────────── */}
-            {activeTab === 'pengajuan-penulis' && (
+            {/* ── TAB PENGAJUAN / VERIFIKASI PENULIS (Opsi 1 Disempurnakan) ── */}
+            {activeTab === 'pengajuan-penulis' && !isAuthor && (
               <div className="tab-panel">
-                <div className="add-karya-section">
-                  <h3>Pengajuan Verifikasi Penulis</h3>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
-                    Tingkatkan akun Anda menjadi Penulis Terverifikasi. Sebagai penulis, Anda dapat mempublikasikan karya eksternal di halaman utama SiPena dan berpartisipasi aktif dalam komunitas literasi Perpusnas Press.
-                  </p>
-                  
-                  <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
-                    <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Syarat Menjadi Penulis:</h4>
-                    <ul style={{ paddingLeft: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <li>Pernah menerbitkan minimal satu buku fisik atau digital.</li>
-                      <li>Data profil dan biodata (KTP, Alamat, dll) sudah dilengkapi dan benar.</li>
-                      <li>Berkomitmen membagikan karya tulis yang orisinal dan tidak melanggar hak cipta.</li>
-                    </ul>
-                  </div>
+                {(user?.isApplicant || user?.role === 'calon_penulis') ? (
+                  <div className="author-draft-card" style={{ borderLeft: '5px solid #f59e0b', background: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.25rem' }}>
+                      <div style={{ background: '#fef3c7', padding: '0.75rem', borderRadius: '50%', color: '#d97706', display: 'flex' }}>
+                        <Clock size={28} />
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                          <h3 style={{ margin: 0, color: '#92400e', fontSize: '1.25rem' }}>Pengajuan Verifikasi Sedang Ditinjau</h3>
+                          <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '50px', background: '#fef3c7', color: '#b45309', fontWeight: 600 }}>
+                            Dalam Antrean
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: '1.5' }}>
+                          Terima kasih! Draf portofolio kepenulisan Anda telah kami terima dan sedang ditelaah oleh Tim Redaksi Perpusnas Press. Begitu disetujui, akun Anda otomatis menjadi <strong>Penulis Terverifikasi</strong> dan tab Profil Publik & Pengajuan Naskah akan langsung aktif.
+                        </p>
+                      </div>
+                    </div>
 
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={async () => {
-                      const confirmed = await showConfirm({
-                        title: 'Ajukan Verifikasi Penulis?',
-                        message: 'Data profil Anda akan diajukan ke tim admin redaksi Perpusnas Press untuk diverifikasi sebagai Penulis resmi.',
-                        type: 'info',
-                        confirmText: 'Ya, Kirim Pengajuan',
-                        cancelText: 'Batal'
-                      });
-                      if (confirmed) {
-                        showAlert({
-                          title: 'Pengajuan Berhasil Dikirim!',
-                          message: 'Pengajuan verifikasi penulis berhasil dikirim! Tim Admin Redaksi akan segera memverifikasi dan memproses permintaan Anda.',
-                          type: 'success',
-                          confirmText: 'Selesai'
-                        });
-                      }
-                    }}
-                    style={{ padding: '0.75rem 1.5rem' }}
-                  >
-                    <CheckCircle size={18} /> Ajukan Diri Sebagai Penulis
-                  </button>
-                </div>
+                    <div style={{ background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      <h4 style={{ margin: '0 0 0.85rem', fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <FileText size={16} color="var(--accent-color)" /> Ringkasan Draf yang Diajukan:
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', fontSize: '0.875rem' }}>
+                        <div>
+                          <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.78rem' }}>Nama Penulis Publik</span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{form.namaLengkap || user.namaLengkap}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.78rem' }}>Bidang / Profesi Kepenulisan</span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{form.profesi || '-'}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.78rem' }}>Domisili Publik</span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{form.domisili || '-'}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.78rem' }}>Jumlah Karya Diajukan</span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{form.karyaEksternal.length} buku</strong>
+                        </div>
+                      </div>
+
+                      {form.bio && (
+                        <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px dashed var(--border-color)', fontSize: '0.85rem' }}>
+                          <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.78rem', marginBottom: '0.2rem' }}>Draf Biografi:</span>
+                          <p style={{ margin: 0, color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: '1.6' }}>"{form.bio}"</p>
+                        </div>
+                      )}
+
+                      {form.karyaEksternal.length > 0 && (
+                        <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px dashed var(--border-color)' }}>
+                          <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.78rem', marginBottom: '0.5rem' }}>Daftar Buku di Penerbit Lain:</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {form.karyaEksternal.map(k => (
+                              <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                                <div>
+                                  <strong>{k.judul}</strong> · <span style={{ color: 'var(--text-secondary)' }}>{k.penerbit} ({k.tahun})</span>
+                                </div>
+                                <span className="store-link" style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+                                  {k.storeName || 'Beli Buku'} ↗
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb)', color: 'white', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)', marginBottom: '2rem', boxShadow: 'var(--shadow-md)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                        <Sparkles size={24} color="#fef08a" />
+                        <h3 style={{ margin: 0, fontSize: '1.35rem', color: 'white' }}>Upgrade Menjadi Penulis Terverifikasi</h3>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.92rem', opacity: 0.9, lineHeight: '1.6', maxWidth: '750px' }}>
+                        Tingkatkan akun Pengunjung Anda. Sebagai Penulis resmi Perpusnas Press, Anda dapat memiliki laman profil penulis publik, memamerkan portofolio buku di penerbit lain, dan mengajukan draf naskah langsung ke meja redaksi.
+                      </p>
+                    </div>
+
+                    <div className="form-section">
+                      <h4 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <PenTool size={18} color="var(--accent-color)" /> Langkah 1: Siapkan Draf Profil Kepenulisan Anda
+                      </h4>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                        Data ini akan langsung menjadi profil publik Anda di SiPena setelah disetujui.
+                      </p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label>Nama Penulis / Nama Pena *</label>
+                          <div className="input-with-icon">
+                            <User size={18} className="input-icon" />
+                            <input type="text" name="namaLengkap" value={form.namaLengkap} onChange={handleChange} placeholder="Contoh: Dinda Marlina Carolina" required />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Bidang / Profesi Kepenulisan *</label>
+                          <div className="input-with-icon">
+                            <PenTool size={18} className="input-icon" />
+                            <input type="text" name="profesi" value={form.profesi} onChange={handleChange} placeholder="Contoh: Penulis & Peneliti Sastra" required />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label>Domisili / Wilayah *</label>
+                          <div className="input-with-icon">
+                            <MapPin size={18} className="input-icon" />
+                            <input type="text" name="domisili" value={form.domisili} onChange={handleChange} placeholder="Contoh: Yogyakarta, Indonesia" required />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Website / Portofolio / Medsos (Opsional)</label>
+                          <div className="input-with-icon">
+                            <Globe size={18} className="input-icon" />
+                            <input type="text" name="website" value={form.website} onChange={handleChange} placeholder="www.dindamarlina.com atau link medsos" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label>Biografi Singkat Kepenulisan *</label>
+                        <div className="input-with-icon textarea-container">
+                          <FileText size={18} className="input-icon textarea-icon" />
+                          <textarea name="bio" value={form.bio} onChange={handleChange} rows="4" placeholder="Ceritakan ketertarikan sastra, pengalaman menulis, dan latar belakang karya Anda..." required></textarea>
+                        </div>
+                      </div>
+
+                      {/* Karya Eksternal Tambahan saat Pendaftaran */}
+                      <div style={{ marginTop: '1.5rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        <h5 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                          Buku yang Pernah Diterbitkan di Penerbit Lain (Minimal 1) *
+                        </h5>
+                        <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          Sertakan judul buku, penerbit, tahun, dan link toko pembelian agar calon pembaca dapat menjangkau karya Anda.
+                        </p>
+
+                        {/* List Karya yang sudah ditambahkan */}
+                        {form.karyaEksternal.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                            {form.karyaEksternal.map(k => (
+                              <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '0.6rem 0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                                <div>
+                                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{k.judul}</div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    {k.penerbit}{k.tahun ? ` (${k.tahun})` : ''} · <span style={{ color: 'var(--accent-color)' }}>Beli di {k.storeName || 'Toko Buku'}</span>
+                                  </div>
+                                </div>
+                                <button type="button" onClick={() => handleRemoveKarya(k.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.3rem' }} title="Hapus">
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Input tambah karya baru */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.6rem' }}>
+                          <input type="text" placeholder="Judul Buku *" value={newKarya.judul} onChange={e => setNewKarya(p => ({ ...p, judul: e.target.value }))} style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }} />
+                          <input type="text" placeholder="Penerbit *" value={newKarya.penerbit} onChange={e => setNewKarya(p => ({ ...p, penerbit: e.target.value }))} style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }} />
+                          <input type="text" placeholder="Tahun (e.g. 2023)" value={newKarya.tahun} onChange={e => setNewKarya(p => ({ ...p, tahun: e.target.value }))} style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }} />
+                          <input type="text" placeholder="Nama Toko (e.g. Gramedia.com)" value={newKarya.storeName} onChange={e => setNewKarya(p => ({ ...p, storeName: e.target.value }))} style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }} />
+                          <input type="url" placeholder="URL Link Toko *" value={newKarya.url} onChange={e => setNewKarya(p => ({ ...p, url: e.target.value }))} style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem' }} />
+                        </div>
+                        <button type="button" className="btn btn-outline" onClick={handleAddKarya} style={{ marginTop: '0.75rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Plus size={15} /> Tambahkan Buku ke Draf
+                        </button>
+                      </div>
+
+                      {/* Langkah 2: Token Akselerasi Opsional */}
+                      <div className="token-input-box">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                          <Key size={18} color="#2563eb" />
+                          <h5 style={{ margin: 0, fontSize: '0.95rem', color: '#1e3a8a' }}>Langkah 2: Token Akselerasi Perpusnas Press (Opsional)</h5>
+                        </div>
+                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          Punya kode token undangan khusus dari tim redaksi? Masukkan kode token di bawah untuk langsung diverifikasi secara instan tanpa masa tunggu antrean review.
+                        </p>
+                        <div style={{ maxWidth: '400px' }}>
+                          <input 
+                            type="text" 
+                            placeholder="Contoh: PERPUSNAS-PENULIS-2026" 
+                            value={tokenAkselerasi} 
+                            onChange={e => setTokenAkselerasi(e.target.value)}
+                            style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid #bfdbfe', background: 'white', fontWeight: 600, letterSpacing: '0.5px' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tombol Kirim Pengajuan */}
+                      <button 
+                        type="button"
+                        className="btn btn-primary" 
+                        disabled={isSubmittingVerification}
+                        onClick={handleKirimPengajuanPenulis}
+                        style={{ padding: '0.85rem 2rem', fontSize: '1rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                      >
+                        <CheckCircle size={18} /> {isSubmittingVerification ? 'Mengirim Pengajuan...' : 'Kirim Pengajuan Verifikasi Penulis'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -514,51 +767,109 @@ const AuthorDashboard = () => {
             {/* ── TAB PROFIL PENULIS (Only Verified Author) ─────────── */}
             {activeTab === 'karya' && isAuthor && (
               <div className="tab-panel">
-                <p className="tab-desc">Lengkapi profil publik Anda yang akan ditampilkan di halaman detail penulis bagi pengunjung website.</p>
+                <div className="author-tab-header">
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Profil Penulis Publik</h3>
+                    <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                      Kelola profil Anda persis seperti yang tampil pada halaman detail penulis bagi pembaca dan pengunjung SiPena.
+                    </p>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="author-preview-btn" 
+                    onClick={() => navigate(`/penulis/${user.id}`)}
+                    title="Buka tampilan publik profil saya"
+                  >
+                    <ExternalLink size={16} /> Lihat Tampilan Publik Profil Saya
+                  </button>
+                </div>
 
                 <div className="form-section" style={{ marginBottom: '2rem' }}>
                   <div className="form-group">
                     <label>Foto Profil Publik</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                       {form.fotoProfil ? (
-                        <img src={form.fotoProfil} alt="Foto Profil" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+                        <img src={form.fotoProfil} alt="Foto Profil" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #e2e8f0', boxShadow: 'var(--shadow-sm)' }} />
                       ) : (
-                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <User size={24} color="#94a3b8" />
+                        <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #e2e8f0' }}>
+                          <User size={32} color="#94a3b8" />
                         </div>
                       )}
-                      <button className="btn btn-outline" onClick={() => fileInputRef.current.click()} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Camera size={16} /> Unggah Foto Baru
-                      </button>
+                      <div>
+                        <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current.click()} style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Camera size={16} /> Ganti Foto Profil
+                        </button>
+                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>Format JPG, PNG atau WebP (Disarankan rasio 1:1)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Nama Penulis Publik *</label>
+                      <div className="input-with-icon">
+                        <User size={18} className="input-icon" />
+                        <input type="text" name="namaLengkap" value={form.namaLengkap} onChange={handleChange} placeholder="Contoh: Dinda Marlina Carolina" required />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Profesi / Tagline Kepenulisan *</label>
+                      <div className="input-with-icon">
+                        <PenTool size={18} className="input-icon" />
+                        <input type="text" name="profesi" value={form.profesi} onChange={handleChange} placeholder="Contoh: Penulis & Peneliti Sastra" required />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Domisili / Wilayah *</label>
+                      <div className="input-with-icon">
+                        <MapPin size={18} className="input-icon" />
+                        <input type="text" name="domisili" value={form.domisili} onChange={handleChange} placeholder="Contoh: Yogyakarta, Indonesia" required />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Email Kontak Publik</label>
+                      <div className="input-with-icon">
+                        <Mail size={18} className="input-icon" />
+                        <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="email.penulis@example.com" />
+                      </div>
                     </div>
                   </div>
 
                   <div className="form-group">
-                    <label>Biografi Singkat</label>
-                    <div className="input-with-icon textarea-container">
-                      <FileText size={18} className="input-icon textarea-icon" />
-                      <textarea name="bio" value={form.bio} onChange={handleChange} rows="4" placeholder="Ceritakan latar belakang, pengalaman menulis, dan hal menarik lainnya tentang Anda..."></textarea>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Website / Portofolio (Opsional)</label>
+                    <label>Website / Portofolio / Media Sosial</label>
                     <div className="input-with-icon">
                       <Globe size={18} className="input-icon" />
-                      <input type="text" name="website" value={form.website} onChange={handleChange} placeholder="https://namasaya.com atau link media sosial" />
+                      <input type="text" name="website" value={form.website} onChange={handleChange} placeholder="www.dindamarlina.com atau link medsos" />
                     </div>
                   </div>
 
-                  <button className="btn btn-primary" onClick={handleSave}>
+                  <div className="form-group">
+                    <label>Biografi Singkat Penulis</label>
+                    <div className="input-with-icon textarea-container">
+                      <FileText size={18} className="input-icon textarea-icon" />
+                      <textarea name="bio" value={form.bio} onChange={handleChange} rows="5" placeholder="Ceritakan riwayat kepenulisan, fokus karya sastra/riset, dan latar belakang Anda..."></textarea>
+                    </div>
+                  </div>
+
+                  <button className="btn btn-primary" onClick={handleSave} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                     <Save size={16} /> Simpan Profil Publik
                   </button>
                 </div>
 
-                <h3 className="section-title-sm">Karya di Penerbit Lain</h3>
-                <p className="tab-desc" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>Tambahkan karya-karya Anda yang diterbitkan di luar Perpusnas Press beserta tautan pembelian atau aksesnya.</p>
+                <h3 className="section-title-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <BookOpen size={18} color="var(--accent-color)" /> Karya di Penerbit Lain
+                </h3>
+                <p className="tab-desc" style={{ marginTop: '-0.5rem', marginBottom: '1.25rem' }}>
+                  Tambahkan buku-buku Anda yang telah diterbitkan di luar Perpusnas Press beserta tautan toko online (Gramedia, Tokopedia, Shopee, dll).
+                </p>
 
                 {/* List existing */}
-                <div className="karya-list">
+                <div className="karya-list" style={{ marginBottom: '1.75rem' }}>
                   {form.karyaEksternal.length === 0 && (
                     <div className="empty-state">
                       <FileText size={40} color="#cbd5e1" />
@@ -566,17 +877,19 @@ const AuthorDashboard = () => {
                     </div>
                   )}
                   {form.karyaEksternal.map((k) => (
-                    <div key={k.id} className="karya-card">
+                    <div key={k.id} className="karya-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '0.75rem' }}>
                       <div className="karya-info">
-                        <h4>{k.judul}</h4>
-                        <p>{k.penerbit}{k.tahun ? ` · ${k.tahun}` : ''}</p>
+                        <h4 style={{ margin: '0 0 0.25rem', fontSize: '1.05rem', color: 'var(--text-primary)' }}>{k.judul}</h4>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                          {k.penerbit}{k.tahun ? ` (${k.tahun})` : ''}
+                        </p>
                         {k.url && (
-                          <a href={k.url} target="_blank" rel="noopener noreferrer" className="karya-link">
-                            <LinkIcon size={13} /> Lihat / Beli
+                          <a href={k.url} target="_blank" rel="noopener noreferrer" className="store-link">
+                            Beli di {k.storeName || 'Toko Buku'} <ExternalLink size={13} />
                           </a>
                         )}
                       </div>
-                      <button className="karya-delete" onClick={() => handleRemoveKarya(k.id)} title="Hapus">
+                      <button className="karya-delete" onClick={() => handleRemoveKarya(k.id)} title="Hapus Karya">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -585,15 +898,16 @@ const AuthorDashboard = () => {
 
                 {/* Add new */}
                 <div className="add-karya-section">
-                  <h3>Tambah Karya Baru</h3>
-                  <div className="add-karya-grid">
+                  <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Tambah Karya Baru</h3>
+                  <div className="add-karya-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                     <input type="text" placeholder="Judul Buku *" value={newKarya.judul} onChange={e => setNewKarya(p => ({ ...p, judul: e.target.value }))} />
-                    <input type="text" placeholder="Nama Penerbit" value={newKarya.penerbit} onChange={e => setNewKarya(p => ({ ...p, penerbit: e.target.value }))} />
-                    <input type="text" placeholder="Tahun Terbit" value={newKarya.tahun} onChange={e => setNewKarya(p => ({ ...p, tahun: e.target.value }))} />
-                    <input type="text" placeholder="URL Tautan (Tokopedia, Gramedia, dll.)" value={newKarya.url} onChange={e => setNewKarya(p => ({ ...p, url: e.target.value }))} />
+                    <input type="text" placeholder="Nama Penerbit *" value={newKarya.penerbit} onChange={e => setNewKarya(p => ({ ...p, penerbit: e.target.value }))} />
+                    <input type="text" placeholder="Tahun Terbit (e.g. 2022)" value={newKarya.tahun} onChange={e => setNewKarya(p => ({ ...p, tahun: e.target.value }))} />
+                    <input type="text" placeholder="Nama Toko (e.g. Gramedia.com, Tokopedia)" value={newKarya.storeName} onChange={e => setNewKarya(p => ({ ...p, storeName: e.target.value }))} />
+                    <input type="url" placeholder="URL Tautan Pembelian *" value={newKarya.url} onChange={e => setNewKarya(p => ({ ...p, url: e.target.value }))} style={{ gridColumn: '1 / -1' }} />
                   </div>
-                  <button className="btn btn-outline add-btn" onClick={handleAddKarya}>
-                    <Plus size={16} /> Tambahkan Karya
+                  <button className="btn btn-outline add-btn" onClick={handleAddKarya} style={{ marginTop: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Plus size={16} /> Tambahkan Karya ke Profil
                   </button>
                 </div>
               </div>

@@ -34,24 +34,36 @@ const Toast = ({ msg, type = 'success', onClose }) => (
   </div>
 );
 
-const UserDetailModal = ({ user, onClose }) => {
+const UserDetailModal = ({ user, onClose, onApprove, onReject }) => {
   if (!user) return null;
+  const isApplicant = user.pengajuanPenulis || user.role === 'calon_penulis';
+  const hasAuthorData = user.isVerifiedAuthor || isApplicant || user.bio || user.profesi || user.karyaEksternal?.length > 0;
+
   return (
     <div style={{
       position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
     }}>
       <div style={{
-        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '600px',
+        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '650px',
         boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column'
       }}>
         <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileText size={16} /> Detail Data Pengunjung
+            <FileText size={16} /> Detail Data {isApplicant ? 'Pengajuan Verifikasi Penulis' : 'Pengguna'}
           </h3>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '1.5rem' }}>
+          {isApplicant && (
+            <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 'var(--radius-md)', padding: '0.85rem 1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <AlertTriangle size={18} color="#d97706" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.875rem', color: '#92400e' }}>
+                Pengguna ini sedang mengajukan verifikasi sebagai <strong>Penulis Resmi</strong>. Tinjau draf portofolio di bawah.
+              </span>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Nama Lengkap (KTP)</p>
@@ -71,6 +83,53 @@ const UserDetailModal = ({ user, onClose }) => {
             </div>
           </div>
 
+          {/* Portofolio & Draf Penulis */}
+          {hasAuthorData && (
+            <div style={{ marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h4 style={{ fontSize: '0.92rem', color: 'var(--text-primary)', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <PenTool size={16} color="var(--accent-color)" /> Data Profil Kepenulisan Publik
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0 0 0.2rem' }}>Profesi / Tagline Kepenulisan</p>
+                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{user.profesi || '-'}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0 0 0.2rem' }}>Domisili Publik</p>
+                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{user.domisili || '-'}</p>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0 0 0.2rem' }}>Website / Media Sosial</p>
+                  <p style={{ fontWeight: 600, color: 'var(--accent-color)', margin: 0 }}>{user.website || '-'}</p>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0 0 0.2rem' }}>Biografi Singkat</p>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0, fontStyle: 'italic', fontSize: '0.875rem', lineHeight: '1.6' }}>{user.bio || '-'}</p>
+                </div>
+              </div>
+
+              {user.karyaEksternal && user.karyaEksternal.length > 0 && (
+                <div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0 0 0.5rem' }}>Buku yang Pernah Diterbitkan ({user.karyaEksternal.length}):</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {user.karyaEksternal.map((k, idx) => (
+                      <div key={idx} style={{ background: 'white', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                        <div>
+                          <strong>{k.judul}</strong> · <span style={{ color: 'var(--text-secondary)' }}>{k.penerbit} ({k.tahun})</span>
+                        </div>
+                        {k.url && (
+                          <a href={k.url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none', fontSize: '0.8rem' }}>
+                            Beli di {k.storeName || 'Toko'} ↗
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Data Alamat</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div style={{ gridColumn: '1 / -1' }}>
@@ -85,18 +144,32 @@ const UserDetailModal = ({ user, onClose }) => {
               <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Kota / Kabupaten</p>
               <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.kota}</p>
             </div>
-            <div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Kecamatan</p>
-              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.kecamatan}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.2rem' }}>Kelurahan</p>
-              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.kelurahan}</p>
-            </div>
           </div>
         </div>
-        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="btn btn-outline" onClick={onClose}>Tutup</button>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            {isApplicant && onReject && (
+              <button 
+                className="btn btn-outline" 
+                onClick={() => { onClose(); onReject(user); }}
+                style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+              >
+                <X size={14} /> Tolak Pengajuan
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-outline" onClick={onClose}>Tutup</button>
+            {isApplicant && onApprove && (
+              <button 
+                className="btn btn-primary" 
+                onClick={() => { onClose(); onApprove(user); }}
+                style={{ background: '#059669', borderColor: '#059669' }}
+              >
+                <Check size={14} /> Setujui Sebagai Penulis
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -107,18 +180,24 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     bio: user.bio || '',
     website: user.website || '',
+    profesi: user.profesi || '',
+    domisili: user.domisili || '',
     karyaEksternal: user.karyaEksternal || []
   });
   
-  const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '' });
+  const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '', storeName: '' });
 
   const handleAddKarya = () => {
     if (!newKarya.judul) return;
     setFormData(prev => ({
       ...prev,
-      karyaEksternal: [...prev.karyaEksternal, { ...newKarya, id: Date.now() }]
+      karyaEksternal: [...prev.karyaEksternal, { 
+        ...newKarya, 
+        storeName: newKarya.storeName.trim() || 'Toko Buku',
+        id: Date.now() 
+      }]
     }));
-    setNewKarya({ judul: '', penerbit: '', tahun: '', url: '' });
+    setNewKarya({ judul: '', penerbit: '', tahun: '', url: '', storeName: '' });
   };
 
   const handleRemoveKarya = (id) => {
@@ -136,8 +215,8 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
     }}>
       <div style={{
-        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '500px',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '540px',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh'
       }}>
         <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -145,35 +224,52 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
           </h3>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
         </div>
-        <div style={{ padding: '1.5rem' }}>
+        <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Nama Penulis</label>
             <input type="text" value={user.nama} disabled style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-tertiary)', boxSizing: 'border-box' }} />
           </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Biografi Singkat</label>
-            <textarea rows="4" value={formData.bio} onChange={e => setFormData({ ...formData, bio: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}></textarea>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Profesi / Tagline</label>
+              <input type="text" value={formData.profesi} onChange={e => setFormData({ ...formData, profesi: e.target.value })} placeholder="e.g. Penulis & Peneliti Sastra" style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Domisili Publik</label>
+              <input type="text" value={formData.domisili} onChange={e => setFormData({ ...formData, domisili: e.target.value })} placeholder="e.g. Yogyakarta, Indonesia" style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
+            </div>
           </div>
+
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Website / Portofolio</label>
             <input type="text" value={formData.website} onChange={e => setFormData({ ...formData, website: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
           </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Biografi Singkat</label>
+            <textarea rows="4" value={formData.bio} onChange={e => setFormData({ ...formData, bio: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}></textarea>
+          </div>
+
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>Karya di Penerbit Lain</label>
             {formData.karyaEksternal.map(k => (
               <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-secondary)', padding: '0.5rem 0.8rem', borderRadius: 'var(--radius-md)', marginBottom: '0.5rem', border: '1px solid var(--border-color)' }}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{k.judul}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{k.penerbit} ({k.tahun})</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                    {k.penerbit} ({k.tahun}) · <span style={{ color: '#2563eb' }}>Beli di {k.storeName || 'Toko'}</span>
+                  </div>
                 </div>
                 <button onClick={() => handleRemoveKarya(k.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }} title="Hapus"><Trash2 size={14}/></button>
               </div>
             ))}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.5rem', marginTop: '0.5rem' }}>
               <input type="text" placeholder="Judul Buku" value={newKarya.judul} onChange={e => setNewKarya({...newKarya, judul: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
               <input type="text" placeholder="Penerbit" value={newKarya.penerbit} onChange={e => setNewKarya({...newKarya, penerbit: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
               <input type="text" placeholder="Tahun" value={newKarya.tahun} onChange={e => setNewKarya({...newKarya, tahun: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
-              <input type="text" placeholder="Link URL" value={newKarya.url} onChange={e => setNewKarya({...newKarya, url: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
+              <input type="text" placeholder="Nama Toko" value={newKarya.storeName} onChange={e => setNewKarya({...newKarya, storeName: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }} />
+              <input type="text" placeholder="Link URL" value={newKarya.url} onChange={e => setNewKarya({...newKarya, url: e.target.value})} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', gridColumn: '1 / -1' }} />
             </div>
             <button onClick={handleAddKarya} className="btn btn-outline" style={{ marginTop: '0.5rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>+ Tambah Karya</button>
           </div>
@@ -299,11 +395,31 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
     }
   };
 
+  const handleTolakPenulis = async (u) => {
+    const ok = await showConfirm({
+      title: 'Tolak Pengajuan Penulis',
+      message: `Tolak pengajuan verifikasi penulis dari "${u.nama}"?\nAkun akan tetap sebagai Pengunjung biasa.`,
+      type: 'warning',
+      confirmText: 'Ya, Tolak'
+    });
+    if (ok) {
+      try {
+        await api.admin.updateUser(u.id, { role: 'pengunjung', status: 'active' });
+        if (reloadUsers) await reloadUsers();
+        showToast(`Pengajuan verifikasi ${u.nama} telah ditolak.`);
+      } catch (err) {
+        showToast(`Gagal menolak pengajuan: ${err.message}`, 'error');
+      }
+    }
+  };
+
   const handleSaveAuthorProfile = async (data) => {
     try {
       await api.admin.updateUser(editAuthorModal.id, {
         bio: data.bio,
         website: data.website,
+        profesi: data.profesi,
+        domisili: data.domisili,
         karyaEksternal: data.karyaEksternal
       });
       if (reloadUsers) await reloadUsers();
@@ -451,14 +567,24 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
                               </>
                             ) : (
                               u.pengajuanPenulis ? (
-                                <button
-                                  onClick={() => handleUpgradePenulis(u)}
-                                  className="btn btn-outline"
-                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
-                                  title="Terima Pengajuan Penulis"
-                                >
-                                  <Check size={12}/> Terima Pengajuan
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleUpgradePenulis(u)}
+                                    className="btn btn-outline"
+                                    style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#059669', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                    title="Terima Pengajuan Penulis"
+                                  >
+                                    <Check size={12}/> Terima Pengajuan
+                                  </button>
+                                  <button
+                                    onClick={() => handleTolakPenulis(u)}
+                                    className="btn btn-outline"
+                                    style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#dc2626', borderColor: '#fca5a5', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                    title="Tolak Pengajuan Penulis"
+                                  >
+                                    <X size={12}/> Tolak
+                                  </button>
+                                </>
                               ) : (
                                 <button
                                   onClick={() => handleUpgradePenulis(u)}
@@ -539,7 +665,7 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
         </div>
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
-      <UserDetailModal user={detailModal} onClose={() => setDetailModal(null)} />
+      <UserDetailModal user={detailModal} onClose={() => setDetailModal(null)} onApprove={handleUpgradePenulis} onReject={handleTolakPenulis} />
       {editAuthorModal && <EditAuthorModal user={editAuthorModal} onClose={() => setEditAuthorModal(null)} onSave={handleSaveAuthorProfile} />}
     </div>
   );
@@ -577,6 +703,9 @@ const AdminPengguna = () => {
           pengajuanPenulis: u.role === 'calon_penulis',
           isReviewer: u.isReviewer,
           bio: u.bio || '',
+          profesi: u.profesi || '',
+          domisili: u.domisili || '',
+          image: u.image || '',
           website: u.website || '',
           karyaEksternal: Array.isArray(u.karyaEksternal) ? u.karyaEksternal : []
         };
@@ -609,22 +738,30 @@ const AdminPengguna = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '2px solid var(--border-color)' }}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {tabs.map(t => (
-            <NavLink
-              key={t.path} to={t.path}
-              style={({ isActive }) => ({
-                padding: '0.5rem 1.1rem', fontSize: '0.875rem', fontWeight: 600,
-                borderBottom: isActive ? '2px solid var(--accent-color)' : '2px solid transparent',
-                color: isActive ? 'var(--accent-color)' : 'var(--text-secondary)',
-                marginBottom: '-2px', transition: 'all 0.15s', textDecoration: 'none',
-              })}
-            >
-              {t.label}
-              <span style={{ marginLeft: '0.4rem', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontSize: '0.72rem', padding: '0 0.4rem', borderRadius: '50px' }}>
-                {users[t.type]?.length || 0}
-              </span>
-            </NavLink>
-          ))}
+          {tabs.map(t => {
+            const pendingAuthorsCount = (users.pengunjung || []).filter(u => u.pengajuanPenulis).length;
+            return (
+              <NavLink
+                key={t.path} to={t.path}
+                style={({ isActive }) => ({
+                  padding: '0.5rem 1.1rem', fontSize: '0.875rem', fontWeight: 600,
+                  borderBottom: isActive ? '2px solid var(--accent-color)' : '2px solid transparent',
+                  color: isActive ? 'var(--accent-color)' : 'var(--text-secondary)',
+                  marginBottom: '-2px', transition: 'all 0.15s', textDecoration: 'none',
+                })}
+              >
+                {t.label}
+                <span style={{ marginLeft: '0.4rem', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontSize: '0.72rem', padding: '0 0.4rem', borderRadius: '50px' }}>
+                  {users[t.type]?.length || 0}
+                </span>
+                {t.type === 'pengunjung' && pendingAuthorsCount > 0 && (
+                  <span style={{ marginLeft: '0.4rem', background: '#fef3c7', color: '#b45309', fontSize: '0.72rem', padding: '0.1rem 0.5rem', borderRadius: '50px', fontWeight: 600 }}>
+                    {pendingAuthorsCount} pengajuan
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
         <button
           onClick={fetchUsers}

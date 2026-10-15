@@ -24,6 +24,8 @@
 17. [Investigasi & Solusi Tuntas Tombol QC ("Setujui" & "Tolak / Revisi") pada Akun Reviewer di localhost:5173](#17-investigasi--solusi-tuntas-tombol-qc-setujui--tolak--revisi-pada-akun-reviewer-di-localhost5173)
 18. [Riwayat Commit & Push Git ke Dua Repositori Terpisah](#18-riwayat-commit--push-git-ke-dua-repositori-terpisah)
 19. [Daftar Akun Dummy Pengujian Seluruh Peran (Role Credentials)](#19-daftar-akun-dummy-pengujian-seluruh-peran-role-credentials)
+20. [Audit & Standarisasi Menyeluruh Pop-up Notifikasi & Dialog Konfirmasi](#20-audit--standarisasi-menyeluruh-pop-up-notifikasi--dialog-konfirmasi)
+21. [Alur Peningkatan Peran Penulis Terkurasi (Curated Author Upgrade) & Paritas Halaman Penulis Publik](#21-alur-peningkatan-peran-penulis-terkurasi-curated-author-upgrade--paritas-halaman-penulis-publik)
 
 ---
 
@@ -729,6 +731,101 @@ Dibuat sistem modal & toast global mandiri di [`src/context/DialogContext.jsx`](
 - **ID Commit Git:** `73a0bf9`
 - **Pesan Commit:** `feat: standardisasi seluruh dialog popup dan toast kustom pada pengajuan naskah dan verifikasi penulis`
 - **Remote Target:** `https://github.com/sandiregicnaldi/Website-Sipena.git` (branch `main`).
+
+---
+
+## 21. Alur Peningkatan Peran Penulis Terkurasi (Curated Author Upgrade) & Paritas Halaman Penulis Publik
+
+**Tanggal Eksekusi:** 15 Oktober 2026  
+**Status:** Selesai Terintegrasi & Teruji (*Fully Tested & Production Ready*)
+
+### A. Latar Belakang & Keputusan Desain (Opsi 1 yang Disempurnakan)
+Berdasarkan kebutuhan penerbitan Perpusnas Press, profil penulis publik harus merepresentasikan kurasi yang kredibel dan selaras dengan citra penerbit. Sebelumnya, alur pendaftaran penulis dan input profil belum sinkron dengan desain publik resmi.
+
+Pengguna memilih **Opsi 1 yang Disempurnakan**:
+1. **Pengunjung Mempersiapkan Portofolio Terkurasi**: Pengunjung (`pengunjung`) tidak langsung mendapatkan status penulis publik, melainkan menyiapkan draf portofolio kepenulisan (foto profil, nama penulis, profesi/tagline, domisili, email, website/portofolio, biografi singkat, serta karya di luar Perpusnas Press beserta platform/toko resmi penjualannya: Gramedia.com, Tokopedia, Shopee, dsb.).
+2. **Token Akselerasi Instan Opsional (`PERPUSNAS-PENULIS-2026`)**: Disediakan token opsional bagi pengujian cepat / penulis undangan resmi agar statusnya langsung terverifikasi instan tanpa harus menunggu peninjauan admin.
+3. **Peninjauan oleh Admin Redaksi**: Jika diajukan tanpa token, akun berstatus `calon_penulis` (status: `pending`). Super Administrator memeriksa kelayakan portofolio pada menu **Admin Pengguna** (`/admin/pengguna`) dan memutuskan untuk *Setujui Sebagai Penulis* atau *Tolak*.
+4. **Pembukaan Akses Dasbor & Profil Publik**: Setelah disetujui, tab **Profil Penulis Publik** dan **Pengajuan Naskah** terbuka penuh di dasbor, dan profil publik penulis langsung tayang secara dinamis di `/penulis/:id`.
+5. **Paritas Penuh 1:1 dengan Desain Publik**: Seluruh kolom input pada dasbor penulis disamakan 100% dengan tampilan halaman publik penulis acuan resmi (`media_1792035011313.png`).
+
+---
+
+### B. Perubahan Skema Basis Data PostgreSQL (`sipena_dev`)
+Telah dijalankan migrasi langsung pada tabel `"user"` PostgreSQL:
+- **`profesi text`**: Tagline atau profesi kepenulisan (contoh: *"Penulis & Peneliti Sastra"*).
+- **`domisili text`**: Lokasi atau domisili ringkas (contoh: *"Yogyakarta, Indonesia"*).
+- **`karya_eksternal jsonb`**: Array JSON terstruktur yang menyimpan daftar karya di luar Perpusnas Press, kini dilengkapi dengan atribut `storeName` (contoh: *"Gramedia.com"*, *"Tokopedia (Toko Buku Resmi)"*, *"Shopee (Buku Mojok Store)"*) untuk merender tombol interaktif *"Beli di {storeName} ↗"*.
+
+---
+
+### C. Implementasi Backend Server API (`server/src/*`)
+1. **`server/src/db/schema.ts`**: Menambahkan kolom `profesi`, `domisili`, dan memperbarui tipe TypeScript `karyaEksternal`.
+2. **`server/src/auth.ts`**: Menambahkan `bio`, `profesi`, dan `domisili` ke dalam `user.additionalFields` Better-Auth.
+3. **`server/src/controllers/adminController.ts`**:
+   - `getUsers`: Menyertakan `profesi`, `domisili`, `image`, dan mendukung peran `calon_penulis`.
+   - `updateUser`: Memperbarui `profesi`, `domisili`, dan status verifikasi penulis.
+4. **`server/src/controllers/sipenaController.ts` (`SipenaAuthorsController`)**:
+   - `getAll`: Mengambil seluruh penulis aktif (`role = 'penulis'`).
+   - `getOne`: Mengambil detail profil penulis berdasarkan `id`, lengkap dengan relasi buku Perpusnas Press (`perpusnasWorks`).
+   - `submitRequest`: Memproses pengajuan verifikasi penulis. Mendukung token akselerasi `PERPUSNAS-PENULIS-2026` untuk *instant approval*.
+   - `updateAuthorProfile`: Mengupdate profil mandiri penulis (`bio`, `profesi`, `domisili`, `website`, `karyaEksternal`, `image`).
+5. **`server/src/routes.ts`**:
+   - `GET /api/sipena/authors` (Publik)
+   - `GET /api/sipena/authors/:id` (Publik)
+   - `POST /api/sipena/author-request` (Wajib Login)
+   - `PATCH /api/sipena/author-profile` (Wajib Login)
+
+---
+
+### D. Implementasi Antarmuka Frontend (`src/*`)
+1. **`src/pages/AuthorDashboard.jsx` & `AuthorDashboard.css`**:
+   - **Tab Verifikasi Penulis (`pengajuan-penulis`)**: Tampil bagi akun `pengunjung` dan `calon_penulis`. Menyediakan panduan langkah, input draf portofolio lengkap, serta kotak token akselerasi instan.
+   - **Tab Profil Penulis Publik (`karya`)**: Tampil setelah disetujui sebagai `penulis`. Dilengkapi tombol pintas *"👁️ Lihat Tampilan Publik Profil Saya"* yang langsung membuka `/penulis/:id`.
+   - Form input mendukung: Foto Avatar, Nama, Profesi/Tagline, Domisili, Email, Website, Biografi Singkat, serta daftar karya eksternal dinamis dengan input Judul, Penerbit, Tahun, URL, dan *Nama Platform / Toko*.
+2. **`src/pages/AuthorProfile.jsx` & `AuthorProfile.css`**:
+   - Merender tampilan profil publik dinamis berbasis data live API (`SipenaAPI.getAuthorById(id)`).
+   - Menampilkan banner cover buku, foto profil melingkar dengan fallback placeholder inisial, nama besar, profesi, domisili, email, tautan website, biografi 2 kolom, dan daftar karya eksternal dengan tombol *"Beli di {storeName} ↗"*.
+   - Menampilkan deretan buku terbitan Perpusnas Press (`BookRow`) milik penulis.
+   - Menyediakan tombol cepat *"Edit Profil Saya"* jika penulis yang bersangkutan sedang login dan melihat halamannya sendiri.
+   - Fallback otomatis ke mock data acuan ("Dinda Marlina Carolina") untuk demonstrasi atau tautan statis.
+3. **`src/pages/AuthorsPage.jsx`**:
+   - Memuat data penulis terverifikasi secara dinamis dari API (`SipenaAPI.getAuthors()`).
+   - Penulis yang baru disetujui langsung tampil di barisan teratas dengan kartu profil dan tombol *"Detail Profil"* menuju `/penulis/:id`.
+4. **`src/pages/admin/AdminPengguna.jsx`**:
+   - Menyediakan badge notifikasi jumlah pengajuan penulis yang tertunda pada tab "Pengunjung & Penulis".
+   - Modal detail pengguna menampilkan pratinjau lengkap draf portofolio kepenulisan.
+   - Menyediakan tombol aksi langsung: *"Setujui Sebagai Penulis"* (mengubah peran menjadi `penulis` dan status `active`) dan *"Tolak Pengajuan"*.
+   - Modal edit penulis mendukung pengisian `profesi`, `domisili`, dan karya eksternal beserta toko resmi.
+
+---
+
+### E. Panduan Pengujian Alur Kerja (End-to-End Verification)
+
+#### Skenario A: Pengajuan Penulis oleh Pengunjung dengan Token Akselerasi Instan
+1. Login di `http://localhost:5174/login` menggunakan akun `pengunjung@sipena.id` / `pengunjung123`.
+2. Masuk ke **Profil Saya** (`/profil-saya`).
+3. Buka tab **Verifikasi Penulis**.
+4. Lengkapi draf portofolio (Profesi, Domisili, Bio, Karya di Luar Perpusnas).
+5. Pada kotak Token Akselerasi, masukkan: `PERPUSNAS-PENULIS-2026`.
+6. Klik **Ajukan Diri Sebagai Penulis**.
+7. **Hasil**: Akun langsung terverifikasi instan menjadi `penulis`. Tab *Profil Penulis Publik* dan *Pengajuan Naskah* langsung terbuka!
+
+#### Skenario B: Pengajuan Penulis Reguler & Persetujuan Admin
+1. Buat akun pengunjung baru atau gunakan pengunjung tanpa token.
+2. Isi draf portofolio dan ajukan verifikasi tanpa mengisi token.
+3. **Hasil pada Pengunjung**: Tampil kartu peringatan amber bertuliskan *"Pengajuan Verifikasi Anda Sedang Ditinjau"* beserta ringkasan draf yang diajukan.
+4. Login sebagai Super Admin (`admin@perpusnas.go.id` / `adminpassword123`) lalu buka `/admin/pengguna`.
+5. Klik tab **Pengunjung & Penulis** &rarr; Tab pengajuan menampilkan badge antrean.
+6. Klik tombol **Lihat Detail** pada baris pemohon untuk meninjau draf portofolio.
+7. Klik tombol hijau **Setujui Sebagai Penulis**.
+8. **Hasil**: Peran pemohon berubah menjadi `penulis`. Akun pemohon kini memiliki akses penuh dasbor penulis dan profil publiknya tayang di direktori penulis.
+
+#### Skenario C: Akses Halaman Publik Penulis
+1. Buka `http://localhost:5174/penulis` (Daftar Penulis).
+2. Penulis yang terverifikasi tampil di urutan atas.
+3. Klik **Detail Profil** pada kartu penulis.
+4. Tampilan publik `/penulis/:id` merender data secara presisi 1:1 sesuai desain `media_1792035011313.png` lengkap dengan tombol *"Beli di {storeName} ↗"*.
 
 
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { authClient } from '../lib/api';
+import { authClient, SipenaAPI } from '../lib/api';
 
 const AuthContext = createContext(null);
 
@@ -32,8 +32,13 @@ export const AuthProvider = ({ children }) => {
     kecamatan: session.user.kecamatan || '',
     kelurahan: session.user.kelurahan || '',
     bio: session.user.bio || '',
+    profesi: session.user.profesi || '',
+    domisili: session.user.domisili || '',
     website: session.user.website || '',
+    image: session.user.image || null,
+    fotoProfil: session.user.image || null,
     karyaEksternal: session.user.karyaEksternal || [],
+    isApplicant: session.user.role === 'calon_penulis',
   } : null;
 
   const login = async (userData) => {
@@ -79,21 +84,36 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       await authClient.updateUser({
-        name: profileData.namaLengkap,
+        name: profileData.namaLengkap || profileData.name,
         tempatLahir: profileData.tempatLahir,
         tanggalLahir: profileData.tanggalLahir,
-        pekerjaan: profileData.status,
+        pekerjaan: profileData.pekerjaan || profileData.status,
         instansi: profileData.instansi,
-        alamatLengkap: profileData.alamat,
+        alamatLengkap: profileData.alamat || profileData.alamatLengkap,
         provinsi: profileData.provinsi,
         kota: profileData.kota,
         kecamatan: profileData.kecamatan,
         kelurahan: profileData.kelurahan,
         bio: profileData.bio,
+        profesi: profileData.profesi,
+        domisili: profileData.domisili,
+        image: profileData.fotoProfil || profileData.image,
         website: profileData.website,
         karyaEksternal: profileData.karyaEksternal,
       });
-      // Tidak perlu set state manual, useSession() dari better-auth akan auto-refresh
+
+      // Juga sinkronkan ke endpoint author-profile jika ada data profil kepenulisan
+      if (profileData.bio !== undefined || profileData.profesi !== undefined || profileData.domisili !== undefined || profileData.karyaEksternal !== undefined || profileData.fotoProfil !== undefined) {
+        await SipenaAPI.updateAuthorProfile({
+          name: profileData.namaLengkap || profileData.name,
+          bio: profileData.bio,
+          profesi: profileData.profesi,
+          domisili: profileData.domisili,
+          website: profileData.website,
+          image: profileData.fotoProfil || profileData.image,
+          karyaEksternal: profileData.karyaEksternal,
+        }).catch(err => console.warn('Sync to author profile endpoint:', err));
+      }
     } catch (err) {
       console.error("Gagal memperbarui profil", err);
       throw err;
@@ -114,6 +134,7 @@ export const AuthProvider = ({ children }) => {
       updateProfile,
       isLoggedIn: !!user,
       isAuthor: user?.isVerifiedAuthor === true,
+      isApplicant: user?.isApplicant === true,
       isAdmin: user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer',
       isSuperAdmin: user?.role === 'admin',
       isReviewer: user?.isReviewer === true,

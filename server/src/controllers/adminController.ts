@@ -29,6 +29,9 @@ export class AdminController {
                     kecamatan: users.kecamatan,
                     kelurahan: users.kelurahan,
                     bio: users.bio,
+                    profesi: users.profesi,
+                    domisili: users.domisili,
+                    image: users.image,
                     website: users.website,
                     karyaEksternal: users.karyaEksternal,
                 })
@@ -52,6 +55,9 @@ export class AdminController {
                 isReviewer: z.boolean().optional(),
                 skills: z.array(z.string()).optional(),
                 bio: z.string().optional(),
+                profesi: z.string().optional(),
+                domisili: z.string().optional(),
+                image: z.string().optional(),
                 website: z.string().optional(),
                 karyaEksternal: z.any().optional(),
                 instansi: z.string().optional(),
@@ -72,6 +78,9 @@ export class AdminController {
             if (data.isReviewer !== undefined) updateObj.isReviewer = data.isReviewer;
             if (data.skills !== undefined) updateObj.skills = data.skills;
             if (data.bio !== undefined) updateObj.bio = data.bio;
+            if (data.profesi !== undefined) updateObj.profesi = data.profesi;
+            if (data.domisili !== undefined) updateObj.domisili = data.domisili;
+            if (data.image !== undefined) updateObj.image = data.image;
             if (data.website !== undefined) updateObj.website = data.website;
             if (data.karyaEksternal !== undefined) updateObj.karyaEksternal = data.karyaEksternal;
             if (data.instansi !== undefined) updateObj.instansi = data.instansi;
@@ -110,6 +119,9 @@ export class AdminController {
                     kecamatan: users.kecamatan,
                     kelurahan: users.kelurahan,
                     bio: users.bio,
+                    profesi: users.profesi,
+                    domisili: users.domisili,
+                    image: users.image,
                     website: users.website,
                     karyaEksternal: users.karyaEksternal,
                 });

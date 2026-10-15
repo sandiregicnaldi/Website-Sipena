@@ -19,6 +19,12 @@ Dokumentasi lengkap dan kronologi pengembangan sistem SiPena serta integrasi Man
    - Pengajuan Naskah oleh Penulis (`/profil-saya` -> tab "Pengajuan Naskah").
    - Penyediaan Global `DialogContext` (`showAlert`, `showConfirm`, `showToast`).
    - Pembersihan 100% dialog bawaan browser (`window.alert`, `window.confirm`) di seluruh kode sumber.
+9. **Bab 21**: Alur Peningkatan Peran Penulis Terkurasi (Curated Author Upgrade) & Paritas Halaman Penulis Publik:
+   - Pengunjung menyiapkan draf portofolio lengkap sebelum mengajukan verifikasi.
+   - Opsi token akselerasi instan (`PERPUSNAS-PENULIS-2026`) untuk persetujuan langsung tanpa antrean.
+   - Peninjauan admin redaksi di Dasbor Admin Pengguna (`/admin/pengguna`) dengan modal pratinjau lengkap dan tombol aksi setujui/tolak.
+   - Paritas 1:1 input data profil penulis dengan desain publik acuan resmi (`media_1792035011313.png`), termasuk platform/toko resmi penjualan karya eksternal (*Gramedia.com, Tokopedia, Shopee, dsb.*).
+   - Penayangan dinamis halaman publik penulis (`/penulis/:id`) dan pemuatan otomatis penulis terverifikasi pada Direktori Penulis (`/penulis`).
 
 ---
 *Silakan buka [DOKUMENTASI_PENGEMBANGAN.md](./DOKUMENTASI_PENGEMBANGAN.md) untuk detail teknis, tabel skema, dan panduan pengujian alur kerja.*

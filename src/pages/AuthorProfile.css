@@ -188,6 +188,42 @@
   background-color: #1e3a8a;
 }
 
+.store-badge-plain {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background-color: var(--bg-secondary);
+  padding: 0.3rem 0.65rem;
+  border-radius: 4px;
+}
+
+.author-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  color: white;
+  font-size: 3.5rem;
+  font-weight: 700;
+}
+
+.empty-external-box {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-color);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .author-perpusnas-works {
   margin-top: 4rem;
   padding-top: 3rem;

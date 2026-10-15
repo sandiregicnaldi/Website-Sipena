@@ -40,7 +40,9 @@ export const users = pgTable("user", {
     kecamatan: text("kecamatan"),
     kelurahan: text("kelurahan"),
     website: text("website"),
-    karyaEksternal: jsonb("karya_eksternal").$type<{id: number, judul: string, penerbit: string, tahun: string, url: string}[]>(),
+    profesi: text("profesi"), // Tagline kepenulisan (misal: "Penulis & Peneliti Sastra")
+    domisili: text("domisili"), // Lokasi ringkas (misal: "Yogyakarta, Indonesia")
+    karyaEksternal: jsonb("karya_eksternal").$type<{id: number, judul: string, penerbit: string, tahun: string, url: string, storeName?: string}[]>(),
 });
 
 export const sessions = pgTable("session", {

@@ -42,4 +42,10 @@ export const SipenaAPI = {
     // Web Content (Settings)
     getContent: (key) => api.get(`/sipena/content/${key}`).then(res => res.data?.data),
     saveContent: (key, value) => api.put(`/sipena/content/${key}`, { value }).then(res => res.data),
+
+    // Authors
+    getAuthors: () => api.get('/sipena/authors').then(res => res.data),
+    getAuthorById: (id) => api.get(`/sipena/authors/${id}`).then(res => res.data),
+    submitAuthorRequest: (data) => api.post('/sipena/author-request', data).then(res => res.data),
+    updateAuthorProfile: (data) => api.patch('/sipena/author-profile', data).then(res => res.data),
 };
