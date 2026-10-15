@@ -658,4 +658,77 @@ Dibuat sistem modal & toast global mandiri di [`src/context/DialogContext.jsx`](
 6. **Workspace Manajemen Penerbitan** (`ProjectDetail.jsx`, `UserManagement.jsx`, `Trash.jsx`, `NIPGenerator.jsx`, `Chat.jsx`):
    - Seluruh alert peringatan (validasi link, catatan revisi, error pengiriman) dan konfirmasi hapus tahapan/pesan/NIP diseragamkan dengan `showConfirm` dan `showAlert`.
 
+### D. Tabel Pemetaan Pop-up Sebelum dan Sesudah Standardisasi
+
+| File / Komponen | Aksi / Trigger | Sebelum (Browser Default) | Sesudah (Desain Kustom SiPena) |
+| :--- | :--- | :--- | :--- |
+| [`AuthorDashboard.jsx`](file:///c:/dev/website-sipena/src/pages/AuthorDashboard.jsx) | Tab Verifikasi Penulis &rarr; Klik "Ajukan Diri Sebagai Penulis" | `alert('Pengajuan verifikasi berhasil dikirim!...')` | Modal `showConfirm` ("Ajukan Verifikasi Penulis?") + Modal `showAlert` sukses (Emerald) |
+| [`AuthorDashboard.jsx`](file:///c:/dev/website-sipena/src/pages/AuthorDashboard.jsx) | Tab Pengajuan Naskah &rarr; Submit form naskah baru | `alert('Naskah berhasil diajukan!')` | Modal `showAlert` sukses menampilkan judul naskah & antrean kurasi redaksi |
+| [`AuthorDashboard.jsx`](file:///c:/dev/website-sipena/src/pages/AuthorDashboard.jsx) | Tab Biodata &rarr; Klik "Simpan Perubahan" | `alert('Profil berhasil diperbarui!')` | Notifikasi `showToast` sukses di sudut layar |
+| [`AdminPengguna.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminPengguna.jsx) | Setujui Pendaftaran Pegawai Baru | `window.confirm('Setujui pendaftaran akun pegawai...')` | Modal `showConfirm` info dengan tombol persetujuan khusus |
+| [`AdminPengguna.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminPengguna.jsx) | Verifikasi / Upgrade Penulis Resmi | `window.confirm('Verifikasi / Upgrade...')` | Modal `showConfirm` info menjelaskan hak publikasi karya |
+| [`AdminPengguna.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminPengguna.jsx) | Cabut Status Penulis / Nonaktifkan Akun | `window.confirm('Cabut status...')` / `confirm('Nonaktifkan...')` | Modal `showConfirm` warning/info |
+| [`AdminPengguna.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminPengguna.jsx) | Hapus Akun Permanen | `window.confirm('Hapus akun secara permanen...')` | Modal `showConfirm` danger (merah crimson) |
+| [`AdminNaskah.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminNaskah.jsx) | Setujui Naskah yang Diajukan Penulis | `window.confirm('Apakah Anda yakin ingin menyetujui...')` | Modal `showConfirm` info + `showToast` |
+| [`AdminNaskah.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminNaskah.jsx) | Kesalahan API Setujui / Tolak | `alert('Gagal menyetujui / menolak naskah')` | Modal `showAlert` error |
+| [`AdminKatalog.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminKatalog.jsx) | Hapus Buku dari Katalog Publik | `window.confirm('Apakah Anda yakin ingin menghapus...')` | Modal `showConfirm` danger |
+| [`AdminKegiatan.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminKegiatan.jsx) | Hapus Kegiatan Event | `window.confirm('Hapus kegiatan...?')` | Modal `showConfirm` danger |
+| [`AdminKonten.jsx`](file:///c:/dev/website-sipena/src/pages/admin/AdminKonten.jsx) | Hapus Banner Beranda & Hapus FAQ | `window.confirm('Hapus banner...')` / `confirm('Hapus FAQ...')` | Modal `showConfirm` danger |
+| [`LoginPage.jsx`](file:///c:/dev/website-sipena/src/pages/LoginPage.jsx) | Gagal Login & Gagal Registrasi Akun | `alert('Login gagal...')` / `alert('Pendaftaran gagal.')` | Modal `showAlert` error informatif |
+| [`BookDetail.jsx`](file:///c:/dev/website-sipena/src/pages/BookDetail.jsx) | Beri Rating, Salin Link, Cetak PDF | `alert(...)` bawaan browser | `showToast` sukses & `showAlert` info |
+| [`EventDetail.jsx`](file:///c:/dev/website-sipena/src/pages/EventDetail.jsx) | Gagal/Berhasil Daftar & Salin Link Event | `alert(result.msg)` & `alert('Tautan berhasil disalin!')` | `showAlert` info & `showToast` |
+| [`HeroCarousel.jsx`](file:///c:/dev/website-sipena/src/components/HeroCarousel.jsx) | Kirim Rating dari Hero Slider | `alert('Terima kasih atas rating...')` | `showToast` sukses |
+| [`ProjectDetail.jsx`](file:///c:/dev/website-sipena/src/pages/admin/manajemen/ProjectDetail.jsx) | Validasi Tautan Hasil & Catatan Revisi | `alert('Wajib mengisi Link...')` / `alert('Wajib mengisi catatan...')` | Modal `showAlert` warning |
+| [`ProjectDetail.jsx`](file:///c:/dev/website-sipena/src/pages/admin/manajemen/ProjectDetail.jsx) | Hapus Tahapan & Aktifkan Kembali Proyek | `window.confirm(...)` bawaan browser | Modal `showConfirm` danger & info |
+| [`UserManagement.jsx`](file:///c:/dev/website-sipena/src/pages/admin/manajemen/UserManagement.jsx) | Gagal Simpan, Gagal Set Password, Hapus User | `alert(...)` bawaan browser | Modal `showAlert` error & `showToast` |
+| [`Trash.jsx`](file:///c:/dev/website-sipena/src/pages/admin/manajemen/Trash.jsx) | Gagal Pulihkan / Hapus Dokumen & Proyek | `alert('Gagal memulihkan...')` | Modal `showAlert` error & `showToast` |
+| [`NIPGenerator.jsx`](file:///c:/dev/website-sipena/src/pages/admin/manajemen/NIPGenerator.jsx) | Hapus NIP Riwayat & Reset Nomor Urut | `window.confirm('Hapus NIP...')` / `confirm('Reset nomor...')` | Modal `showConfirm` danger & `showToast` |
+| [`Chat.jsx`](file:///c:/dev/website-sipena/src/pages/admin/manajemen/Chat.jsx) | Hapus Pesan Obrolan & Error Kirim | `window.confirm('Hapus pesan ini?')` & `alert(...)` | Modal `showConfirm` danger & `showAlert` |
+
+---
+
+### E. Prosedur Pengujian Alur Kerja (Verification Walkthrough)
+
+#### Skenario 10: Pengajuan Pengunjung Menjadi Penulis
+1. Buka browser di `http://localhost:5174/login`.
+2. Masuk menggunakan akun Pengunjung: `pengunjung@sipena.id` / `pengunjung123`.
+3. Masuk ke halaman **Profil Saya** (`/profil-saya`).
+4. Klik tab **Verifikasi Penulis**.
+5. Klik tombol biru **Ajukan Diri Sebagai Penulis**.
+6. **Hasil:**
+   - Muncul modal konfirmasi kustom `showConfirm` dengan latar belakang blur dan tombol *"Batal"* serta *"Ya, Kirim Pengajuan"*.
+   - Saat diklik *"Ya, Kirim Pengajuan"*, modal berganti menjadi modal sukses emerald bertuliskan *"Pengajuan Berhasil Dikirim! Tim Admin Redaksi akan segera memverifikasi dan memproses permintaan Anda."*.
+   - Tidak ada dialog default browser yang muncul.
+
+#### Skenario 11: Pengajuan Naskah oleh Penulis
+1. Buka browser di `http://localhost:5174/login`.
+2. Masuk menggunakan akun Penulis: `penulis@sipena.id` / `penulis123`.
+3. Masuk ke halaman **Profil Saya** (`/profil-saya`).
+4. Klik tab **Pengajuan Naskah**.
+5. Masukkan Judul Naskah (misal: *"Antologi Kisah Inspiratif Nusantara"*) dan Tautan Google Drive naskah.
+6. Klik tombol **Kirim Pengajuan**.
+7. **Hasil:**
+   - Muncul modal dialog sukses kustom bertema emerald dengan judul *"Naskah Berhasil Diajukan!"* dan informasi alur kurasi.
+   - Naskah langsung masuk ke tabel riwayat pengajuan naskah dengan status `Menunggu`.
+
+#### Skenario 12: Verifikasi & Aksi Admin SiPena
+1. Buka browser di `http://localhost:5174/login`.
+2. Masuk menggunakan akun Super Admin: `admin@perpusnas.go.id` / `adminpassword123`.
+3. Masuk ke menu **Admin Pengguna** (`/admin/pengguna`).
+4. Pada tab Pengunjung, klik tombol verifikasi/upgrade penulis atau toggle status.
+5. **Hasil:** Muncul modal dialog konfirmasi kustom bertema biru/warning dengan opsi *"Batal"* dan *"Lanjutkan"*.
+6. Masuk ke menu **Katalog Buku** atau **Kegiatan**, lalu klik tombol hapus (ikon tempat sampah).
+7. **Hasil:** Muncul dialog konfirmasi merah kustom (*"Hapus Buku dari Katalog?"*) dengan tombol *"Ya, Hapus Buku"*.
+
+---
+
+### F. Ringkasan Teknis & Commit Git
+
+- **Pemeriksaan Regex:** `Get-ChildItem ... | Select-String -Pattern "\b(alert|confirm)\s*\("` menghasilkan **0 temuan** (*100% clean*).
+- **Hasil Kompilasi Build:** `npm run build` sukses 100% tanpa error (*Exit Code 0*).
+- **ID Commit Git:** `73a0bf9`
+- **Pesan Commit:** `feat: standardisasi seluruh dialog popup dan toast kustom pada pengajuan naskah dan verifikasi penulis`
+- **Remote Target:** `https://github.com/sandiregicnaldi/Website-Sipena.git` (branch `main`).
+
+
 
