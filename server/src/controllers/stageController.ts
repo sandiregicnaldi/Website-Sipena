@@ -845,4 +845,89 @@ export const StageController = {
             res.status(500).json({ error: "Gagal menghitung prakiraan penugasan" });
         }
     },
+
+    /**
+     * PATCH /api/projects/:id/stages/reorder
+     * Mengatur ulang urutan tahapan kerja pada proyek berkategori fleksibel.
+     * Body: { stageIds: string[] }
+     */
+    async reorder(req: Request, res: Response) {
+        try {
+            const projectId = String(req.params.id);
+            const { stageIds } = z.object({
+                stageIds: z.array(z.string()).min(1, "Daftar tahapan tidak boleh kosong"),
+            }).parse(req.body);
+
+            const userId = req.user?.id;
+            const isAdmin = req.user?.role === 'admin' || req.user?.isReviewer === true || req.user?.role === 'reviewer';
+
+            // Ambil data proyek beserta tahapannya
+            const project = await db.query.projects.findFirst({
+                where: eq(projects.id, projectId),
+                with: {
+                    stages: true,
+                },
+            });
+
+            if (!project) {
+                return res.status(404).json({ error: "Proyek tidak ditemukan" });
+            }
+
+            if (project.status === 'archived') {
+                return res.status(400).json({ error: "Urutan tahapan tidak dapat diubah pada proyek yang telah diarsipkan" });
+            }
+
+            // Validasi kategori fleksibel
+            const isFlexible = !['terbitan', 'medsos', 'keuangan'].includes(project.category?.toLowerCase() || '');
+            if (!isFlexible) {
+                return res.status(400).json({ error: "Pengubahan urutan tahapan hanya didukung untuk kategori fleksibel (Lainnya, Promosi, Bimtek, Deposit)" });
+            }
+
+            // Validasi hak akses: Admin, Reviewer, Project Creator, atau Personil/PJ yang terdaftar pada tahapan proyek
+            const isCreator = project.createdBy === userId;
+            const isProjectPJ = (project.stages || []).some(s => {
+                const sCoPjIds = (s.coPjIds && Array.isArray(s.coPjIds)) ? s.coPjIds : (s.coPjId ? [s.coPjId] : []);
+                return s.pjId === userId || sCoPjIds.includes(userId as string);
+            });
+
+            if (!isAdmin && !isCreator && !isProjectPJ) {
+                return res.status(403).json({ error: "Forbidden: Anda tidak memiliki akses untuk mengatur urutan tahapan proyek ini" });
+            }
+
+            // Validasi bahwa seluruh stageId memang milik proyek ini
+            const existingStageMap = new Map((project.stages || []).map(s => [s.id, s]));
+            for (const id of stageIds) {
+                if (!existingStageMap.has(id)) {
+                    return res.status(400).json({ error: `Tahapan dengan ID ${id} tidak terdaftar pada proyek ini` });
+                }
+            }
+
+            // Jalankan update urutan secara atomik dalam transaksi
+            await db.transaction(async (tx) => {
+                for (let i = 0; i < stageIds.length; i++) {
+                    await tx.update(stages)
+                        .set({ order: i + 1 })
+                        .where(and(
+                            eq(stages.id, stageIds[i]),
+                            eq(stages.projectId, projectId)
+                        ));
+                }
+            });
+
+            // Ambil daftar stages terbaru yang sudah terurut
+            const updatedStages = await db.query.stages.findMany({
+                where: eq(stages.projectId, projectId),
+                orderBy: (stages, { asc }) => [asc(stages.order)],
+                with: { pj: true, coPj: true, reviewer: true },
+            });
+
+            return res.json({ success: true, stages: updatedStages });
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                return res.status(400).json({ error: error.errors[0]?.message || error.errors });
+            }
+            console.error("[StageController.reorder] error:", error);
+            res.status(500).json({ error: "Gagal mengatur ulang urutan tahapan" });
+        }
+    },
 };

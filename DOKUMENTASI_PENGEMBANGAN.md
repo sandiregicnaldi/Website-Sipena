@@ -27,6 +27,7 @@
 20. [Audit & Standarisasi Menyeluruh Pop-up Notifikasi & Dialog Konfirmasi](#20-audit--standarisasi-menyeluruh-pop-up-notifikasi--dialog-konfirmasi)
 21. [Alur Peningkatan Peran Penulis Terkurasi (Curated Author Upgrade) & Paritas Halaman Penulis Publik](#21-alur-peningkatan-peran-penulis-terkurasi-curated-author-upgrade--paritas-halaman-penulis-publik)
 22. [Penyempurnaan Formulir Katalog Buku & Penyelarasan Halaman Publik Info Detail Buku](#22-penyempurnaan-formulir-katalog-buku--penyelarasan-halaman-publik-info-detail-buku)
+23. [Drag & Drop & Scroll Mandiri Timeline Tahapan Kerja](#23-drag--drop--scroll-mandiri-timeline-tahapan-kerja)
 
 ---
 
@@ -914,5 +915,60 @@ ADD COLUMN IF NOT EXISTS layout_designer text;
 2. **Kompilasi Build**:
    - `npm run build` sukses 100% (*0 errors, exit code 0*).
 
+---
 
+## 23. Drag & Drop & Scroll Mandiri Timeline Tahapan Kerja
 
+**Tanggal Eksekusi:** 19 - 20 Oktober 2026  
+**Status:** Selesai Terintegrasi & Teruji (*Fully Tested & Parity Verified*)
+
+### A. Latar Belakang & Kebutuhan Fitur
+Pembaruan komprehensif pada halaman Detail Proyek (`ProjectDetail.jsx`) mencakup integrasi alur dinamis dan penyempurnaan UI/UX:
+1. **Drag & Drop Urutan Tahapan**: Pada proyek berkategori fleksibel (*Lainnya, Promosi, Bimtek, Deposit*), tahapan kerja kini dapat dipindahkan posisinya secara interaktif dengan penyimpanan atomik ke database.
+2. **Scroll Mandiri Panel Kiri (*Independent Scroll*)**: Pada proyek dengan puluhan tahapan, panel kiri dapat di-scroll secara mandiri tanpa membuat kartu detail tahapan di sebelah kanan (informasi progres, dokumen hasil, diskusi, tombol aksi) ikut tergulir naik atau hilang dari layar.
+3. **Perbaikan Jarak / Padding dari Sidebar**: Menambahkan padding horizontal `px-6` yang konsisten pada pembungkus halaman sehingga kartu *Timeline Tahapan* tidak lagi menempel/mepet ke garis tepi sidebar.
+4. **Auto-Scroll ke Tahapan Aktif**: Saat membuka proyek dengan banyak tahapan, kontainer daftar tahapan di sebelah kiri otomatis menggulir (*smooth scroll*) ke tahapan yang sedang aktif.
+
+### B. Aturan Otorisasi & Pembatasan Kategori
+- **Hak Akses Mengubah Urutan**:
+  1. Super Administrator (`isAdmin`)
+  2. Admin Reviewer (`isReviewer`)
+  3. Pembuat Proyek (`isProjectCreator`)
+  4. Seluruh personil / PJ yang ditugaskan di proyek tersebut (`isProjectPJ`)
+- **Kategori Terproteksi**: Kategori baku (*Terbitan, Media Sosial, Keuangan*) **tetap dikunci (non-draggable)** untuk menjaga integritas alur estafet dan aturan dependensi baku. Proyek berstatus *archived* juga tidak dapat diubah urutannya.
+
+### C. Implementasi Teknis
+
+#### 1. Backend API (`server/src/*`)
+- **Route Baru**: `PATCH /api/projects/:id/stages/reorder` dengan middleware `requireAuth`.
+- **Controller (`StageController.reorder` di `server/src/controllers/stageController.ts`)**:
+  - Validasi schema Zod: `{ stageIds: z.array(z.string()).min(1) }`.
+  - Pengecekan otorisasi: Admin, Reviewer, Project Creator, atau PJ/Kolaborator proyek.
+  - Pengecekan kategori fleksibel dan status aktif proyek.
+  - Pembaruan nilai `order` secara atomik di dalam database transaction (`db.transaction`).
+
+#### 2. Frontend Services, State & Scoped CSS (`src/*`)
+- **`src/services/api.js`**: Menambahkan fungsi `api.stages.reorder(projectId, stageIds)`.
+- **`src/context/AppContext.jsx`**: Helper `reorderStages` dengan **Optimistic UI Update** seketika pada state lokal, dilanjutkan API call dan rollback otomatis jika gagal.
+- **`src/styles/manajemen.css`**:
+  - Menyesuaikan grid detail: `:where(.manajemen-scope) .detail-grid { grid-template-columns: 310px 1fr; align-items: start; gap: 1.5rem; }`.
+  - Menambahkan styling kartu kiri sticky: `:where(.manajemen-scope) .timeline-card { position: sticky; top: 1.25rem; max-height: calc(100vh - 2.5rem); display: flex; flex-direction: column; }` (dan fallback mobile `position: static; max-height: 480px`).
+  - Menambahkan kontainer scroll mandiri: `:where(.manajemen-scope) .timeline-pipeline-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }` dengan custom slim scrollbar.
+  - Menambahkan visual dragging: `:where(.manajemen-scope) .pipeline-stage.dragging { opacity: 0.4; cursor: grabbing !important; }`.
+
+#### 3. Halaman Detail Proyek (`src/pages/admin/manajemen/ProjectDetail.jsx`)
+- **Padding Sidebar**: Seluruh halaman dibungkus dalam kontainer `<div className="px-6 pt-5 pb-8 space-y-6">` sehingga kartu kiri memiliki jarak aman 24px dari sidebar.
+- **Auto Scroll Into View**: Memasang `activeStageItemRef` dan `useEffect` yang memanggil `scrollIntoView({ behavior: 'smooth', block: 'nearest' })` saat `activeStageIdx` berubah.
+- **Header Tetap & Area Scroll Terpisah**: Header *"Timeline Tahapan"* dan badge *"Geser Urutan"* dikunci di posisi atas kartu (`flexShrink: 0`), sementara alur tahapan dibungkus dalam `.timeline-pipeline-scroll.custom-scrollbar`.
+- **Drag & Drop Interaktif**:
+  - Deteksi izin `canReorderStages = isFlexibleCategory && stages.length > 1 && (isAdmin || isUserReviewer || isProjectCreator || isProjectPJ) && project.status !== 'archived'`.
+  - Ikon penarik `drag_indicator` muncul pada setiap baris tahapan saat diizinkan.
+  - Drag & Drop HTML5 native (`onDragStart`, `onDragOver`, `onDrop`, `onDragEnd`) dengan drop zone indicator visual (garis biru di atas/bawah item target).
+  - Sinkronisasi seleksi tahapan aktif (`selectedStageIdx`) agar tetap memilih tahapan yang sama setelah berpindah indeks.
+  - Pencegahan drag event bubbling pada input nama tahapan, tombol aksi (`draggable={false}`), dan box peringatan deadline inline.
+- **Panel Kanan Diam**: Kolom kanan detail tahapan diberi `minWidth: 0` dan tetap diam di layar (*stationary*) saat daftar tahapan di kiri di-scroll.
+
+### D. Hasil Verifikasi
+1. **Backend Server Build**: `tsc` sukses (*Exit code 0*).
+2. **Frontend Vite Build**: `vite build` sukses 100% (*Built in 7.50s, 0 error*).
+3. **Paritas Penuh**: Perilaku tampilan dan interaksi 100% identik dengan `dasbor-penerbitan2`.

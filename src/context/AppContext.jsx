@@ -263,6 +263,40 @@ export function AppProvider({ children }) {
         }
     }, [refreshData])
 
+    const reorderStages = useCallback(async (projectId, stageIds) => {
+        // Optimistic update
+        setProjects(prevProjects => prevProjects.map(proj => {
+            if (proj.id !== projectId || !proj.stages) return proj;
+            const stageMap = new Map(proj.stages.map(s => [s.id, s]));
+            const reorderedStages = stageIds
+                .map((id, index) => {
+                    const st = stageMap.get(id);
+                    return st ? { ...st, order: index + 1 } : null;
+                })
+                .filter(Boolean);
+
+            proj.stages.forEach(s => {
+                if (!stageIds.includes(s.id)) {
+                    reorderedStages.push(s);
+                }
+            });
+
+            return {
+                ...proj,
+                stages: reorderedStages
+            };
+        }));
+
+        try {
+            await api.stages.reorder(projectId, stageIds);
+            await refreshData();
+        } catch (e) {
+            console.error("Failed to reorder stages", e);
+            await refreshData();
+            throw e;
+        }
+    }, [refreshData]);
+
     // Notifications
     const markNotificationRead = useCallback(async (id) => {
         try {
@@ -341,6 +375,7 @@ export function AppProvider({ children }) {
         updateStage,
         addStageNote,
         createStage,
+        reorderStages,
         notifications,
         unreadCount,
         markNotificationRead,

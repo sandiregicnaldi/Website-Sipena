@@ -10,9 +10,14 @@ export default function ProjectDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
-    const { projects, updateProject, deleteProject, updateStage, addStageNote, createStage, addNotification, isAdmin, currentUser, categoriesMap, refreshData } = useApp()
+    const { projects, updateProject, deleteProject, updateStage, addStageNote, createStage, reorderStages, addNotification, isAdmin, isReviewer, currentUser, categoriesMap, refreshData } = useApp()
     const { showAlert, showConfirm } = useDialog()
     const discussionRef = useRef(null)
+    const isDraggingRef = useRef(false)
+    const activeStageItemRef = useRef(null)
+    const [draggedStageIdx, setDraggedStageIdx] = useState(null)
+    const [dragOverStageIdx, setDragOverStageIdx] = useState(null)
+    const [isReordering, setIsReordering] = useState(false)
 
     const getStageDynamicScore = (proj, stg, catsMap = categoriesMap) => {
         if (!proj || !stg) return 0
@@ -88,6 +93,16 @@ export default function ProjectDetail() {
             } catch (e) {}
         }
     }, [activeStageIdx, activeStage?.id, activeStage?.notes?.length])
+
+    // Auto-scroll timeline stage list so the active stage is visible
+    useEffect(() => {
+        if (activeStageItemRef.current) {
+            activeStageItemRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+            })
+        }
+    }, [activeStageIdx])
 
     // Auto-select stage dari query param ?stageId=xxx (navigasi dari FloatingNoteAlert)
     useEffect(() => {
@@ -295,6 +310,8 @@ export default function ProjectDetail() {
     const isFlexibleCategory = !['terbitan', 'medsos', 'keuangan'].includes(project.category) || catObj?.custom === true
     const isLainnya = isFlexibleCategory
     const isTerbitan = project.category === 'terbitan'
+    const isUserReviewer = isReviewer || currentUser?.isReviewer === true || currentUser?.is_reviewer === true || currentUser?.role === 'reviewer'
+    const canReorderStages = isFlexibleCategory && stages.length > 1 && (isAdmin || isUserReviewer || isProjectCreator || isProjectPJ) && project.status !== 'archived'
     // Kategori sequential dengan PJ berbeda per tahap (seperti Terbitan)
     const isSequentialPerPJ = ['terbitan'].includes(project.category)
 
@@ -989,15 +1006,86 @@ export default function ProjectDetail() {
         }
     }
 
+        const handleDragStart = (e, index) => {
+        if (!canReorderStages || isReordering) return
+        isDraggingRef.current = true
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', String(index))
+        setDraggedStageIdx(index)
+    }
+
+    const handleDragOver = (e, index) => {
+        if (!canReorderStages || isReordering) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        if (dragOverStageIdx !== index) {
+            setDragOverStageIdx(index)
+        }
+    }
+
+    const handleDragLeave = (e, index) => {
+        // No-op
+    }
+
+    const handleDragEnd = () => {
+        setTimeout(() => {
+            isDraggingRef.current = false
+        }, 100)
+        setDraggedStageIdx(null)
+        setDragOverStageIdx(null)
+    }
+
+    const handleDrop = async (e, targetIdx) => {
+        if (!canReorderStages || isReordering) return
+        e.preventDefault()
+        const sourceIdx = draggedStageIdx
+        setTimeout(() => {
+            isDraggingRef.current = false
+        }, 100)
+        setDraggedStageIdx(null)
+        setDragOverStageIdx(null)
+
+        if (sourceIdx === null || sourceIdx === undefined || sourceIdx === targetIdx) {
+            return
+        }
+
+        const currentActiveId = stages[activeStageIdx]?.id
+
+        const newStages = [...stages]
+        const [movedStage] = newStages.splice(sourceIdx, 1)
+        newStages.splice(targetIdx, 0, movedStage)
+
+        const newStageIds = newStages.map(s => s.id)
+
+        // Keep active stage selection consistent
+        if (currentActiveId) {
+            const nextIdx = newStageIds.indexOf(currentActiveId)
+            if (nextIdx !== -1) {
+                setSelectedStageIdx(nextIdx)
+            }
+        }
+
+        setIsReordering(true)
+        try {
+            await reorderStages(project.id, newStageIds)
+            showToast('Urutan tahapan berhasil diperbarui', 'success')
+        } catch (err) {
+            console.error('Failed to reorder stages:', err)
+            showToast(err.message || 'Gagal mengubah urutan tahapan', 'error')
+        } finally {
+            setIsReordering(false)
+        }
+    }
+
     // Pending stages for next selection
     const pendingStages = stages
         .map((s, idx) => ({ ...s, idx }))
         .filter(s => s.status === 'draft' && s.idx !== activeStageIdx)
 
     return (
-        <div>
+        <div className="px-6 pt-5 pb-8 space-y-6">
             {/* ── Breadcrumb ───────────────────────────────────────────────────── */}
-        <div className="px-6 pt-5 pb-0">
+            <div>
             <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-5">
                 <button onClick={() => navigate('/admin/manajemen/proyek')} className="hover:text-[#1c51a1] transition-colors">Proyek</button>
                 <span className="material-symbols-outlined text-[14px]">chevron_right</span>
@@ -1152,21 +1240,75 @@ export default function ProjectDetail() {
             {/* Main Grid: Pipeline + Active Stage */}
             <div className="detail-grid">
                 {/* Left: Pipeline */}
-                <div className="card">
-                    <div className="card-title" style={{ marginBottom: '0.75rem' }}>Timeline Tahapan</div>
-                    <div className="pipeline">
-                        {stages.map((stage, idx) => {
+                <div className="card timeline-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexShrink: 0 }}>
+                        <div className="card-title" style={{ margin: 0 }}>Timeline Tahapan</div>
+                        {canReorderStages && (
+                            <span 
+                                style={{ 
+                                    fontSize: '0.7rem', 
+                                    color: 'var(--text-muted)', 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: '3px',
+                                    background: 'var(--surface-hover)',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontWeight: 500,
+                                    userSelect: 'none'
+                                }}
+                                title="Anda dapat menahan dan menggeser tahapan untuk mengubah urutannya"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>drag_indicator</span>
+                                Geser Urutan
+                            </span>
+                        )}
+                    </div>
+                    <div className="timeline-pipeline-scroll custom-scrollbar">
+                        <div className="pipeline">
+                            {stages.map((stage, idx) => {
                             const stagePJ = stage.pj || null
                             const overdue = isOverdue(stage)
+                            const isDragging = draggedStageIdx === idx
+                            const isOver = dragOverStageIdx === idx && draggedStageIdx !== null && draggedStageIdx !== idx
+                            const isOverBelow = isOver && draggedStageIdx < idx
+                            const isOverAbove = isOver && draggedStageIdx > idx
 
                             return (
                                 <div
                                     key={stage.id}
-                                    className="pipeline-stage"
-                                    onClick={() => setSelectedStageIdx(idx)}
+                                    ref={idx === activeStageIdx ? activeStageItemRef : null}
+                                    className={`pipeline-stage ${isDragging ? 'dragging' : ''}`}
+                                    draggable={canReorderStages && editingStageId !== stage.id}
+                                    onDragStart={(e) => handleDragStart(e, idx)}
+                                    onDragOver={(e) => handleDragOver(e, idx)}
+                                    onDragLeave={(e) => handleDragLeave(e, idx)}
+                                    onDrop={(e) => handleDrop(e, idx)}
+                                    onDragEnd={handleDragEnd}
+                                    onClick={() => {
+                                        if (!isDraggingRef.current) {
+                                            setSelectedStageIdx(idx)
+                                        }
+                                    }}
                                     style={{
-                                        background: idx === (selectedStageIdx !== null ? selectedStageIdx : activeStageIdx) ? 'var(--surface-hover)' : undefined,
-                                        borderRadius: 'var(--radius)'
+                                        background: isOver 
+                                            ? 'rgba(59, 130, 246, 0.08)' 
+                                            : idx === (selectedStageIdx !== null ? selectedStageIdx : activeStageIdx) 
+                                                ? 'var(--surface-hover)' 
+                                                : undefined,
+                                        borderRadius: 'var(--radius)',
+                                        paddingLeft: '0.5rem',
+                                        paddingRight: '0.5rem',
+                                        opacity: isDragging ? 0.35 : 1,
+                                        borderTop: isOverAbove ? '2px solid var(--primary)' : undefined,
+                                        borderBottom: isOverBelow ? '2px solid var(--primary)' : undefined,
+                                        boxShadow: isOverAbove 
+                                            ? '0 -3px 6px -2px rgba(59, 130, 246, 0.4)' 
+                                            : isOverBelow 
+                                                ? '0 3px 6px -2px rgba(59, 130, 246, 0.4)' 
+                                                : undefined,
+                                        transition: 'background 0.15s ease, opacity 0.15s ease, border 0.15s ease',
+                                        cursor: canReorderStages ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
                                     }}
                                 >
                                     <div className={`stage-dot ${stage.status === 'archived' ? 'done' : stage.status}`}>
@@ -1175,7 +1317,7 @@ export default function ProjectDetail() {
                                     <div className="stage-info">
                                         <div className="stage-name" style={{ color: overdue ? 'var(--danger)' : undefined, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                                             {editingStageId === stage.id ? (
-                                                <div style={{ display: 'flex', gap: '0.25rem', width: '100%', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                                                <div style={{ display: 'flex', gap: '0.25rem', width: '100%', alignItems: 'center' }} onClick={e => e.stopPropagation()} onDragStart={e => e.stopPropagation()}>
                                                     <input 
                                                         type="text" 
                                                         value={editingStageLabel} 
@@ -1195,30 +1337,55 @@ export default function ProjectDetail() {
                                                     <span style={{ flex: 1, wordBreak: 'break-word' }}>
                                                         {overdue && '! '}{stage.label}
                                                     </span>
-                                                    {isFlexibleCategory && (isAdmin || isProjectCreator || (stage.pjId === currentUser?.id)) && stage.status !== 'archived' && (
-                                                        <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
-                                                            <button 
-                                                                className="btn btn-ghost btn-sm" 
-                                                                style={{ padding: '0.15rem', color: 'var(--primary)', fontSize: '0.7rem' }}
-                                                                title="Ubah Nama"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    setEditingStageId(stage.id)
-                                                                    setEditingStageLabel(stage.label)
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                                                        {isFlexibleCategory && (isAdmin || isProjectCreator || (stage.pjId === currentUser?.id)) && stage.status !== 'archived' && (
+                                                            <>
+                                                                <button 
+                                                                    className="btn btn-ghost btn-sm" 
+                                                                    style={{ padding: '0.15rem', color: 'var(--primary)', fontSize: '0.7rem' }}
+                                                                    title="Ubah Nama"
+                                                                    draggable={false}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        setEditingStageId(stage.id)
+                                                                        setEditingStageLabel(stage.label)
+                                                                    }}
+                                                                >
+                                                                    ✎
+                                                                </button>
+                                                                <button 
+                                                                    className="btn btn-ghost btn-sm" 
+                                                                    style={{ padding: '0.15rem', color: 'var(--danger)', fontSize: '0.7rem' }}
+                                                                    title="Hapus Tahapan"
+                                                                    draggable={false}
+                                                                    onClick={(e) => handleDeleteStage(stage.id, e)}
+                                                                >
+                                                                    🗑️
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {canReorderStages && (
+                                                            <span 
+                                                                className="material-symbols-outlined" 
+                                                                title="Tahan dan geser untuk ubah urutan"
+                                                                style={{ 
+                                                                    fontSize: '18px', 
+                                                                    color: 'var(--text-muted)', 
+                                                                    cursor: 'grab', 
+                                                                    userSelect: 'none',
+                                                                    opacity: 0.6,
+                                                                    padding: '0.15rem 0.25rem',
+                                                                    borderRadius: '4px',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center'
                                                                 }}
+                                                                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--primary)'; }}
+                                                                onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                                                             >
-                                                                ✎
-                                                            </button>
-                                                            <button 
-                                                                className="btn btn-ghost btn-sm" 
-                                                                style={{ padding: '0.15rem', color: 'var(--danger)', fontSize: '0.7rem' }}
-                                                                title="Hapus Tahapan"
-                                                                onClick={(e) => handleDeleteStage(stage.id, e)}
-                                                            >
-                                                                🗑️
-                                                            </button>
-                                                        </div>
-                                                    )}
+                                                                drag_indicator
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </>
                                             )}
                                         </div>
@@ -1442,10 +1609,11 @@ export default function ProjectDetail() {
                             )
                         }
                     })()}
+                    </div>{/* end: timeline-pipeline-scroll */}
                 </div>{/* end: left column stage list */}
 
                 {/* Right: Active Stage Detail */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                     {activeStage && (
                         <div className="card">
                             {/* lock banner ketika PJ belum isi deadline */}

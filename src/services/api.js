@@ -179,6 +179,10 @@ export const api = {
             method: 'PATCH',
             body: JSON.stringify({ url })
         }),
+        reorder: (projectId, stageIds) => fetchAPI(`/projects/${projectId}/stages/reorder`, {
+            method: 'PATCH',
+            body: JSON.stringify({ stageIds })
+        }),
         getCandidates: (id) => fetchAPI(`/stages/${id}/candidates`),
         getCandidatesByLabel: (label) => fetchAPI(`/stages/candidates-by-label?label=${encodeURIComponent(label)}`),
         autoAssignPreview: (data) => fetchAPI('/stages/auto-assign-preview', {

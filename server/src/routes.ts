@@ -44,6 +44,7 @@ router.patch("/stages/:id/result-link", requireAdmin, StageController.updateResu
 router.get("/stages/candidates-by-label", StageController.getCandidatesByLabel);
 router.get("/stages/:id/candidates", StageController.getCandidates);
 router.post("/stages/auto-assign-preview", requireAuth, StageController.autoAssignPreview);
+router.patch("/projects/:id/stages/reorder", requireAuth, StageController.reorder);
 
 
 // NIP
