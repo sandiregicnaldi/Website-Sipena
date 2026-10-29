@@ -299,6 +299,29 @@ export const SipenaBooksController = {
         }
     },
 
+    recordRead: async (req: Request, res: Response) => {
+        try {
+            const id = req.params.id as string;
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+            if (!isUuid) {
+                return res.status(400).json({ error: "Invalid book ID" });
+            }
+
+            // Increment book read counter
+            await db.update(books)
+                .set({
+                    readCount: sql`COALESCE(${books.readCount}, 0) + 1`,
+                    updatedAt: new Date()
+                })
+                .where(eq(books.id, id));
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error("[SipenaBooksController.recordRead] Error:", error);
+            res.status(500).json({ error: "Failed to record read" });
+        }
+    },
+
     create: async (req: Request, res: Response) => {
         try {
             const [newBook] = await db.insert(books).values(req.body).returning();

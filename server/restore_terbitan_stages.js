@@ -38,7 +38,7 @@ const TERBITAN_PREREQS = {
   'Pembuatan Dummy Final':                 ['Penerbitan ISBN'],
   'Unggah ke Sipena dan Ipusnas':          ['Pembuatan Dummy Final'],
   'Pembuatan Surat Keterangan Terbit':     ['Unggah ke Sipena dan Ipusnas'],
-  'Serah Terima Karya Cetak dan Rekam':   ['Pembuatan Surat Keterangan Terbit'],
+  'Serah Terima Karya Cetak dan Rekam':   ['Unggah ke Sipena dan Ipusnas'],
 };
 
 function isDone(stagesMap, label) {

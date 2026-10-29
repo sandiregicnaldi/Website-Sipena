@@ -47,7 +47,7 @@ function isTerbitanStageReallyActive(label: string, allStages: Array<{ label: st
         case 'Pembuatan Surat Keterangan Terbit':
             return isDone('Unggah ke Sipena dan Ipusnas');
         case 'Serah Terima Karya Cetak dan Rekam':
-            return isDone('Pembuatan Surat Keterangan Terbit');
+            return isDone('Unggah ke Sipena dan Ipusnas');
         default:
             return false;
     }

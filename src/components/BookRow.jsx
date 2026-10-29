@@ -51,6 +51,13 @@ const BookRow = ({ title, books = [], viewAllLink = '/buku' }) => {
                 <div className="row-info">
                   <p className="row-book-title">{book.title}</p>
                   <p className="row-book-author">{book.author}</p>
+                  {(book.readCount !== undefined || book.downloadCount !== undefined) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.65)', marginTop: '0.25rem' }}>
+                      <span>👁️ {book.readCount || 0}</span>
+                      <span>•</span>
+                      <span>📥 {book.downloadCount || 0}</span>
+                    </div>
+                  )}
                 </div>
               </Link>
             ))}

@@ -209,7 +209,11 @@ const AdminKatalog = () => {
         sampul: b.coverUrl,
         pdf: b.fileUrl,
         youtube: b.audioUrl,
-        sinopsis: b.synopsis || ''
+        sinopsis: b.synopsis || '',
+        readCount: b.readCount || 0,
+        downloadCount: b.downloadCount || 0,
+        ratingAvg: b.ratingAvg || 0,
+        ratingCount: b.ratingCount || 0,
       }));
       setBooks(mapped);
     } catch (err) {
@@ -340,13 +344,14 @@ const AdminKatalog = () => {
                 <th>Tahun</th>
                 <th>Tim Produksi</th>
                 <th>NIP & ISBN</th>
+                <th>Statistik</th>
                 <th>Aset File</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada buku yang sesuai.</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada buku yang sesuai.</td></tr>
               ) : filtered.map(b => (
                 <tr key={b.id}>
                   <td>
@@ -370,6 +375,21 @@ const AdminKatalog = () => {
                     {b.isbnCetak && <div>Cetak: {b.isbnCetak}</div>}
                     {b.isbnDigital && <div>Digital: {b.isbnDigital}</div>}
                     {!b.nip && !b.isbnCetak && !b.isbnDigital && <span style={{ color: 'var(--text-tertiary)' }}>-</span>}
+                  </td>
+                  <td style={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span title="Jumlah pembaca online" style={{ color: 'var(--text-secondary)' }}>
+                        👁️ <strong>{b.readCount || 0}</strong> dibaca
+                      </span>
+                      <span title="Jumlah dokumen diunduh" style={{ color: 'var(--text-secondary)' }}>
+                        📥 <strong>{b.downloadCount || 0}</strong> unduh
+                      </span>
+                      {b.ratingAvg > 0 && (
+                        <span style={{ color: '#fbbf24', fontWeight: 600 }}>
+                          ★ {b.ratingAvg.toFixed(1)} <small style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>({b.ratingCount})</small>
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

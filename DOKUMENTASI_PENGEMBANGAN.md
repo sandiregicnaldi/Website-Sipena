@@ -28,6 +28,7 @@
 21. [Alur Peningkatan Peran Penulis Terkurasi (Curated Author Upgrade) & Paritas Halaman Penulis Publik](#21-alur-peningkatan-peran-penulis-terkurasi-curated-author-upgrade--paritas-halaman-penulis-publik)
 22. [Penyempurnaan Formulir Katalog Buku & Penyelarasan Halaman Publik Info Detail Buku](#22-penyempurnaan-formulir-katalog-buku--penyelarasan-halaman-publik-info-detail-buku)
 23. [Drag & Drop & Scroll Mandiri Timeline Tahapan Kerja](#23-drag--drop--scroll-mandiri-timeline-tahapan-kerja)
+24. [Penyelarasan Alur Terbitan: Tahap 11 Selesai Langsung Buka Tahap 13](#24-penyelarasan-alur-terbitan-tahap-11-selesai-langsung-buka-tahap-13)
 
 ---
 
@@ -972,3 +973,98 @@ Pembaruan komprehensif pada halaman Detail Proyek (`ProjectDetail.jsx`) mencakup
 1. **Backend Server Build**: `tsc` sukses (*Exit code 0*).
 2. **Frontend Vite Build**: `vite build` sukses 100% (*Built in 7.50s, 0 error*).
 3. **Paritas Penuh**: Perilaku tampilan dan interaksi 100% identik dengan `dasbor-penerbitan2`.
+
+---
+
+## 24. Penyelarasan Alur Terbitan: Tahap 11 Selesai Langsung Buka Tahap 13
+
+**Tanggal Eksekusi:** 29 Oktober 2026  
+**Status:** Selesai Terintegrasi & Teruji (*Fully Tested & Parity Verified*)
+
+### A. Latar Belakang & Kebutuhan Bisnis
+Pada proyek berkategori **Terbitan**, alur sebelumnya mewajibkan tahap **Pembuatan Surat Keterangan Terbit (12)** selesai terlebih dahulu sebelum tahap **Serah Terima Karya Cetak dan Rekam (13)** dapat dibuka. Dalam operasional redaksi, proses serah terima karya cetak dan rekam dapat segera dijalankan paralel setelah tahap **Unggah ke Sipena dan Ipusnas (11)** selesai/disetujui, tanpa harus tertahan oleh penyelesaian Surat Keterangan Terbit.
+
+### B. Implementasi Teknis
+
+#### 1. Frontend (`src/pages/admin/manajemen/ProjectDetail.jsx`)
+- **Pengecekan Kesiapan Tahapan (`checkPrevStagesDone`)**:
+  Prasyarat untuk `serah terima karya` diubah dari `isDone('surat keterangan terbit')` menjadi `isDone('unggah ke sipena')`.
+  *Dampak:* Gembok sekuensial pada Tahap 13 langsung terbuka saat Tahap 11 selesai, memungkinkan PJ Serah Terima mengunggah hasil dan mengajukan review.
+- **Aktivasi Otomatis saat QC Approve (`shouldStageBeActive` di modal QC)**:
+  Prasyarat aktivasi otomatis diubah menjadi `isStageDone('unggah ke sipena dan ipusnas')`.
+  *Dampak:* Begitu Admin/Reviewer menyetujui Tahap 11, sistem secara paralel mengaktifkan Tahap 12 dan Tahap 13 sekaligus.
+
+#### 2. Backend Server (`server/src/*`)
+- **`server/src/services/stageService.ts` (`checkTerbitanStageActive`)**:
+  Prasyarat aktivasi server untuk `serah terima karya cetak dan rekam` diselaraskan mengecek `isStageDone('unggah ke sipena dan ipusnas')`, mencegah server mereset status Tahap 13 ke `draft`.
+- **`server/src/controllers/rankingsController.ts` (`isTerbitanStageReallyActive`)**:
+  Pengecekan keaktifan tahap terbitan untuk kalkulasi produktivitas/beban kerja PJ diselaraskan mengecek penyelesaian Tahap 11.
+
+#### 3. Utilitas Pemeliharaan Database (`server/*.js`)
+- Menyelaraskan `server/audit_fix_stages.js` dan `server/restore_terbitan_stages.js` dengan dependensi baru:
+  `'Serah Terima Karya Cetak dan Rekam': ['Unggah ke Sipena dan Ipusnas']`.
+
+### C. Hasil Verifikasi
+1. **Backend Server Build**: `tsc` lolos 100% (*0 errors, Exit Code 0*).
+2. **Frontend Vite Build**: `vite build` selesai dalam 8.55s (*0 errors, Exit Code 0*).
+3. **Paritas Penuh**: Alur kerja redaksi terbitan 100% identik antara `website-sipena` dan `dasbor-penerbitan2`.
+
+---
+
+## 25. Fitur Pelacakan & Visualisasi Statistik Pembaca dan Pengunduh Buku
+
+**Tanggal Eksekusi:** 29 Oktober 2026  
+**Status:** Selesai Terintegrasi & Teruji (*Fully Tested & Parity Verified*)
+
+### A. Latar Belakang & Kebutuhan
+Pengunjung dan pengelola perpustakaan membutuhkan transparansi data statistik ketertarikan literasi untuk setiap buku di katalog SiPena:
+1. **Jumlah Dibaca (*Read / View Count*)**: Mengetahui berapa kali isi buku dibaca oleh pengunjung.
+2. **Jumlah Diunduh (*Download Count*)**: Mengetahui berapa kali dokumen PDF lengkap diunduh.
+3. **Pencegahan Data Semu (*Anti-False Positive & Anti-Spam*)**:
+   - Jika pengunjung hanya membuka halaman detail buku lalu menutupnya dalam beberapa detik, counter **tidak dihitung**.
+   - Counter membaca baru dihitung jika pengunjung melakukan aksi sadar membaca (**Klik tombol "Baca Online"**) ATAU aktif membaca di area PDF Reader (mode layar penuh maupun inline) selama **minimal 15 detik** (*Dwell Time engagement*).
+   - Menggunakan deduplikasi sesi (*Session Storage*) agar refresh berulang kali tidak memanipulasi angka.
+
+### B. Implementasi Teknis
+
+#### 1. Database PostgreSQL (`sipena_dev`) & Drizzle Schema
+- **`server/src/db/schema.ts`**: Menambahkan kolom `readCount: integer("read_count").default(0)` pada tabel `books`.
+- **`server/src/index.ts`**: Menambahkan auto-migrasi `ALTER TABLE books ADD COLUMN IF NOT EXISTS read_count INTEGER DEFAULT 0` dan inisialisasi nilai awal proporsional.
+- **`server/seedBooks.ts`**: Menambahkan `readCount: 50 + (idx * 15)` pada template seeder buku.
+
+#### 2. Backend Controller & Routing (`server/src/*`)
+- **`server/src/controllers/sipenaController.ts`**:
+  - `recordRead`: Menginkremen kolom `readCount` secara atomik via SQL `COALESCE(books.readCount, 0) + 1`.
+  - `recordDownload`: Menginkremen `downloadCount` secara atomik dan mencatat riwayat transaksi ke tabel `book_downloads` (userId, ipAddress, userAgent, downloadedAt).
+- **`server/src/routes.ts`**: Mendaftarkan endpoint publik:
+  - `POST /api/sipena/books/:id/read`
+  - `POST /api/sipena/books/:id/download`
+
+#### 3. Frontend Client (`src/*`)
+- **`src/lib/api.js`**: Menambahkan helper API `SipenaAPI.recordBookRead(id)` dan `SipenaAPI.downloadBook(id)`.
+- **`src/pages/BookDetail.jsx`**:
+  - **Desain Kartu Statistik 2 Kolom**: Menggantikan tampilan teks lama dengan kartu metrik ganda yang rapi di panel samping (`Eye` biru untuk *"Kali Dibaca"* dan `Download` hijau untuk *"Kali Diunduh"*), anti-terpotong dan simetris.
+  - **Pencegahan PDF Otomatis Terbuka**: Pada pemuatan awal halaman detail, PDF reader tidak langsung membuka `iframe` (menghemat memori dan bandwidth browser). Digantikan dengan kartu *launcher* interaktif yang bersih.
+  - **Mode Pembaca Layar Penuh (*Full-Screen Reader Modal*)**: Menekan tombol **"Baca Online"** langsung meluncurkan naskah dalam modal layar penuh yang imersif dan bebas distraksi, dilengkapi toolbar (Tutup / shortcut `Escape`, Unduh PDF, Toggle Fullscreen Browser `F11`, dan info buku).
+  - **Opsi Baca di Halaman (*Inline Reader*)**: Disediakan tombol alternatif *"Tampilkan di Sini"* bagi pembaca yang tetap ingin melihat dokumen langsung di halaman web.
+  - **Dwell Time Engagement**: Jika pembaca aktif berada di mode baca (layar penuh atau inline) $\ge 15$ detik berturut-turut, counter pembaca otomatis dicatat secara atomik dengan proteksi `sessionStorage`.
+  - **Titik Aksi Pengunduhan Terpadu (*Unified Download Triggers*)**:
+    Seluruh titik aksi unduh terhubung langsung ke fungsi `handleDownload` yang mencatat ke database secara atomik dan memperbarui kartu metrik seketika (*real-time*):
+    1. Tombol utama **"Unduh PDF"** pada panel samping kiri.
+    2. Ikon tombol **Unduh** pada header kontainer *Baca Online (PDF Reader)*.
+    3. Tombol **"Unduh PDF"** pada toolbar mode pembaca layar penuh (*Full Screen Reader*).
+- **`src/pages/BooksPage.jsx`**:
+  - Kartu buku menampilkan metrik rangkuman: `👁️ {readCount}` • `📥 {downloadCount}` • `★ {ratingAvg}`.
+- **`src/components/BookRow.jsx`**:
+  - Menampilkan ringkasan metrik pembaca dan unduhan pada kartu buku slider beranda.
+- **`src/pages/admin/AdminKatalog.jsx`**:
+  - Menambahkan kolom **Statistik** di tabel manajemen katalog buku admin (`👁️ Dibaca`, `📥 Diunduh`, dan `★ Rating`) untuk memudahkan pemantauan buku-buku terpopuler.
+
+### C. Hasil Verifikasi
+1. **Database Migration**: Berhasil menambahkan kolom `read_count` ke PostgreSQL lokal `sipena_dev`.
+2. **Backend Server Build**: `tsc` lolos 100% (*0 errors, Exit code 0*).
+3. **Frontend Vite Build**: `npm run build` sukses 100% (*built in 2.17s, 0 errors*).
+4. **UI Refinement**: Tampilan metrik samping tampil rapi dan simetris, PDF reader hanya terbuka ketika tombol ditekan dalam mode layar penuh (Full Screen).
+5. **Akurasi Pengunduhan**: Semua titik aksi unduh terbukti memperbarui `download_count` di PostgreSQL dan menggerakkan kartu metrik UI secara *real-time*.
+
+

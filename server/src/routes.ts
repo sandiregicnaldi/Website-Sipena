@@ -134,6 +134,7 @@ router.get("/sipena/books/:id", SipenaBooksController.getOne); // Public access
 router.get("/sipena/books/:id/related", SipenaBooksController.getRelated); // Public access
 router.post("/sipena/books/:id/rating", requireAuth, SipenaBooksController.rate); // Logged in user only
 router.post("/sipena/books/:id/download", SipenaBooksController.recordDownload); // Public or logged in
+router.post("/sipena/books/:id/read", SipenaBooksController.recordRead); // Public or logged in
 router.post("/sipena/books", requirePJOrAdmin, SipenaBooksController.create);
 router.patch("/sipena/books/:id", requirePJOrAdmin, SipenaBooksController.update);
 router.delete("/sipena/books/:id", requirePJOrAdmin, SipenaBooksController.delete);

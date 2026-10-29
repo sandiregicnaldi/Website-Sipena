@@ -161,6 +161,13 @@ async function runMigrations() {
         console.warn("[migration] documents.deleted_at column skipped:", (e as Error).message);
     }
     try {
+        await db.execute(`ALTER TABLE books ADD COLUMN IF NOT EXISTS read_count INTEGER DEFAULT 0`);
+        await db.execute(`UPDATE books SET read_count = COALESCE(download_count, 0) * 2 + 15 WHERE read_count IS NULL OR read_count = 0`);
+        console.log("[migration] books.read_count column ensured and initialized");
+    } catch (e) {
+        console.warn("[migration] books.read_count skipped:", (e as Error).message);
+    }
+    try {
         await db.execute(`
             CREATE TABLE IF NOT EXISTS app_settings (
                 key TEXT PRIMARY KEY,

@@ -24,6 +24,7 @@ export const SipenaAPI = {
     getRelatedBooks: (id) => api.get(`/sipena/books/${id}/related`).then(res => res.data),
     rateBook: (id, data) => api.post(`/sipena/books/${id}/rating`, data).then(res => res.data),
     downloadBook: (id) => api.post(`/sipena/books/${id}/download`).then(res => res.data),
+    recordBookRead: (id) => api.post(`/sipena/books/${id}/read`).then(res => res.data),
     createBook: (data) => api.post('/sipena/books', data).then(res => res.data),
     updateBook: (id, data) => api.patch(`/sipena/books/${id}`, data).then(res => res.data),
     deleteBook: (id) => api.delete(`/sipena/books/${id}`).then(res => res.data),

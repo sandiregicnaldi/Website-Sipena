@@ -56,6 +56,7 @@ async function seed() {
     ratingAvg: 4.0 + ((idx % 10) * 0.1),
     ratingCount: 5 + (idx * 3),
     downloadCount: 20 + (idx * 7),
+    readCount: 50 + (idx * 15),
     status: 'published',
   }));
 

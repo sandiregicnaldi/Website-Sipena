@@ -358,7 +358,7 @@ export default function ProjectDetail() {
                 return isDone('unggah ke sipena')
             }
             if (normLabel.includes('serah terima karya')) {
-                return isDone('surat keterangan terbit')
+                return isDone('unggah ke sipena')
             }
 
             return false
@@ -585,7 +585,7 @@ export default function ProjectDetail() {
                             return isStageDone('unggah ke sipena dan ipusnas');
                         }
                         if (norm === 'serah terima karya cetak dan rekam') {
-                            return isStageDone('pembuatan surat keterangan terbit');
+                            return isStageDone('unggah ke sipena dan ipusnas');
                         }
                         // Type terjemahan
                         if (norm === 'terjemahkan') return true;

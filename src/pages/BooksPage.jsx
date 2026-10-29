@@ -175,11 +175,17 @@ const BooksPage = () => {
                   <div className="row-info">
                     <p className="row-book-title">{book.title}</p>
                     <p className="row-book-author">{book.authorName || 'Penulis Anonim'}</p>
-                    {book.ratingAvg > 0 && (
-                      <span style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '0.2rem', display: 'block' }}>
-                        ★ {book.ratingAvg.toFixed(1)} ({book.ratingCount || 0})
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.35rem' }}>
+                      <span title="Jumlah pembaca">👁️ {book.readCount || 0}</span>
+                      <span>•</span>
+                      <span title="Jumlah unduhan">📥 {book.downloadCount || 0}</span>
+                      {book.ratingAvg > 0 && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: '#fbbf24', fontWeight: 600 }}>★ {book.ratingAvg.toFixed(1)}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </Link>
               );

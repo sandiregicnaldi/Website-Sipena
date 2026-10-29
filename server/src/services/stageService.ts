@@ -38,7 +38,7 @@ function checkTerbitanStageActive(label: string, allStages: any[]): boolean {
         return isStageDone('unggah ke sipena dan ipusnas');
     }
     if (normLabel === 'serah terima karya cetak dan rekam') {
-        return isStageDone('pembuatan surat keterangan terbit');
+        return isStageDone('unggah ke sipena dan ipusnas');
     }
 
     // Type terjemahan

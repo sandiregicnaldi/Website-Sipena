@@ -194,6 +194,7 @@ export const books = pgTable("books", {
     ratingAvg: doublePrecision("rating_avg").default(0),
     ratingCount: integer("rating_count").default(0),
     downloadCount: integer("download_count").default(0),
+    readCount: integer("read_count").default(0),
     status: text("status").default("published"), // 'draft' | 'published' | 'archived'
     projectId: text("project_id").references(() => projects.id, { onDelete: 'set null' }), // Link to publishing project
     createdAt: timestamp("created_at").defaultNow(),

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Download, BookOpen, Share2, Printer, Star, Lock, PlayCircle, X, Loader2 } from 'lucide-react';
+import { Download, BookOpen, Share2, Printer, Star, Lock, PlayCircle, X, Loader2, Eye, Maximize2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import BookSection from '../components/BookSection';
@@ -46,10 +46,61 @@ const BookDetail = () => {
   const [downloadPopupRating, setDownloadPopupRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
 
+  // Mode pembaca dokumen (Full Screen & Inline)
+  const [showFullscreenReader, setShowFullscreenReader] = useState(false);
+  const [isReadingInline, setIsReadingInline] = useState(false);
+
+  const readerRef = useRef(null);
+  const dwellTimerRef = useRef(null);
+
+  // Trigger pencatatan pembaca: deduplikasi per sesi via sessionStorage
+  const recordReadTrigger = async () => {
+    if (!id) return;
+    const sessionKey = `sipena_read_${id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, '1');
+    try {
+      await SipenaAPI.recordBookRead(id);
+      setBook(prev => prev ? ({ ...prev, readCount: (prev.readCount || 0) + 1 }) : prev);
+    } catch (err) {
+      console.error('Failed to record read:', err);
+    }
+  };
+
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchBookData();
   }, [id]);
+
+  // Tutup mode pembaca layar penuh dengan tombol Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowFullscreenReader(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Solusi 1: Dwell Time / Active Engagement (Pengguna membaca aktif inline atau fullscreen selama >= 15 detik)
+  useEffect(() => {
+    if (!isLoggedIn || !book) return;
+    if (!isReadingInline && !showFullscreenReader) return;
+
+    if (!dwellTimerRef.current) {
+      dwellTimerRef.current = setTimeout(() => {
+        recordReadTrigger();
+      }, 15000);
+    }
+
+    return () => {
+      if (dwellTimerRef.current) {
+        clearTimeout(dwellTimerRef.current);
+        dwellTimerRef.current = null;
+      }
+    };
+  }, [id, isLoggedIn, book, isReadingInline, showFullscreenReader]);
 
   const fetchBookData = async () => {
     try {
@@ -86,6 +137,13 @@ const BookDetail = () => {
     } else {
       actionCallback();
     }
+  };
+
+  const handleReadOnline = () => {
+    handleProtectedAction(() => {
+      recordReadTrigger();
+      setShowFullscreenReader(true);
+    });
   };
 
   const handleDownload = () => {
@@ -181,7 +239,10 @@ const BookDetail = () => {
             </div>
             
             <div className="book-detail-actions">
-              <button className="btn btn-primary action-btn" onClick={handleDownload}>
+              <button className="btn btn-primary action-btn" onClick={handleReadOnline}>
+                <BookOpen size={18} /> Baca Online
+              </button>
+              <button className="btn btn-outline action-btn" onClick={handleDownload}>
                 <Download size={18} /> Unduh PDF
               </button>
               <button
@@ -195,7 +256,7 @@ const BookDetail = () => {
               </button>
             </div>
             
-            {/* Real Rating Widget */}
+            {/* Real Rating & Engagement Stats Widget */}
             <div className="book-rating" style={{ padding: '1.5rem' }}>
               <p style={{ fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: 600 }}>Beri Rating Buku Ini</p>
               <div className="stars" style={{ cursor: 'pointer' }}>
@@ -217,11 +278,61 @@ const BookDetail = () => {
                   ? `★ ${book.ratingAvg.toFixed(1)} / 5 (${book.ratingCount || 0} ulasan)`
                   : '(Belum ada ulasan)'}
               </span>
-              {book.downloadCount > 0 && (
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: '0.25rem', display: 'block' }}>
-                  📥 {book.downloadCount} kali diunduh
-                </span>
-              )}
+              
+              {/* Engagement Stats: Dibaca & Diunduh */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.5rem',
+                marginTop: '1.1rem',
+                paddingTop: '0.9rem',
+                borderTop: '1px solid var(--border-color, #e2e8f0)',
+                width: '100%'
+              }}>
+                <div style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem',
+                  padding: '0.6rem 0.35rem',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.2rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#2563eb' }}>
+                    <Eye size={15} />
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', lineHeight: 1 }}>
+                      {book.readCount || 0}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>
+                    Kali Dibaca
+                  </span>
+                </div>
+
+                <div style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem',
+                  padding: '0.6rem 0.35rem',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.2rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#059669' }}>
+                    <Download size={15} />
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', lineHeight: 1 }}>
+                      {book.downloadCount || 0}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>
+                    Kali Diunduh
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -273,16 +384,93 @@ const BookDetail = () => {
             </div>
 
             {/* Modern PDF Reader Section */}
-            <div className="pdf-reader-section">
+            <div className="pdf-reader-section" ref={readerRef} id="pdf-reader-section">
               <div className="pdf-header">
                 <h3><BookOpen size={20} /> Baca Online (PDF Reader)</h3>
-                <div className="pdf-header-actions" style={{ display: 'flex', gap: '1rem' }}>
+                <div className="pdf-header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  {isReadingInline && (
+                    <button
+                      className="btn btn-outline"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      onClick={handleReadOnline}
+                    >
+                      <Maximize2 size={15} /> Layar Penuh
+                    </button>
+                  )}
+                  {isReadingInline && (
+                    <button
+                      className="btn btn-outline"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      onClick={() => setIsReadingInline(false)}
+                    >
+                      <X size={15} /> Tutup
+                    </button>
+                  )}
                   <button className="icon-btn" title="Unduh PDF" onClick={handleDownload}><Download size={18} /></button>
                   <button className="icon-btn" title="Cetak PDF" onClick={() => handleProtectedAction(() => showAlert({ title: 'Fitur Segera Hadir', message: 'Fitur cetak dokumen langsung sedang disiapkan.', type: 'info' }))}><Printer size={18} /></button>
                 </div>
               </div>
-              <div className="pdf-viewer-container">
-                  {isLoggedIn ? (
+              <div className="pdf-viewer-container" style={!isReadingInline ? { height: 'auto', minHeight: '260px' } : {}}>
+                  {!isLoggedIn ? (
+                    <div className="pdf-fallback" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: '#f1f5f9' }}>
+                      <Lock size={44} color="#94a3b8" style={{ marginBottom: '1rem' }} />
+                      <h4 style={{ marginBottom: '0.5rem', color: '#334155' }}>Akses Dokumen Terkunci</h4>
+                      <p style={{ marginBottom: '1.5rem', color: '#64748b', maxWidth: '440px', fontSize: '0.9rem' }}>Anda harus masuk (login) terlebih dahulu untuk dapat membaca naskah secara penuh dan mengunduh PDF.</p>
+                      <button onClick={() => navigate('/login', { state: { from: location } })} className="btn btn-primary">
+                        Masuk ke Akun
+                      </button>
+                    </div>
+                  ) : !isReadingInline ? (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '3rem 1.5rem',
+                      textAlign: 'center',
+                      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+                    }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        backgroundColor: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '1rem',
+                        color: 'var(--accent-color, #2563eb)'
+                      }}>
+                        <BookOpen size={28} />
+                      </div>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.4rem' }}>
+                        Baca Buku Secara Online
+                      </h4>
+                      <p style={{ fontSize: '0.875rem', color: '#64748b', maxWidth: '450px', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                        Buka dokumen naskah digital dalam mode layar penuh (Full Screen) untuk pengalaman membaca yang lebih nyaman, jernih, dan fokus.
+                      </p>
+                      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn btn-primary"
+                          onClick={handleReadOnline}
+                          style={{ padding: '0.6rem 1.4rem', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+                        >
+                          <Maximize2 size={16} /> Buka Layar Penuh (Full Screen)
+                        </button>
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => {
+                            recordReadTrigger();
+                            setIsReadingInline(true);
+                          }}
+                          style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+                        >
+                          <BookOpen size={16} /> Tampilkan di Sini
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                     <iframe 
                       src={`${book.fileUrl || '/sample.pdf'}#toolbar=1&navpanes=0&scrollbar=1`} 
                       title="PDF Viewer"
@@ -292,15 +480,6 @@ const BookDetail = () => {
                     >
                       <p>Browser Anda tidak mendukung pratinjau PDF. Silakan unduh PDF untuk membacanya.</p>
                     </iframe>
-                  ) : (
-                    <div className="pdf-fallback" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center', backgroundColor: '#f1f5f9' }}>
-                      <Lock size={48} color="#94a3b8" style={{ marginBottom: '1rem' }} />
-                      <h4 style={{ marginBottom: '0.5rem', color: '#334155' }}>Akses Dokumen Terkunci</h4>
-                      <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>Anda harus masuk (login) terlebih dahulu untuk dapat membaca dan mengunduh PDF secara penuh.</p>
-                      <button onClick={() => navigate('/login', { state: { from: location } })} className="btn btn-primary">
-                        Masuk ke Akun
-                      </button>
-                    </div>
                   )}
               </div>
             </div>
@@ -447,6 +626,110 @@ const BookDetail = () => {
             >
               Batal
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen PDF Reader Modal */}
+      {showFullscreenReader && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: '#0f172a',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Header Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.75rem 1.5rem',
+            backgroundColor: '#1e293b',
+            borderBottom: '1px solid #334155',
+            color: 'white',
+            flexShrink: 0
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
+              <button
+                onClick={() => setShowFullscreenReader(false)}
+                className="btn btn-outline"
+                style={{
+                  color: 'white',
+                  borderColor: '#475569',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  padding: '0.45rem 0.85rem',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} /> Tutup Layar Penuh (Esc)
+              </button>
+              <div style={{ minWidth: 0 }}>
+                <h4 style={{
+                  margin: 0,
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '450px'
+                }}>
+                  {book.title}
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>
+                  Oleh: {book.authorName || 'Penulis Anonim'}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                onClick={handleDownload}
+                className="btn btn-primary"
+                style={{
+                  padding: '0.45rem 1rem',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <Download size={16} /> Unduh PDF
+              </button>
+              <button
+                onClick={() => {
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                  } else {
+                    document.exitFullscreen().catch(() => {});
+                  }
+                }}
+                className="icon-btn"
+                title="Toggle Browser Fullscreen"
+                style={{ color: '#cbd5e1', padding: '0.45rem', cursor: 'pointer' }}
+              >
+                <Maximize2 size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Iframe Viewport */}
+          <div style={{ flex: 1, width: '100%', height: 'calc(100% - 56px)', backgroundColor: '#334155' }}>
+            <iframe
+              src={`${book.fileUrl || '/sample.pdf'}#toolbar=1&navpanes=0&scrollbar=1`}
+              title={`Baca ${book.title}`}
+              width="100%"
+              height="100%"
+              style={{ border: 'none', display: 'block' }}
+            >
+              <p>Browser Anda tidak mendukung pratinjau PDF. Silakan unduh PDF untuk membacanya.</p>
+            </iframe>
           </div>
         </div>
       )}
