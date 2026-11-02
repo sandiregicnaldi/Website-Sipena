@@ -4,9 +4,13 @@ import { ProjectService } from "../services/projectService";
 import { z } from "zod";
 import { CATEGORIES } from "../data/categories";
 import { writeAuditLog } from "../services/logService";
+import { db } from "../db";
+import { manuscripts } from "../db/schema";
+import { eq, and } from "drizzle-orm";
 
 const createProjectSchema = z.object({
     title: z.string().min(3),
+    author: z.string().optional(),
     category: z.string().min(1),
     type: z.string().min(1),
     description: z.string().optional(),
@@ -14,6 +18,7 @@ const createProjectSchema = z.object({
     score: z.number().optional().default(0),
     pageCount: z.number().optional().default(0),
     assignMode: z.enum(['manual', 'auto']).optional().default('manual'),
+    manuscriptId: z.string().optional(),
     stages: z.array(z.object({
         label: z.string(),
         description: z.string().nullable().optional(),
@@ -69,13 +74,29 @@ export const ProjectController = {
         try {
             const data = createProjectSchema.parse(req.body);
             const project = await ProjectService.createProject({ ...data, createdBy: req.user?.id } as any);
+
+            // Live action: tautkan naskah jika proyek berasal dari naskah masuk
+            try {
+                if (data.manuscriptId) {
+                    await db.update(manuscripts)
+                        .set({ projectId: project.id, status: 'in_progress', updatedAt: new Date() })
+                        .where(eq(manuscripts.id, data.manuscriptId));
+                } else if (data.title) {
+                    await db.update(manuscripts)
+                        .set({ projectId: project.id, status: 'in_progress', updatedAt: new Date() })
+                        .where(and(eq(manuscripts.title, data.title), eq(manuscripts.status, 'approved')));
+                }
+            } catch (mErr) {
+                console.warn("[ProjectController.create] Failed to link manuscript:", mErr);
+            }
+
             res.status(201).json(project);
             writeAuditLog({
                 userId: req.user?.id,
                 action: 'create_project',
                 target: data.title,
                 targetId: project.id,
-                meta: { category: data.category, type: data.type },
+                meta: { category: data.category, type: data.type, manuscriptId: data.manuscriptId },
                 ipAddress: req.ip,
             });
         } catch (error) {

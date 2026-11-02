@@ -81,7 +81,6 @@ const NAV_ITEMS = [
   { label: 'Pengaturan',  path: '/admin/pengaturan',  icon: 'settings',
     sub: [
       { label: 'Profil Admin',     path: '/admin/pengaturan/profil' },
-      { label: 'Pengguna Sistem',  path: '/admin/pengaturan/sistem' },
     ]
   },
 ];
@@ -143,10 +142,21 @@ const NavItem = ({ item, collapsed }) => {
 
 // ── AdminLayout ──────────────────────────────────────────────────────────────
 const AdminLayout = () => {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="admin-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-main)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner" style={{ width: 36, height: 36, border: '4px solid #1c51a1', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Memuat Ruang Admin...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (
@@ -172,7 +182,6 @@ const AdminLayout = () => {
           <div className="sidebar-brand">
             {!collapsed && (
               <Link to="/" className="brand-block" style={{ textDecoration: 'none', cursor: 'pointer' }} title="Kembali ke Tampilan Publik">
-                <span className="brand-star">★</span>
                 <div>
                   <div className="brand-name">SiPena</div>
                   <div className="brand-tagline">SISTEM INFORMASI PENERBITAN</div>
@@ -218,10 +227,16 @@ const AdminLayout = () => {
           {/* Topbar */}
           <header className="admin-topbar">
             <div className="topbar-left">
-              <div className="topbar-logo-text">
-                <span className="topbar-star">★</span>
-                <span className="topbar-perpusnas">PERPUSNAS PRESS</span>
-                <span className="topbar-full">Perpustakaan Nasional RI</span>
+              <div className="topbar-brand-group">
+                <img
+                  src="/perpusnas-press-logo.png"
+                  alt="Perpusnas Press Logo"
+                  className="topbar-brand-logo"
+                />
+                <div className="topbar-brand-details">
+                  <span className="topbar-brand-title">Perpusnas Press</span>
+                  <span className="topbar-brand-pill">Tulis, Terbit, Sebarkan</span>
+                </div>
               </div>
             </div>
             <div className="topbar-right">

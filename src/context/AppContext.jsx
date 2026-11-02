@@ -409,6 +409,49 @@ export function AppProvider({ children }) {
 
 export function useApp() {
     const context = useContext(AppContext)
-    if (!context) throw new Error('useApp must be used within AppProvider')
+    if (!context) {
+        console.warn('[useApp] Context is null or called outside AppProvider. Providing resilient fallback context.')
+        return {
+            refreshData: () => {},
+            currentUser: null,
+            isAdmin: false,
+            isSuperAdmin: false,
+            isReviewer: false,
+            setCurrentUser: () => {},
+            login: () => {},
+            logout: () => {},
+            isLoading: false,
+            theme: 'light',
+            toggleTheme: () => {},
+            projects: [],
+            archivedProjects: [],
+            addProject: () => {},
+            updateProject: () => {},
+            deleteProject: () => {},
+            updateStage: () => {},
+            addStageNote: () => {},
+            createStage: () => {},
+            reorderStages: () => {},
+            notifications: [],
+            unreadCount: 0,
+            markNotificationRead: () => {},
+            markAllNotificationsRead: () => {},
+            nipHistory: [],
+            saveNipHistory: () => {},
+            documents: [],
+            categoriesMap: {},
+            setCategoriesMap: () => {},
+            ddcList: [],
+            setDdcList: () => {},
+            getNextNipNumber: () => '',
+            addNotification: () => {},
+            addDocument: () => {},
+            deleteDocument: () => {},
+            activeProjects: [],
+            reviewPending: [],
+            overdueProjects: [],
+            completedThisMonth: []
+        }
+    }
     return context
 }

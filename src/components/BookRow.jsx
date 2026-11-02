@@ -41,7 +41,15 @@ const BookRow = ({ title, books = [], viewAllLink = '/buku' }) => {
               <Link to={`/buku/${book.id || 1}`} key={i} className="row-card">
                 {/* Cover */}
                 <div className="row-cover" style={{ backgroundColor: book.color || '#1e3a8a' }}>
-                  <span className="row-cover-title">{book.title}</span>
+                  {(book.coverUrl || book.cover) ? (
+                    <img
+                      src={book.coverUrl || book.cover}
+                      alt={book.title}
+                      className="row-cover-img"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : null}
+                  <span className="row-cover-title" style={(book.coverUrl || book.cover) ? { display: 'none' } : {}}>{book.title}</span>
                   {/* Hover overlay */}
                   <div className="row-cover-overlay">
                     <span className="overlay-play">▶ Baca</span>

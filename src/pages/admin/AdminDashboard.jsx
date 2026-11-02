@@ -1,18 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, FileText, BarChart2, Book, PenTool, Clipboard } from 'lucide-react';
+import { BookOpen, FileText, BarChart2, Book, PenTool, Clipboard, RefreshCw } from 'lucide-react';
+import { SipenaAPI } from '../../lib/api';
 import './AdminLayout.css';
 import './AdminDashboard.css';
 
-// ── Mock data ────────────────────────────────────────────────────────────────
-const STATS = [
-  { label: 'Total Buku',        value: 1290, sub: '+12 bulan ini',  cls: 'stat-card--blue',   icon: <BookOpen size={16} /> },
-  { label: 'Pedoman / Standar', value: 42,   sub: '+2 bulan ini',   cls: 'stat-card--amber',  icon: <Clipboard size={16} /> },
-  { label: 'Prosiding',         value: 8,    sub: '+1 bulan ini',   cls: 'stat-card--red',    icon: <FileText size={16} /> },
-  { label: 'Laporan',           value: 54,   sub: '+5 bulan ini',   cls: 'stat-card--green',  icon: <BarChart2 size={16} /> },
-  { label: 'Majalah / Jurnal',  value: 28,   sub: '+3 bulan ini',   cls: 'stat-card--teal',   icon: <Book size={16} /> },
-  { label: 'Total Penulis',     value: 187,  sub: '+6 bulan ini',   cls: 'stat-card--purple', icon: <PenTool size={16} /> },
+// ── Initial / Fallback Data ───────────────────────────────────────────────────
+const INITIAL_STATS = [
+  { label: 'Total Buku',        value: 0, sub: '+0 bulan ini',  cls: 'stat-card--blue',   icon: <BookOpen size={16} /> },
+  { label: 'Pedoman / Standar', value: 0, sub: '+0 bulan ini',  cls: 'stat-card--amber',  icon: <Clipboard size={16} /> },
+  { label: 'Prosiding',         value: 0, sub: '+0 bulan ini',  cls: 'stat-card--red',    icon: <FileText size={16} /> },
+  { label: 'Laporan',           value: 0, sub: '+0 bulan ini',  cls: 'stat-card--green',  icon: <BarChart2 size={16} /> },
+  { label: 'Majalah / Jurnal',  value: 0, sub: '+0 bulan ini',  cls: 'stat-card--teal',   icon: <Book size={16} /> },
+  { label: 'Total Penulis',     value: 0, sub: '+0 bulan ini',  cls: 'stat-card--purple', icon: <PenTool size={16} /> },
 ];
+
+const ICON_MAP = {
+  'Total Buku': <BookOpen size={16} />,
+  'Pedoman / Standar': <Clipboard size={16} />,
+  'Prosiding': <FileText size={16} />,
+  'Laporan': <BarChart2 size={16} />,
+  'Majalah / Jurnal': <Book size={16} />,
+  'Total Penulis': <PenTool size={16} />,
+};
 
 // Download per year (2015-2026)
 const CHART_DATA = [
@@ -164,25 +174,90 @@ const LineChart = ({ data }) => {
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 const AdminDashboard = () => {
+  const [stats, setStats] = useState(INITIAL_STATS);
+  const [recentBooks, setRecentBooks] = useState(RECENT_BOOKS);
+  const [recentUsers, setRecentUsers] = useState(RECENT_USERS);
+  const [chartData, setChartData] = useState(CHART_DATA);
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchDashboardData = async (isManual = false) => {
+    try {
+      if (isManual) setIsRefreshing(true);
+      const res = await SipenaAPI.getDashboardStats();
+      if (res && res.stats) {
+        setStats(res.stats.map(s => ({
+          ...s,
+          icon: ICON_MAP[s.label] || <BookOpen size={16} />
+        })));
+        if (Array.isArray(res.recentBooks) && res.recentBooks.length > 0) {
+          setRecentBooks(res.recentBooks);
+        }
+        if (Array.isArray(res.recentUsers) && res.recentUsers.length > 0) {
+          setRecentUsers(res.recentUsers);
+        }
+        if (Array.isArray(res.chartData) && res.chartData.length > 0) {
+          setChartData(res.chartData);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch live dashboard stats:', err);
+    } finally {
+      setLoading(false);
+      if (isManual) setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
   const now = new Date();
   const greet = now.getHours() < 12 ? 'Selamat Pagi' : now.getHours() < 17 ? 'Selamat Siang' : 'Selamat Sore';
 
   return (
     <div className="admin-dashboard">
       {/* Page header */}
-      <div className="admin-page-header">
-        <h1>{greet}, Administrator</h1>
-        <p>Selamat datang di panel pengelolaan SiPena — Perpusnas Press</p>
+      <div className="admin-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1>{greet}, Administrator</h1>
+          <p>Selamat datang di panel pengelolaan SiPena — Perpusnas Press</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            fontSize: '0.75rem',
+            color: '#059669',
+            background: '#ecfdf5',
+            padding: '0.25rem 0.65rem',
+            borderRadius: '1rem',
+            fontWeight: 600,
+            border: '1px solid #a7f3d0'
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span> Live Terhubung
+          </span>
+          <button
+            onClick={() => fetchDashboardData(true)}
+            disabled={isRefreshing}
+            className="btn btn-outline"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            title="Muat ulang data live statistik"
+          >
+            <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? 'Memperbarui...' : 'Segarkan Data'}
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}
       <div className="admin-stat-grid">
-        {STATS.map(s => (
+        {stats.map(s => (
           <div key={s.label} className={`admin-stat-card ${s.cls}`}>
             <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              {s.icon} <span>{s.label}</span>
+              {s.icon || ICON_MAP[s.label]} <span>{s.label}</span>
             </div>
-            <div className="stat-value">{s.value.toLocaleString('id-ID')}</div>
+            <div className="stat-value">{Number(s.value || 0).toLocaleString('id-ID')}</div>
             <div className="stat-sub">{s.sub}</div>
           </div>
         ))}
@@ -192,9 +267,9 @@ const AdminDashboard = () => {
       <div className="admin-card" style={{ marginBottom: '1.25rem' }}>
         <div className="admin-card-header">
           <span className="admin-card-title">Statistik Jumlah Download per Tahun</span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>2015 – 2026</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>2018 – 2026</span>
         </div>
-        <LineChart data={CHART_DATA} />
+        <LineChart data={chartData} />
       </div>
 
       {/* Bottom grid */}
@@ -217,22 +292,30 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {RECENT_BOOKS.map(b => (
-                  <tr key={b.id}>
-                    <td>
-                      <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{b.judul}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{b.penulis}</div>
-                    </td>
-                    <td><span className="badge badge-gray">{b.kategori}</span></td>
-                    <td><span className={`badge ${STATUS_BADGE[b.status]}`}>{b.status}</span></td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-                      {new Date(b.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}
-                    </td>
-                    <td>
-                      <Link to="/admin/katalog" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
+                {recentBooks.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '1.5rem' }}>
+                      {loading ? 'Memuat data buku...' : 'Belum ada data buku.'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  recentBooks.map(b => (
+                    <tr key={b.id}>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{b.judul}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{b.penulis}</div>
+                      </td>
+                      <td><span className="badge badge-gray">{b.kategori}</span></td>
+                      <td><span className={`badge ${STATUS_BADGE[b.status] || 'badge-green'}`}>{b.status}</span></td>
+                      <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                        {b.tanggal ? new Date(b.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) : '-'}
+                      </td>
+                      <td>
+                        <Link to="/admin/katalog" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -255,21 +338,29 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {RECENT_USERS.map(u => (
-                  <tr key={u.id}>
-                    <td>
-                      <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{u.nama}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{u.email}</div>
-                    </td>
-                    <td><span className={`badge ${ROLE_BADGE[u.role] || 'badge-gray'}`}>{u.role}</span></td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-                      {new Date(u.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}
-                    </td>
-                    <td>
-                      <Link to="/admin/pengguna" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
+                {recentUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '1.5rem' }}>
+                      {loading ? 'Memuat data pengguna...' : 'Belum ada data pengguna.'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  recentUsers.map(u => (
+                    <tr key={u.id}>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{u.nama}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{u.email}</div>
+                      </td>
+                      <td><span className={`badge ${ROLE_BADGE[u.role] || 'badge-gray'}`}>{u.role}</span></td>
+                      <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                        {u.tanggal ? new Date(u.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) : '-'}
+                      </td>
+                      <td>
+                        <Link to="/admin/pengguna" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

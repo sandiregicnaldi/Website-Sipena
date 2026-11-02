@@ -34,8 +34,16 @@ const BookSection = ({ title, books, showDownloads }) => {
             <Link to={`/buku/${book.id || 1}`} className="book-card" key={index}>
               <div className="book-cover-wrapper">
                 {/* Dummy cover if no image */}
-                <div className="book-cover-placeholder" style={{backgroundColor: book.color || '#3b82f6'}}>
-                  <span className="book-title-overlay">{book.title}</span>
+                <div className="book-cover-placeholder" style={{ backgroundColor: book.color || '#3b82f6', overflow: 'hidden', position: 'relative' }}>
+                  {(book.coverUrl || book.cover) ? (
+                    <img
+                      src={book.coverUrl || book.cover}
+                      alt={book.title}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : null}
+                  <span className="book-title-overlay" style={(book.coverUrl || book.cover) ? { display: 'none' } : {}}>{book.title}</span>
                 </div>
                 <div className="book-hover-actions">
                   <span className="btn btn-primary btn-sm">Lihat Detail</span>

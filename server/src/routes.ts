@@ -83,6 +83,8 @@ router.post("/profile/change-password", requireAuth, ProfileController.changePas
 
 // Uploads
 router.post("/upload", requireAuth, UploadController.uploadSingle, UploadController.handleUpload);
+router.post("/upload/cover", requireAuth, UploadController.uploadCover, UploadController.handleUploadCover);
+router.post("/upload/document", requireAuth, UploadController.uploadDocument, UploadController.handleUploadDocument);
 
 // Telegram
 router.get("/telegram/status", requireAuth, TelegramController.getStatus);
@@ -128,7 +130,8 @@ router.get("/chat/users", requireAuth, ChatController.getUsersForChat);
 router.get("/sipena/content/:key", SipenaContentController.getSettings); // Public access
 router.put("/sipena/content/:key", requirePJOrAdmin, SipenaContentController.saveSettings); // Admin only
 
-// Katalog Buku
+// Katalog Buku & Dashboard Statistik
+router.get("/sipena/stats", SipenaBooksController.getStats);
 router.get("/sipena/books", SipenaBooksController.getAll); // Public access
 router.get("/sipena/books/:id", SipenaBooksController.getOne); // Public access
 router.get("/sipena/books/:id/related", SipenaBooksController.getRelated); // Public access

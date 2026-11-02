@@ -97,6 +97,7 @@ const AuthorProfile = () => {
                 id: b.id,
                 title: b.title,
                 author: b.authorName || b.author || res.name,
+                coverUrl: b.coverUrl || b.cover,
                 color: b.color || (idx % 2 === 0 ? '#1e3a8a' : '#047857')
               }))
             : [];

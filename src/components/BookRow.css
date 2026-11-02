@@ -109,6 +109,15 @@
   background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(0,0,0,0.25));
 }
 
+.row-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
 .row-cover-title {
   font-size: 0.85rem;
   font-weight: 800;

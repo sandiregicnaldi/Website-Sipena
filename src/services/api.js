@@ -7,8 +7,12 @@ async function fetchAPI(endpoint, options = {}) {
     const headers = {
         ...options.headers,
     };
-    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+    const isFormData = options.body instanceof FormData;
+    if (!isFormData && !headers['Content-Type']) {
         headers['Content-Type'] = 'application/json';
+    }
+    if (isFormData && headers['Content-Type']) {
+        delete headers['Content-Type'];
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -267,10 +271,40 @@ export const api = {
     },
     // Uploads
     uploads: {
-        uploadFile: (formData) => fetchAPI('/upload', {
-            method: 'POST',
-            body: formData
-        })
+        uploadFile: (fileOrFormData) => {
+            let body = fileOrFormData;
+            if (!(fileOrFormData instanceof FormData)) {
+                body = new FormData();
+                body.append('file', fileOrFormData);
+                body.append('attachment', fileOrFormData);
+            }
+            return fetchAPI('/upload', {
+                method: 'POST',
+                body
+            });
+        },
+        uploadCover: (fileOrFormData) => {
+            let body = fileOrFormData;
+            if (!(fileOrFormData instanceof FormData)) {
+                body = new FormData();
+                body.append('cover', fileOrFormData);
+            }
+            return fetchAPI('/upload/cover', {
+                method: 'POST',
+                body
+            });
+        },
+        uploadDocument: (fileOrFormData) => {
+            let body = fileOrFormData;
+            if (!(fileOrFormData instanceof FormData)) {
+                body = new FormData();
+                body.append('document', fileOrFormData);
+            }
+            return fetchAPI('/upload/document', {
+                method: 'POST',
+                body
+            });
+        },
     },
 
     // Settings (Categories, dll) — DISIMPAN DI DATABASE

@@ -18,6 +18,10 @@ const CATEGORY_COLORS = {
   'Kesehatan': '#10b981',
   'Komik': '#f59e0b',
   'Lifestyle': '#ec4899',
+  'Pedoman / Standar': '#d97706',
+  'Prosiding': '#dc2626',
+  'Laporan': '#059669',
+  'Majalah / Jurnal': '#0891b2',
   'Sastra': '#1e3a8a',
   'Sejarah': '#b91c1c',
   'Budaya': '#047857',
@@ -41,6 +45,9 @@ const BookDetail = () => {
 
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [hasRated, setHasRated] = useState(false);
+  const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [hasRead, setHasRead] = useState(false);
   const [showRatingPopup, setShowRatingPopup] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [downloadPopupRating, setDownloadPopupRating] = useState(0);
@@ -53,16 +60,19 @@ const BookDetail = () => {
   const readerRef = useRef(null);
   const dwellTimerRef = useRef(null);
 
-  // Trigger pencatatan pembaca: deduplikasi per sesi via sessionStorage
+  // Trigger pencatatan pembaca: deduplikasi per user / sesi
   const recordReadTrigger = async () => {
     const targetBookId = book?.id || id;
-    if (!targetBookId) return;
+    if (!targetBookId || hasRead) return;
     const sessionKey = `sipena_read_${targetBookId}`;
     if (sessionStorage.getItem(sessionKey)) return;
     sessionStorage.setItem(sessionKey, '1');
     try {
-      await SipenaAPI.recordBookRead(targetBookId);
-      setBook(prev => prev ? ({ ...prev, readCount: (prev.readCount || 0) + 1 }) : prev);
+      const res = await SipenaAPI.recordBookRead(targetBookId);
+      if (res && !res.alreadyRead) {
+        setBook(prev => prev ? ({ ...prev, readCount: (prev.readCount || 0) + 1 }) : prev);
+      }
+      setHasRead(true);
     } catch (err) {
       console.error('Failed to record read:', err);
     }
@@ -71,7 +81,7 @@ const BookDetail = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchBookData();
-  }, [id]);
+  }, [id, isLoggedIn]);
 
   // Tutup mode pembaca layar penuh dengan tombol Escape
   useEffect(() => {
@@ -86,7 +96,7 @@ const BookDetail = () => {
 
   // Solusi 1: Dwell Time / Active Engagement (Pengguna membaca aktif inline atau fullscreen selama >= 15 detik)
   useEffect(() => {
-    if (!isLoggedIn || !book) return;
+    if (!isLoggedIn || !book || hasRead) return;
     if (!isReadingInline && !showFullscreenReader) return;
 
     if (!dwellTimerRef.current) {
@@ -101,7 +111,7 @@ const BookDetail = () => {
         dwellTimerRef.current = null;
       }
     };
-  }, [id, isLoggedIn, book, isReadingInline, showFullscreenReader]);
+  }, [id, isLoggedIn, book, isReadingInline, showFullscreenReader, hasRead]);
 
   const fetchBookData = async () => {
     try {
@@ -118,11 +128,29 @@ const BookDetail = () => {
           id: b.id,
           title: b.title,
           author: b.authorName || 'Penulis Anonim',
+          coverUrl: b.coverUrl || b.cover,
           color: CATEGORY_COLORS[b.category] || '#1e3a8a'
         }))
       );
-      if (bookData?.ratingAvg) {
+      if (bookData?.hasRated) {
+        setHasRated(true);
+        setRating(bookData.userRating || Math.round(bookData.ratingAvg || 5));
+      } else if (bookData?.ratingAvg) {
         setRating(Math.round(bookData.ratingAvg));
+        setHasRated(false);
+      } else {
+        setRating(0);
+        setHasRated(false);
+      }
+      if (bookData?.hasDownloaded) {
+        setHasDownloaded(true);
+      } else {
+        setHasDownloaded(false);
+      }
+      if (bookData?.hasRead) {
+        setHasRead(true);
+      } else {
+        setHasRead(false);
       }
     } catch (err) {
       console.error('Failed to load book:', err);
@@ -156,6 +184,7 @@ const BookDetail = () => {
         if (book && !res?.alreadyDownloaded) {
           setBook(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
         }
+        setHasDownloaded(true);
       } catch (err) {
         console.error('Download log error:', err);
       }
@@ -163,8 +192,10 @@ const BookDetail = () => {
       // Open PDF file (custom or sample)
       window.open(book?.fileUrl || '/sample.pdf', '_blank');
 
-      // Trigger rating modal
-      setTimeout(() => setShowRatingPopup(true), 500);
+      // Trigger rating modal only if user has not yet rated
+      if (!hasRated && !book?.hasRated) {
+        setTimeout(() => setShowRatingPopup(true), 500);
+      }
     });
   };
 
@@ -174,15 +205,28 @@ const BookDetail = () => {
       return;
     }
 
+    if (hasRated || book?.hasRated) {
+      showAlert({
+        title: 'Sudah Dinilai',
+        message: 'Anda sudah pernah memberikan ulasan rating untuk buku ini.',
+        type: 'info'
+      });
+      setShowRatingPopup(false);
+      return;
+    }
+
     try {
       setSubmittingRating(true);
       const targetBookId = book?.id || id;
       const res = await SipenaAPI.rateBook(targetBookId, { rating: ratingVal });
       if (res && res.success) {
         setRating(ratingVal);
+        setHasRated(true);
         if (book) {
           setBook(prev => ({
             ...prev,
+            hasRated: true,
+            userRating: ratingVal,
             ratingAvg: res.ratingAvg,
             ratingCount: res.ratingCount
           }));
@@ -192,6 +236,10 @@ const BookDetail = () => {
       }
     } catch (err) {
       console.error('Failed to submit rating:', err);
+      if (err.alreadyRated || err.response?.data?.alreadyRated) {
+        setHasRated(true);
+        setShowRatingPopup(false);
+      }
       const errorMsg = err.response?.data?.error || err.message || 'Terjadi kesalahan saat menyimpan rating.';
       showAlert({
         title: 'Gagal Menyimpan Rating',
@@ -239,7 +287,15 @@ const BookDetail = () => {
           {/* Left Column: Cover & Actions */}
           <div className="book-detail-sidebar">
             <div className="book-detail-cover" style={{ backgroundColor: coverColor }}>
-              <span className="book-detail-title-mock">{book.title}</span>
+              {book.coverUrl ? (
+                <img
+                  src={book.coverUrl}
+                  alt={book.title}
+                  className="book-detail-cover-img"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : null}
+              <span className="book-detail-title-mock" style={book.coverUrl ? { display: 'none' } : {}}>{book.title}</span>
             </div>
             
             <div className="book-detail-actions">
@@ -262,18 +318,56 @@ const BookDetail = () => {
             
             {/* Real Rating & Engagement Stats Widget */}
             <div className="book-rating" style={{ padding: '1.5rem' }}>
-              <p style={{ fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: 600 }}>Beri Rating Buku Ini</p>
-              <div className="stars" style={{ cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: 600 }}>Beri Rating Buku Ini</p>
+                {hasRated && (
+                  <span style={{
+                    fontSize: '0.72rem',
+                    backgroundColor: '#ecfdf5',
+                    color: '#059669',
+                    border: '1px solid #a7f3d0',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '1rem',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.2rem'
+                  }}>
+                    ✓ Sudah Dinilai
+                  </span>
+                )}
+              </div>
+              <div 
+                className="stars" 
+                style={{ cursor: hasRated ? 'default' : 'pointer' }}
+                onClick={() => {
+                  if (hasRated) {
+                    showToast({ message: `Anda sudah memberikan penilaian ${rating} bintang untuk buku ini.`, type: 'info' });
+                  }
+                }}
+              >
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star 
                     key={star} 
                     size={24} 
                     fill={(hoverRating || rating) >= star ? "#fbbf24" : "transparent"} 
                     color={(hoverRating || rating) >= star ? "#fbbf24" : "#cbd5e1"} 
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(0)}
-                    onClick={() => handleRatingSubmit(star)}
-                    style={{ transition: 'all 0.2s' }}
+                    onMouseEnter={() => {
+                      if (!hasRated) setHoverRating(star);
+                    }}
+                    onMouseLeave={() => {
+                      if (!hasRated) setHoverRating(0);
+                    }}
+                    onClick={() => {
+                      if (!hasRated) {
+                        handleRatingSubmit(star);
+                      }
+                    }}
+                    style={{
+                      transition: 'all 0.2s',
+                      cursor: hasRated ? 'default' : 'pointer',
+                      opacity: hasRated ? 0.9 : 1
+                    }}
                   />
                 ))}
               </div>
@@ -281,6 +375,11 @@ const BookDetail = () => {
                 {book.ratingAvg > 0
                   ? `★ ${book.ratingAvg.toFixed(1)} / 5 (${book.ratingCount || 0} ulasan)`
                   : '(Belum ada ulasan)'}
+                {hasRated && rating > 0 && (
+                  <span style={{ display: 'block', color: '#059669', fontSize: '0.78rem', marginTop: '0.25rem', fontWeight: 500 }}>
+                    Penilaian Anda: ★ {rating} / 5
+                  </span>
+                )}
               </span>
               
               {/* Engagement Stats: Dibaca & Diunduh */}
@@ -520,7 +619,7 @@ const BookDetail = () => {
       </div>
 
       {/* Download Rating Popup */}
-      {showRatingPopup && (
+      {showRatingPopup && !hasRated && (
         <div className="modal-overlay" style={{
           position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', 
           zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',

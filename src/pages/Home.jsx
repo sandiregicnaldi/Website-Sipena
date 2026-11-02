@@ -49,6 +49,7 @@ const Home = () => {
             id: b.id,
             title: b.title,
             author: b.authorName || 'Penulis Anonim',
+            coverUrl: b.coverUrl,
             color: CATEGORY_COLORS[b.category] || '#1e293b',
             readCount: b.readCount || 0,
             downloadCount: b.downloadCount || 0,

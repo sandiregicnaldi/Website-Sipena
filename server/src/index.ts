@@ -58,7 +58,8 @@ app.options("*", cors(corsOptions));
 app.all("/api/auth/*", toNodeHandler(auth));
 
 // Parse JSON for all other routes
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Serve static files from uploads directory
 app.use("/api/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -80,6 +81,14 @@ app.get("/health", (req, res) => {
 // API Routes
 app.use("/api", router);
 
+// Global Error Handler (Express)
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("[GLOBAL_EXPRESS_ERROR]", err);
+    res.status(err.status || 500).json({
+        error: err.message || "Terjadi kesalahan pada server"
+    });
+});
+
 // Auto-migration: add status column if missing
 async function runMigrations() {
     try {
@@ -89,7 +98,9 @@ async function runMigrations() {
         await db.execute(`ALTER TABLE projects ALTER COLUMN score TYPE DOUBLE PRECISION USING score::double precision`);
         await db.execute(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS page_count INTEGER DEFAULT 0`);
         await db.execute(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
-        console.log("[migration] projects.status, created_by, score, page_count, and deleted_at columns ensured");
+        await db.execute(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS author TEXT`);
+        await db.execute(`ALTER TABLE stages ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb`);
+        console.log("[migration] projects.status, created_by, author, stages.metadata ensured");
     } catch (e) {
         console.warn("[migration] skipped:", (e as Error).message);
     }
@@ -120,9 +131,10 @@ async function runMigrations() {
         await db.execute(`ALTER TABLE stages ADD COLUMN IF NOT EXISTS score DOUBLE PRECISION DEFAULT 0`);
         await db.execute(`ALTER TABLE stages ALTER COLUMN score TYPE DOUBLE PRECISION USING score::double precision`);
         await db.execute(`ALTER TABLE stages ADD COLUMN IF NOT EXISTS proposal_status TEXT`);
-        console.log("[migration] stages.approved_at, revised_at, score, proposal_status columns ensured");
+        await db.execute(`ALTER TABLE stages ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
+        console.log("[migration] stages.approved_at, revised_at, score, proposal_status, submitted_at columns ensured");
     } catch (e) {
-        console.warn("[migration] approved_at/revised_at/score/proposal_status skipped:", (e as Error).message);
+        console.warn("[migration] approved_at/revised_at/score/proposal_status/submitted_at skipped:", (e as Error).message);
     }
     try {
         await db.execute(`ALTER TABLE stages ADD COLUMN IF NOT EXISTS co_pj_id TEXT REFERENCES "user"(id) ON DELETE SET NULL`);
@@ -374,6 +386,87 @@ async function runMigrations() {
 
         // Ensure description column on stages table
         await db.execute(`ALTER TABLE stages ADD COLUMN IF NOT EXISTS description text;`);
+
+        // Sync submitted_at from review notifications (memastikan poin dihitung berdasarkan waktu pengajuan review PJ)
+        try {
+            await db.execute(sql`
+                WITH notif_stages AS (
+                    SELECT 
+                        n.project_id,
+                        n.created_at as notif_time,
+                        TRIM(LOWER(substring(n.message from 'Tahap ["'']([^"'']+)["'']'))) as stage_label
+                    FROM notifications n
+                    WHERE n.type = 'review' OR n.message ILIKE '%menunggu review%'
+                ),
+                latest_notifs AS (
+                    SELECT DISTINCT ON (project_id, stage_label)
+                        project_id,
+                        stage_label,
+                        notif_time
+                    FROM notif_stages
+                    WHERE stage_label IS NOT NULL
+                    ORDER BY project_id, stage_label, notif_time DESC
+                )
+                UPDATE stages s
+                SET submitted_at = ln.notif_time
+                FROM latest_notifs ln
+                WHERE ln.project_id = s.project_id 
+                  AND TRIM(LOWER(s.label)) = ln.stage_label
+                  AND (
+                      s.submitted_at IS NULL 
+                      OR (s.submitted_at >= '2026-11-01' AND ln.notif_time < '2026-11-01')
+                      OR s.submitted_at > (ln.notif_time + interval '5 minutes')
+                  )
+            `);
+            console.log("[migration] Synced stages.submitted_at from review notifications");
+        } catch (e) {
+            console.warn("[migration] submitted_at sync from notifications skipped:", (e as Error).message);
+        }
+
+        // Fallback untuk tahapan selesai yang submitted_at nya masih NULL
+        try {
+            await db.execute(sql`
+                UPDATE stages s
+                SET submitted_at = COALESCE(s.approved_at, p.created_at, NOW())
+                FROM projects p
+                WHERE s.project_id = p.id
+                  AND s.submitted_at IS NULL
+                  AND s.status IN ('done', 'archived')
+            `);
+            console.log("[migration] Fallback completed stages.submitted_at ensured");
+        } catch (e) {
+            console.warn("[migration] fallback submitted_at skipped:", (e as Error).message);
+        }
+
+        // Auto-link existing manuscripts and books by title or project, and upgrade author role
+        try {
+            await db.execute(sql`
+                UPDATE manuscripts 
+                SET project_id = 'PRJ-2026-ZV9F', status = 'published', updated_at = NOW() 
+                WHERE id = 'ebb69f8e-f1f5-411e-9932-60ca58e8dcea'
+            `);
+
+            await db.execute(sql`
+                UPDATE books 
+                SET project_id = 'PRJ-2026-ZV9F', 
+                    author_id = 'tkVJdyexUEz4bXFlO9MxcKkyaiXpPRpQ', 
+                    cover_url = '/api/uploads/covers/cover-1793593551846-509456816.png',
+                    updated_at = NOW() 
+                WHERE id = '8bc40df3-7ca1-4be2-a6a1-4b65e3c5b830'
+            `);
+
+            await db.execute(sql`
+                UPDATE "user"
+                SET role = 'penulis', updated_at = NOW()
+                WHERE id IN (
+                    SELECT author_id FROM manuscripts WHERE status = 'published' AND author_id IS NOT NULL
+                )
+                AND role IN ('pengunjung', 'user', 'calon_penulis')
+            `);
+            console.log("[migration] Synced manuscripts, books, and upgraded published authors to role 'penulis'");
+        } catch (e) {
+            console.warn("[migration] manuscripts/books sync skipped:", (e as Error).message);
+        }
 
         console.log("[migration] Workflow sync completed successfully!");
     } catch (e) {

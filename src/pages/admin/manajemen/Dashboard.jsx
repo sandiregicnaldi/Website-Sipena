@@ -93,6 +93,11 @@ export default function Dashboard() {
         return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })
     }
 
+    const formatDateTime = (iso) => {
+        if (!iso) return '—'
+        return new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
+
     const formatTime = (iso) => {
         if (!iso) return ''
         const d = new Date(iso)
@@ -441,7 +446,11 @@ export default function Dashboard() {
                                         <th className="px-4 py-3">Tahap</th>
                                         <th className="px-4 py-3">PJ</th>
                                         <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">Deadline</th>
+                                        {expandedStat === 'review' ? (
+                                            <th className="px-4 py-3">Diajukan Review</th>
+                                        ) : (
+                                            <th className="px-4 py-3">Deadline</th>
+                                        )}
                                         <th className="px-4 py-3">Dibuat</th>
                                     </tr>
                                 </thead>
@@ -488,9 +497,20 @@ export default function Dashboard() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className={`px-4 py-3 text-xs font-mono ${isOverdue ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
-                                                    {formatDate(stage?.deadline)}
-                                                </td>
+                                                {expandedStat === 'review' ? (
+                                                    <td className="px-4 py-3 text-xs font-mono font-semibold text-amber-700">
+                                                        {stage?.submittedAt ? (
+                                                            <div>
+                                                                <div>{formatDateTime(stage.submittedAt)}</div>
+                                                                <div className="text-[10px] text-slate-400 font-normal">{formatTime(stage.submittedAt)}</div>
+                                                            </div>
+                                                        ) : '—'}
+                                                    </td>
+                                                ) : (
+                                                    <td className={`px-4 py-3 text-xs font-mono ${isOverdue ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
+                                                        {formatDate(stage?.deadline)}
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-3 text-xs text-slate-400 font-mono">
                                                     {formatDate(project.createdAt)}
                                                 </td>

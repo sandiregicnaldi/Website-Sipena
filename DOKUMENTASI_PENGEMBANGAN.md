@@ -29,6 +29,13 @@
 22. [Penyempurnaan Formulir Katalog Buku & Penyelarasan Halaman Publik Info Detail Buku](#22-penyempurnaan-formulir-katalog-buku--penyelarasan-halaman-publik-info-detail-buku)
 23. [Drag & Drop & Scroll Mandiri Timeline Tahapan Kerja](#23-drag--drop--scroll-mandiri-timeline-tahapan-kerja)
 24. [Penyelarasan Alur Terbitan: Tahap 11 Selesai Langsung Buka Tahap 13](#24-penyelarasan-alur-terbitan-tahap-11-selesai-langsung-buka-tahap-13)
+25. [Fitur Pelacakan & Visualisasi Statistik Pembaca dan Pengunduh Buku](#25-fitur-pelacakan--visualisasi-statistik-pembaca-dan-pengunduh-buku)
+26. [Kolom Khusus Aset Proyek Terbitan & Integrasi Otomatis SiPena (Zero Double Work)](#26-kolom-khusus-aset-proyek-terbitan--integrasi-otomatis-sipena-zero-double-work)
+27. [Pembatasan Hak Akses Khusus Penanggung Jawab (PJ) pada Proyek Penerbitan](#27-pembatasan-hak-akses-khusus-penanggung-jawab-pj-pada-proyek-penerbitan)
+28. [Otomasi Siklus Hidup Naskah, Pembuatan Proyek, dan Upgrade Penulis](#28-otomasi-siklus-hidup-naskah-pembuatan-proyek-dan-upgrade-penulis)
+29. [Deduplikasi Komprehensif Interaksi Pembaca (Ulasan Rating, Baca, & Unduh)](#29-deduplikasi-komprehensif-interaksi-pembaca-ulasan-rating-baca--unduh)
+30. [Dasbor Admin Live Action & Dropdown Kategori Terbitan Khusus](#30-dasbor-admin-live-action--dropdown-kategori-terbitan-khusus)
+31. [Standarisasi Fitur Pagination & Pemilihan Jumlah Baris di Seluruh Menu Admin SiPena](#31-standarisasi-fitur-pagination--pemilihan-jumlah-baris-di-seluruh-menu-admin-sipena)
 
 ---
 
@@ -1066,5 +1073,174 @@ Pengunjung dan pengelola perpustakaan membutuhkan transparansi data statistik ke
 3. **Frontend Vite Build**: `npm run build` sukses 100% (*built in 2.17s, 0 errors*).
 4. **UI Refinement**: Tampilan metrik samping tampil rapi dan simetris, PDF reader hanya terbuka ketika tombol ditekan dalam mode layar penuh (Full Screen).
 5. **Akurasi Pengunduhan**: Semua titik aksi unduh terbukti memperbarui `download_count` di PostgreSQL dan menggerakkan kartu metrik UI secara *real-time*.
+
+---
+
+## BAB 26: Kolom Khusus Aset Proyek Terbitan & Integrasi Otomatis SiPena (Zero Double Work)
+
+### A. Latar Belakang & Kebutuhan
+Sebelumnya, setelah proyek penerbitan buku selesai, pegawai yang bertugas mengunggah buku ke SiPena harus menginput ulang seluruh informasi dari awal secara manual (mulai dari judul, penulis, NIP, ISBN, tahun, hingga mengunggah ulang file sampul dan dummy PDF). Hal ini menyebabkan duplikasi kerja (*double work*) dan rentan salah ketik (*human error*).
+
+Selain itu, pada alur pengajuan naskah (`AdminNaskah.jsx`), nama penulis belum terhubung ke tabel proyek sehingga proyek kehilangan identitas penulis aslinya.
+
+### B. Implementasi Teknis
+
+#### 1. Perluasan Skema Database PostgreSQL (`server/src/db/schema.ts` & `server/src/index.ts`)
+- **Tabel `projects`**: Menambahkan kolom `author: text("author")` untuk menyimpan nama penulis/kontributor buku.
+  - Auto-migrasi: `ALTER TABLE projects ADD COLUMN IF NOT EXISTS author TEXT;`
+- **Tabel `stages`**: Menambahkan kolom JSONB fleksibel `metadata: jsonb("metadata").$type<Record<string, any>>().default({})` untuk menyimpan aset dan nomor registrasi per tahapan tanpa merusak tahapan reguler lainnya.
+  - Auto-migrasi: `ALTER TABLE stages ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;`
+
+#### 2. Backend Storage & Upload Controller (`server/src/*`)
+- **Penyimpanan Berkas Fisik**: Berkas diunggah langsung ke sistem berkas server lokal (`server/uploads/covers/` dan `server/uploads/documents/`) dengan akses statis publik `/api/uploads/...`, sedangkan database hanya menyimpan string URL untuk efisiensi performa.
+- **Validasi Ketat**:
+  - `POST /api/upload/cover`: Khusus format PNG asli, ukuran maksimal 2 MB.
+  - `POST /api/upload/document`: Khusus format PDF dokumen resmi, ukuran maksimal 10 MB.
+- **Service & Controller**:
+  - `projectService.ts` & `projectController.ts`: Mendukung `author` saat `createProject`, `updateProject`, dan `duplicateProject`.
+  - `stageService.ts` & `stageController.ts`: Mendukung `metadata` parsial pada `updateStage`.
+
+#### 3. Frontend Manajemen Proyek & Integrasi SiPena (`src/*`)
+- **Alur Nama Penulis (*Author Flow*)**:
+  - `AdminNaskah.jsx`: Tombol "Buat Proyek" mengirimkan parameter URL internal: `/admin/manajemen/proyek/baru?title=...&category=terbitan&author={encodeURIComponent(item.penulis)}`.
+  - `ProjectNew.jsx`: Menampilkan kolom input **"Nama Penulis / Kontributor"** berdampingan dengan Judul Proyek, otomatis terisi dari URL naskah.
+  - `ProjectDetail.jsx`: Menampilkan badge Penulis di bawah Judul Proyek pada header dan dapat diedit melalui modal Edit Proyek.
+- **Kolom Khusus & Upload pada Tahapan Terbitan (`ProjectDetail.jsx`)**:
+  - **Tahap 5 (Penginputan NIP)**: Input Nomor Induk Penerbitan dan input Tahun Terbit (default tahun berjalan) dengan tombol simpan metadata.
+  - **Tahap 6 (Desain Sampul)**: Tombol upload sampul depan PNG asli (maks. 2 MB) dengan preview thumbnail visual dan tautan buka gambar ukuran penuh.
+  - **Tahap 9 (Penerbitan ISBN)**: Dua kolom input: ISBN Cetak dan ISBN Digital (PDF/EPUB) dengan panduan helper teks *"Isi dengan tanda '-' jika buku tanpa ISBN"*.
+  - **Tahap 10 (Pembuatan Dummy Final)**: Tombol upload berkas dummy final PDF (maks. 10 MB) dengan status badge dan tautan unduh/buka file.
+  - **Tahap 11 (Unggah ke SiPena dan Ipusnas)**:
+    - Menghimpun seluruh data dari tahap 5, 6, 9, 10 beserta judul, penulis, dan nama anggota tim produksi (Editor, Penata Letak, Desain Sampul) ke dalam kartu ringkasan checklist.
+    - Tombol aksi **"📥 Input ke SiPena ↗"** membuka tab baru menuju `/admin/katalog?action=add&...` dengan semua data terisi otomatis.
+- **Integrasi Dasbor Katalog SiPena (`AdminKatalog.jsx`)**:
+  - Membaca parameter query URL saat modal tambah buku dibuka.
+  - Seluruh kolom (Judul, Penulis, Tahun, NIP, ISBN Cetak, ISBN Digital, Tim Editor, Tata Letak, Desain Sampul, URL Sampul PNG, dan URL Berkas PDF) langsung terisi secara instan.
+  - Menampilkan banner hijau notifikasi integrasi: pegawai hanya perlu melengkapi kategori buku dan sinopsis sebelum menyimpan (*Zero Double Work*).
+
+### C. Hasil Pengujian
+1. **Server TypeCheck**: `npx tsc --noEmit` lolos 100% (*0 errors*).
+2. **Client Production Build**: `npm run build` sukses 100% (*0 errors*).
+3. **Data Flow**: Terverifikasi dari Pengajuan Naskah $\rightarrow$ Pembuatan Proyek $\rightarrow$ Tahapan Pipeline Aset $\rightarrow$ Form Tambah Katalog SiPena.
+4. **Stabilitas Unggah Aset**: Berhasil menyelesaikan kendala `500 Internal Server Error` dengan menyederhanakan penanganan multipart field pada frontend (`api.js` & `ProjectDetail.jsx`) dan menambahkan Express Global Error Handler di `server/src/index.ts` (teruji 200 OK melalui Vite Proxy).
+
+---
+
+## BAB 27: Pembatasan Hak Akses Khusus Penanggung Jawab (PJ) pada Proyek Penerbitan
+
+### A. Latar Belakang & Kebutuhan
+Dalam alur kerja penerbitan (`ProjectDetail.jsx`), setiap tahapan kerja memiliki Penanggung Jawab (PJ) yang ditugaskan secara spesifik (seperti Editor, Penata Letak, Desainer Sampul, dsb.). Sebelumnya, input metadata (NIP, ISBN), unggah berkas (Sampul PNG, Dummy Final PDF), serta pengubahan persentase progress kerja dapat diubah oleh personil redaksi mana pun yang membuka proyek tersebut. Hal ini berisiko menimbulkan tumpang tindih tanggung jawab dan inkonsistensi data.
+
+### B. Implementasi Teknis
+1. **Otorisasi Ketat Berbasis PJ (`src/pages/admin/manajemen/ProjectDetail.jsx`)**:
+   - Memeriksa hak akses pengguna yang sedang aktif (`currentUserId`, `isAdmin`, `isReviewer`, `pjId`).
+   - Logika: Tindakan modifikasi tahapan **hanya diizinkan** jika `isAdmin === true` ATAU `currentUserId === stage.pjId`.
+2. **Penguncian Fitur Khusus Tahapan Terbitan**:
+   - **Tahap 5 (Penginputan NIP)**: Input NIP & Tahun Terbit hanya aktif bagi PJ Tahap 5 atau Super Admin. Jika bukan PJ, tombol Simpan dinonaktifkan dan input berstatus `disabled` dengan keterangan nama PJ yang bertugas.
+   - **Tahap 6 (Desain Sampul)**: Tombol unggah sampul PNG dikunci khusus untuk PJ Desain Sampul atau Super Admin.
+   - **Tahap 9 (Penerbitan ISBN)**: Input ISBN Cetak & ISBN Digital dikunci khusus untuk PJ ISBN atau Super Admin.
+   - **Tahap 10 (Pembuatan Dummy Final)**: Tombol unggah dokumen PDF Dummy Final dikunci khusus untuk PJ Penata Letak / Dummy atau Super Admin.
+   - **Pengubahan Progress Kerja**: Slider/input persentase progress tahapan dikunci khusus untuk PJ tahapan tersebut.
+3. **Pesan Edukasi Otoritas**:
+   - Menampilkan notifikasi visual *"Aksi ini hanya dapat dilakukan oleh Penanggung Jawab (PJ) tahapan bersangkutan: [Nama PJ]"* jika personil lain mencoba melakukan perubahan.
+
+---
+
+## BAB 28: Otomasi Siklus Hidup Naskah, Pembuatan Proyek, dan Upgrade Penulis
+
+### A. Latar Belakang & Kebutuhan
+Proses pengajuan naskah oleh pengunjung hingga buku diterbitkan sebelumnya memerlukan beberapa langkah manual yang terputus:
+1. Status naskah di `AdminNaskah.jsx` tetap "Disetujui" meskipun proyek sudah dibuat.
+2. Pengunjung yang mengajukan naskah tidak mengetahui bahwa naskahnya sudah masuk proses produksi.
+3. Setelah buku berhasil diunggah dan terbit di SiPena, admin harus secara manual mencari akun pengunjung untuk menaikkan perannya menjadi Penulis dan membuka profil publik kepenulisannya.
+
+### B. Implementasi Teknis
+1. **Status Dinamis Real-Time Naskah Masuk (`AdminNaskah.jsx`)**:
+   - Status diperluas: `Menunggu` $\rightarrow$ `Disetujui` $\rightarrow$ `Sedang Diproses` $\rightarrow$ `Sudah Terbit` (atau `Ditolak`).
+   - Ketika proyek dibuat dari naskah: status naskah otomatis beralih menjadi **"Sedang Diproses"** lengkap dengan tombol tautan langsung ke dasbor proyek terkait (`/admin/manajemen/proyek/:projectId`).
+   - Ketika buku berhasil diterbitkan: status naskah otomatis beralih menjadi **"Sudah Terbit"** dengan tombol tautan langsung ke halaman buku publik (`/buku/:bookId`).
+2. **Sinkronisasi Profil Pengunjung (`src/pages/AuthorDashboard.jsx` & `src/pages/AuthorProfile.jsx`)**:
+   - Di dasbor pengunjung (`/profil-saya`), status naskah pada tab *Naskah Saya* otomatis terbaharui secara live menjadi *"Sedang Diproses"* saat proyek dimulai.
+   - Ketika naskah dinyatakan *"Sudah Terbit"*, sistem secara otomatis:
+     - Meningkatkan peran akun dari `pengunjung` menjadi `penulis` terverifikasi (`isVerifiedAuthor: true`).
+     - Membuka tab **Biodata Penulis Publik** pada profil pengunjung agar penulis dapat melengkapi bio, foto, profesi, domisili, dan portofolio karya.
+3. **Perbaikan Tautan Aset Katalog & Detail Buku**:
+   - Memperbaiki penanganan URL sampul buku dan berkas PDF agar langsung dapat diakses dan ditampilkan dengan benar baik pada halaman katalog (`/buku`), kartu slider beranda, maupun halaman detail buku (`/buku/:id`).
+
+---
+
+## BAB 29: Deduplikasi Komprehensif Interaksi Pembaca (Ulasan Rating, Baca, & Unduh)
+
+### A. Latar Belakang & Masalah
+Ditemukan bug kecil di mana pengguna yang sudah pernah memberikan rating ulasan, membaca buku online, atau mengunduh PDF, jika mereka melakukan *logout* lalu *login* kembali, ketiga aksi tersebut masih dapat tercatat berulang kali dan pengguna dapat mengirimkan ulasan baru pada buku yang sama.
+
+### B. Implementasi Teknis
+1. **Skema Database & Tabel Pelacakan Baca (`server/src/db/schema.ts`)**:
+   - Dibuat tabel baru `book_reads` untuk mencatat identitas unik pembaca:
+     `book_id`, `user_id`, `ip_address`, `user_agent`, `created_at`.
+   - Tabel `book_ratings` dan `book_downloads` diperkuat dengan indeks unik dan pemeriksaan integritas data.
+2. **Deduplikasi Level Server Backend (`server/src/controllers/sipenaController.ts`)**:
+   - **Ulasan & Rating (`addRating`)**: Memeriksa apakah `userId` sudah pernah memberikan rating pada `bookId` tersebut. Jika sudah pernah, server mengembalikan status bahwa ulasan sebelumnya diperbarui (*upsert*) dan tidak menduplikasi agregat `ratingCount`.
+   - **Pembacaan Buku (`recordRead`)**: Memeriksa keberadaan riwayat di `book_reads` untuk pasangan `bookId` dan `userId` (atau `ipAddress` jika anonim). Counter `readCount` hanya bertambah jika merupakan interaksi unik pertama.
+   - **Pengunduhan Dokumen (`recordDownload`)**: Memeriksa riwayat di `book_downloads` untuk pasangan `bookId` dan `userId`. Counter `downloadCount` hanya bertambah untuk pengguna unik pertama.
+3. **Frontend Feedback (`src/pages/BookDetail.jsx`)**:
+   - Menampilkan status *"Anda sudah memberikan ulasan untuk buku ini"* beserta nilai rating yang sudah diberikan, mencegah formulir ulasan muncul kembali.
+
+---
+
+## BAB 30: Dasbor Admin Live Action & Dropdown Kategori Terbitan Khusus
+
+### A. Latar Belakang & Kebutuhan
+1. Kartu-kartu ringkasan terbitan pada Beranda Admin SiPena (`/admin`) membutuhkan pembaruan dinamis secara *live action* yang terhubung langsung ke basis data riil setiap kali ada buku baru diterbitkan.
+2. Kategori buku perlu membedakan produk publikasi khusus (Pedoman/Standar, Prosiding, Laporan, Majalah/Jurnal) dengan kategori buku umum lainnya, sehingga saat input buku baru selain dari 4 jenis khusus tersebut, kartu info yang bertambah adalah kartu **Total Buku**.
+
+### B. Implementasi Teknis
+1. **Endpoint Agregasi Live Backend (`server/src/controllers/sipenaController.ts`)**:
+   - Endpoint baru: `GET /api/sipena/stats`.
+   - Menghitung secara langsung dari tabel `books` dan `users`:
+     - `Pedoman / Standar`: Buku dengan kategori Pedoman/Standar.
+     - `Prosiding`: Buku dengan kategori Prosiding.
+     - `Laporan`: Buku dengan kategori Laporan.
+     - `Majalah / Jurnal`: Buku dengan kategori Majalah/Jurnal.
+     - `Total Buku`: Seluruh buku dengan kategori umum selain 4 kategori di atas.
+     - `Total Penulis`: Menggabungkan nama penulis unik dari katalog buku terbitan dengan seluruh pengguna terdaftar yang berstatus role `penulis`.
+     - Pertumbuhan bulanan (`+N bulan ini`) dan data unduhan tahunan untuk grafik analitik.
+2. **Koneksi Live Frontend (`src/pages/admin/AdminDashboard.jsx`)**:
+   - Menghubungkan seluruh kartu statistik ke data live backend via `SipenaAPI.getDashboardStats()`.
+   - Dilengkapi tombol **Segarkan Data** dan status **● Live Terhubung**.
+3. **Dropdown Berkelompok (`AdminKatalog.jsx`)**:
+   - Mengelompokkan pilihan kategori formulir input/edit buku menggunakan `<optgroup>`:
+     - **Kategori Buku Umum:** *Anak-anak, Biografi & Memoar, Ekonomi & Management, Fiksi, Hukum & Politik, Humaniora, Inkubator Literasi, Kesehatan, Komik, Lifestyle*.
+     - **Produk Terbitan Khusus (Sesuai Kartu Beranda):** *Pedoman / Standar, Prosiding, Laporan, Majalah / Jurnal*.
+4. **Penyelarasan Publik (`BooksPage.jsx` & `BookDetail.jsx`)**:
+   - Menambahkan 4 kategori khusus ke dalam filter katalog dan palet warna badge.
+
+---
+
+## BAB 31: Standarisasi Fitur Pagination & Pemilihan Jumlah Baris di Seluruh Menu Admin SiPena
+
+### A. Latar Belakang & Kebutuhan
+Pada menu daftar buku, manajemen naskah, pengguna, kegiatan, dan konten web, daftar data menjadi sangat panjang ketika volume data bertambah banyak. Diperlukan standarisasi fitur tampilan per 10 baris dengan fleksibilitas pemilihan ukuran halaman yang seragam dan elegan di seluruh antarmuka admin.
+
+### B. Implementasi Teknis
+1. **Komponen Standar: `AdminPagination.jsx` (`src/components/AdminPagination.jsx`)**:
+   - **Default Page Size**: 10 baris per halaman.
+   - **Page Size Selector**: Dropdown pilihan `10`, `25`, `50`, dan `100` entri.
+   - **Informasi Rentang Data**: *"Menampilkan {startItem} – {endItem} dari {totalItems} {itemName}"*.
+   - **Navigasi Cerdas**: Tombol Awal (`«`), Sebelumnya (`‹`), Nomor Halaman interaktif (`1`, `2`, `...`), Selanjutnya (`›`), dan Terakhir (`»`) dengan jendela ellipsis jika jumlah halaman banyak.
+   - **Responsif**: Layout fleksibel menyesuaikan layar desktop maupun mobile.
+2. **Penerapan pada 5 Menu Admin SiPena**:
+   - **Daftar Buku (`AdminKatalog.jsx`)**: Menampilkan 10 buku per halaman dengan reset halaman otomatis saat kata kunci pencarian diubah.
+   - **Manajemen Naskah Masuk (`AdminNaskah.jsx`)**: Dilengkapi filter status (*Semua, Menunggu, Disetujui, Sedang Diproses, Sudah Terbit, Ditolak*), pencarian naskah, dan kontrol pagination.
+   - **Pengguna (`AdminPengguna.jsx`)**: Diterapkan pada `UserTable` sehingga mencakup **kedua tab sekaligus** (*Pengunjung* dan *Pegawai*) serta penomoran urut tabel pegawai yang bersambung antar halaman.
+   - **Kegiatan (`AdminKegiatan.jsx`)**: Menampilkan 10 kegiatan per halaman dengan nomor urut yang konsisten antar halaman.
+   - **Konten Web (`AdminKonten.jsx`)**: Diterapkan pada daftar **Banner Aktif** (`BannerEditor`) dan daftar **FAQ** (`FAQEditor`), lengkap dengan penomoran pertanyaan `Q1, Q2, ...` yang bersambung dan reset halaman saat ganti tab kategori FAQ.
+
+### C. Hasil Pengujian & Verifikasi
+1. **Frontend Production Build**: `npm run build` sukses 100% (*built in 1.79s, 0 errors*).
+2. **Backend Daemon Task**: Server berjalan normal di port `5001` melayani API secara responsif.
+3. **UI Consistency**: Seluruh tabel di admin SiPena kini memiliki tata letak dan pengalaman navigasi pagination yang seragam dan rapi.
+
+
 
 

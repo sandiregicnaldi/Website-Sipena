@@ -140,6 +140,7 @@ export const AuthProvider = ({ children }) => {
       isReviewer: user?.isReviewer === true,
       isStaff: user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer',
       isPending, // Bisa dipakai untuk loading state
+      isLoading: isPending,
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useApp } from '../../../context/AppContext'
 import { CATEGORIES, STATUS_LABELS } from '../../../data/categories'
 import { api } from '../../../services/api'
@@ -15,6 +15,8 @@ export default function ProjectDetail() {
     const discussionRef = useRef(null)
     const isDraggingRef = useRef(false)
     const activeStageItemRef = useRef(null)
+    const coverFileRef = useRef(null)
+    const dummyPdfFileRef = useRef(null)
     const [draggedStageIdx, setDraggedStageIdx] = useState(null)
     const [dragOverStageIdx, setDragOverStageIdx] = useState(null)
     const [isReordering, setIsReordering] = useState(false)
@@ -65,6 +67,13 @@ export default function ProjectDetail() {
     const [usulanNote, setUsulanNote] = useState('')
     const [usulanScore, setUsulanScore] = useState(0)
 
+    // Stage Custom Output Metadata States (Tahap 5 NIP & Tahun, Tahap 9 ISBN)
+    const [nipInput, setNipInput] = useState('')
+    const [publishYearInput, setPublishYearInput] = useState(new Date().getFullYear())
+    const [isbnCetakInput, setIsbnCetakInput] = useState('')
+    const [isbnDigitalInput, setIsbnDigitalInput] = useState('')
+    const [isUploadingAsset, setIsUploadingAsset] = useState(false)
+
     const stages = project?.stages || []
     const getCurrentStageIdx = (proj) => {
         if (!proj?.stages || proj.stages.length === 0) return 0
@@ -82,6 +91,18 @@ export default function ProjectDetail() {
         setLocalProgress(null)
         setIsEditingDescription(false)
         setEditingDescriptionValue('')
+
+        if (activeStage?.metadata) {
+            setNipInput(activeStage.metadata.nip || '')
+            setPublishYearInput(activeStage.metadata.publishYear || new Date().getFullYear())
+            setIsbnCetakInput(activeStage.metadata.isbnCetak || '')
+            setIsbnDigitalInput(activeStage.metadata.isbnDigital || '')
+        } else {
+            setNipInput('')
+            setPublishYearInput(new Date().getFullYear())
+            setIsbnCetakInput('')
+            setIsbnDigitalInput('')
+        }
         
         // Tandai catatan tahapan ini sebagai telah dibaca
         if (activeStage?.id) {
@@ -92,7 +113,7 @@ export default function ProjectDetail() {
                 localStorage.setItem(LS_KEY, JSON.stringify(lastSeen))
             } catch (e) {}
         }
-    }, [activeStageIdx, activeStage?.id, activeStage?.notes?.length])
+    }, [activeStageIdx, activeStage?.id, activeStage?.notes?.length, activeStage?.metadata])
 
     // Auto-scroll timeline stage list so the active stage is visible
     useEffect(() => {
@@ -315,6 +336,39 @@ export default function ProjectDetail() {
     // Kategori sequential dengan PJ berbeda per tahap (seperti Terbitan)
     const isSequentialPerPJ = ['terbitan'].includes(project.category)
 
+    // Stage-specific detection for Terbitan
+    const activeStageLabelNorm = (activeStage?.label || '').trim().toLowerCase()
+    const isStageNip = isTerbitan && (activeStageLabelNorm.includes('nomor induk') || activeStageLabelNorm.includes('nip'))
+    const isStageSampul = isTerbitan && activeStageLabelNorm.includes('sampul')
+    const isStageIsbn = isTerbitan && (activeStageLabelNorm.includes('isbn') && !activeStageLabelNorm.includes('dummy'))
+    const isStageDummyFinal = isTerbitan && activeStageLabelNorm.includes('dummy final')
+    const isStageUploadSipena = isTerbitan && (activeStageLabelNorm.includes('sipena') || activeStageLabelNorm.includes('unggah ke sipena'))
+
+    // Aggregated publishing data from previous stages for Tahap 11
+    const stageNip = stages.find(s => {
+        const l = (s.label || '').toLowerCase()
+        return l.includes('nomor induk') || l.includes('nip')
+    })
+    const stageSampul = stages.find(s => (s.label || '').toLowerCase().includes('sampul'))
+    const stageIsbn = stages.find(s => {
+        const l = (s.label || '').toLowerCase()
+        return l.includes('isbn') && !l.includes('dummy')
+    })
+    const stageDummyFinal = stages.find(s => (s.label || '').toLowerCase().includes('dummy final'))
+    const stagePenyuntingan = stages.find(s => (s.label || '').toLowerCase().includes('penyuntingan'))
+    const stageTataLetak = stages.find(s => (s.label || '').toLowerCase().includes('tata letak'))
+
+    const aggregatedNip = stageNip?.metadata?.nip || ''
+    const aggregatedYear = stageNip?.metadata?.publishYear || new Date().getFullYear()
+    const aggregatedCover = stageSampul?.metadata?.coverUrl || ''
+    const aggregatedIsbnCetak = stageIsbn?.metadata?.isbnCetak || ''
+    const aggregatedIsbnDigital = stageIsbn?.metadata?.isbnDigital || ''
+    const aggregatedDummyPdf = stageDummyFinal?.metadata?.dummyPdfUrl || ''
+
+    const editorName = stagePenyuntingan?.pj?.name || ''
+    const layoutName = stageTataLetak?.pj?.name || ''
+    const coverDesignerName = stageSampul?.pj?.name || ''
+
     // Sequential workflow check: can only edit stage if all previous stages are done
     const isSequential = catObj?.workflow === 'sequential'
     
@@ -400,6 +454,11 @@ export default function ProjectDetail() {
         return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
     }
 
+    const formatDateTime = (iso) => {
+        if (!iso) return '—'
+        return new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
+
     const getDeadlineCountdown = (deadline) => {
         if (!deadline) return null
         const today = new Date()
@@ -425,6 +484,103 @@ export default function ProjectDetail() {
             revision: 'badge-revision', done: 'badge-done', archived: 'badge-archived'
         }
         return map[status] || 'badge-draft'
+    }
+
+    // Aset dan input tahapan (NIP, Cover, ISBN, Dummy PDF) hanya dapat diisi dan disimpan oleh PJ/Co-PJ bersangkutan saat tahapan aktif (sama halnya dengan ubah progress kerja)
+    const canEditStageAsset = isMyStage && isStageEditable
+
+    const handleSaveMetadata = async (newMeta, successMsg = 'Informasi berhasil disimpan!') => {
+        if (!activeStage?.id) return
+        if (!canEditStageAsset) {
+            showToast('Hanya Penanggung Jawab (PJ) tahapan ini yang dapat mengisi atau mengubah data', 'error')
+            return
+        }
+        try {
+            const merged = { ...(activeStage.metadata || {}), ...newMeta }
+            await updateStage(activeStage.id, { metadata: merged })
+            showToast(successMsg, 'success')
+        } catch (err) {
+            console.error('Failed to save stage metadata:', err)
+            showToast('Gagal menyimpan data: ' + (err.message || 'Terjadi kesalahan'), 'error')
+        }
+    }
+
+    const handleCoverUpload = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!canEditStageAsset) {
+            showToast('Hanya Penanggung Jawab (PJ) Desain Sampul yang dapat mengunggah file ini', 'error')
+            e.target.value = ''
+            return
+        }
+        if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
+            showToast('File sampul harus berformat PNG (.png)', 'error')
+            e.target.value = ''
+            return
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Ukuran file sampul maksimal 2 MB', 'error')
+            e.target.value = ''
+            return
+        }
+
+        setIsUploadingAsset(true)
+        try {
+            const res = await api.uploads.uploadCover(file)
+            if (res.url) {
+                await handleSaveMetadata({
+                    coverUrl: res.url,
+                    coverFileName: file.name
+                }, 'File sampul depan asli berhasil diunggah!')
+            } else {
+                throw new Error(res.error || 'Gagal mengunggah gambar sampul')
+            }
+        } catch (err) {
+            console.error('Upload cover failed:', err)
+            showToast(err.message || 'Gagal mengunggah file sampul', 'error')
+        } finally {
+            setIsUploadingAsset(false)
+            e.target.value = ''
+        }
+    }
+
+    const handleDummyPdfUpload = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!canEditStageAsset) {
+            showToast('Hanya Penanggung Jawab (PJ) Pembuatan Dummy Final yang dapat mengunggah file ini', 'error')
+            e.target.value = ''
+            return
+        }
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            showToast('File dummy final harus berformat PDF (.pdf)', 'error')
+            e.target.value = ''
+            return
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('Ukuran file dummy final maksimal 10 MB', 'error')
+            e.target.value = ''
+            return
+        }
+
+        setIsUploadingAsset(true)
+        try {
+            const res = await api.uploads.uploadDocument(file)
+            if (res.url) {
+                await handleSaveMetadata({
+                    dummyPdfUrl: res.url,
+                    dummyPdfFileName: file.name
+                }, 'File Dummy Final PDF berhasil diunggah!')
+            } else {
+                throw new Error(res.error || 'Gagal mengunggah dokumen dummy')
+            }
+        } catch (err) {
+            console.error('Upload dummy PDF failed:', err)
+            showToast(err.message || 'Gagal mengunggah file dummy final', 'error')
+        } finally {
+            setIsUploadingAsset(false)
+            e.target.value = ''
+        }
     }
 
     // PJ: Update progress (local state only — requires save)
@@ -1172,6 +1328,7 @@ export default function ProjectDetail() {
                             onClick={() => {
                                 setEditProjectFields({
                                     title: project.title || '',
+                                    author: project.author || '',
                                     type: project.type || '',
                                     description: project.description || '',
                                     gdriveLink: project.gdriveLink || '',
@@ -1224,6 +1381,12 @@ export default function ProjectDetail() {
                 {project.title}
             </h1>
             <div className="flex items-center gap-4 flex-wrap text-xs text-slate-400 font-medium mb-6">
+                {project.author && (
+                    <span className="flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                        <span className="material-symbols-outlined text-[14px] text-blue-600">person</span>
+                        Penulis: {project.author}
+                    </span>
+                )}
                 <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">calendar_today</span>
                     Dibuat: {project.createdAt ? new Date(project.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
@@ -1754,6 +1917,458 @@ export default function ProjectDetail() {
                                 </div>
                             )}
 
+                            {/* --- TAHAP KHUSUS PROYEK TERBITAN: OUTPUT & ASSET PUBLIKASI --- */}
+                            {/* Tahap 5: Penginputan Nomor Induk Penerbitan */}
+                            {isStageNip && (
+                                <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            🔢 Nomor Induk Penerbitan (NIP) & Tahun Terbit
+                                        </div>
+                                        {activeStage.metadata?.nip && (
+                                            <span className="badge badge-done" style={{ fontSize: '0.7rem' }}>✓ Data Tersimpan</span>
+                                        )}
+                                    </div>
+                                    
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.85rem', lineHeight: '1.4' }}>
+                                        Masukkan Nomor Induk Penerbitan setelah digenerasi dan Tahun Terbit buku. Data ini akan otomatis diteruskan ke Dasbor Katalog SiPena pada Tahap Unggah.
+                                    </p>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.35rem' }}>
+                                                Nomor Induk Penerbitan (NIP) <span style={{ color: 'var(--danger)' }}>*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={nipInput}
+                                                onChange={e => setNipInput(e.target.value)}
+                                                placeholder="Contoh: NIP-2026-0042..."
+                                                disabled={!canEditStageAsset}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.5rem 0.75rem',
+                                                    fontSize: '0.85rem',
+                                                    borderRadius: '0.5rem',
+                                                    border: '1px solid #cbd5e1',
+                                                    background: !canEditStageAsset ? '#f1f5f9' : '#fff'
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.35rem' }}>
+                                                Tahun Terbit <span style={{ color: 'var(--danger)' }}>*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={publishYearInput}
+                                                onChange={e => setPublishYearInput(e.target.value)}
+                                                placeholder="2026"
+                                                min="2000"
+                                                max="2100"
+                                                disabled={!canEditStageAsset}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.5rem 0.75rem',
+                                                    fontSize: '0.85rem',
+                                                    borderRadius: '0.5rem',
+                                                    border: '1px solid #cbd5e1',
+                                                    background: !canEditStageAsset ? '#f1f5f9' : '#fff'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {canEditStageAsset ? (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => {
+                                                    if (!nipInput.trim()) {
+                                                        showToast('Nomor Induk Penerbitan (NIP) wajib diisi', 'error')
+                                                        return
+                                                    }
+                                                    handleSaveMetadata({
+                                                        nip: nipInput.trim(),
+                                                        publishYear: Number(publishYearInput) || new Date().getFullYear()
+                                                    }, 'NIP dan Tahun Terbit berhasil disimpan!')
+                                                }}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}
+                                            >
+                                                💾 Simpan NIP & Tahun
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                            🔒 {!isMyStage ? 'Hanya Penanggung Jawab (PJ) tahapan ini yang dapat mengisi dan menyimpan Nomor Induk Penerbitan.' : activeStage.status === 'done' ? 'Tahapan telah selesai (seluruh aset telah terkunci).' : 'Tahapan belum aktif atau terkunci untuk pengisian.'}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tahap 6: Desain Sampul */}
+                            {isStageSampul && (
+                                <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            🎨 Berkas Desain Sampul Asli (PNG)
+                                        </div>
+                                        {activeStage.metadata?.coverUrl && (
+                                            <span className="badge badge-done" style={{ fontSize: '0.7rem' }}>✓ Sampul Siap</span>
+                                        )}
+                                    </div>
+
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.85rem', lineHeight: '1.4' }}>
+                                        Unggah file sampul depan asli berformat <strong>PNG (.png)</strong> dengan ukuran <strong>maksimal 2 MB</strong>. Berkas ini akan langsung menjadi cover buku di katalog publik SiPena.
+                                    </p>
+
+                                    {activeStage.metadata?.coverUrl ? (
+                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', padding: '0.75rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #e2e8f0', marginBottom: '0.75rem' }}>
+                                            <img
+                                                src={activeStage.metadata.coverUrl}
+                                                alt="Cover Sampul Depan"
+                                                style={{ width: '80px', height: '110px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1', boxShadow: '0 2px 4px rgba(0,0,0,0.06)' }}
+                                            />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', wordBreak: 'break-all' }}>
+                                                    {activeStage.metadata.coverFileName || 'cover_depan_asli.png'}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.25rem' }}>
+                                                    ✓ Berkas tersimpan di server
+                                                </div>
+                                                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    <a
+                                                        href={activeStage.metadata.coverUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn btn-ghost btn-sm"
+                                                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                                                    >
+                                                        👁️ Lihat Penuh ↗
+                                                    </a>
+                                                    {canEditStageAsset && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-secondary btn-sm"
+                                                            disabled={isUploadingAsset}
+                                                            onClick={() => coverFileRef.current?.click()}
+                                                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                                                        >
+                                                            {isUploadingAsset ? 'Mengunggah...' : '🔄 Ganti File'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '1rem', textAlign: 'center', background: '#fff', borderRadius: '0.5rem', border: '2px dashed #cbd5e1', marginBottom: '0.75rem' }}>
+                                            <div style={{ fontSize: '1.5rem', marginBottom: '0.35rem' }}>🖼️</div>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                                                Belum ada berkas sampul PNG
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                                                Khusus file PNG asli (maksimal 2 MB)
+                                            </div>
+                                            {canEditStageAsset ? (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary btn-sm"
+                                                    disabled={isUploadingAsset}
+                                                    onClick={() => coverFileRef.current?.click()}
+                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}
+                                                >
+                                                    {isUploadingAsset ? 'Mengunggah...' : '📤 Unggah Sampul Depan (.PNG)'}
+                                                </button>
+                                            ) : (
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                                                    🔒 {!isMyStage ? 'Hanya Penanggung Jawab (PJ) Desain Sampul yang dapat mengunggah berkas ini.' : activeStage.status === 'done' ? 'Tahapan telah selesai (seluruh aset telah terkunci).' : 'Tahapan belum aktif atau terkunci untuk pengunggahan.'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <input
+                                        type="file"
+                                        ref={coverFileRef}
+                                        onChange={handleCoverUpload}
+                                        accept=".png,image/png"
+                                        style={{ display: 'none' }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Tahap 9: Penerbitan ISBN */}
+                            {isStageIsbn && (
+                                <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            🔖 Nomor ISBN (Cetak & Digital)
+                                        </div>
+                                        {(activeStage.metadata?.isbnCetak || activeStage.metadata?.isbnDigital) && (
+                                            <span className="badge badge-done" style={{ fontSize: '0.7rem' }}>✓ ISBN Tersimpan</span>
+                                        )}
+                                    </div>
+
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.85rem', lineHeight: '1.4' }}>
+                                        Inputkan nomor ISBN yang diterbitkan oleh Perpusnas. <em>Isi dengan tanda '-' jika buku tanpa ISBN.</em>
+                                    </p>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.35rem' }}>
+                                                ISBN Cetak <span style={{ color: 'var(--danger)' }}>*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={isbnCetakInput}
+                                                onChange={e => setIsbnCetakInput(e.target.value)}
+                                                placeholder="Contoh: 978-623-000-000-0 atau -"
+                                                disabled={!canEditStageAsset}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.5rem 0.75rem',
+                                                    fontSize: '0.85rem',
+                                                    borderRadius: '0.5rem',
+                                                    border: '1px solid #cbd5e1',
+                                                    background: !canEditStageAsset ? '#f1f5f9' : '#fff'
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.35rem' }}>
+                                                ISBN Digital (PDF / EPUB) <span style={{ color: 'var(--danger)' }}>*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={isbnDigitalInput}
+                                                onChange={e => setIsbnDigitalInput(e.target.value)}
+                                                placeholder="Contoh: 978-623-000-000-1 atau -"
+                                                disabled={!canEditStageAsset}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.5rem 0.75rem',
+                                                    fontSize: '0.85rem',
+                                                    borderRadius: '0.5rem',
+                                                    border: '1px solid #cbd5e1',
+                                                    background: !canEditStageAsset ? '#f1f5f9' : '#fff'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {canEditStageAsset ? (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => {
+                                                    if (!isbnCetakInput.trim() && !isbnDigitalInput.trim()) {
+                                                        showToast('Mohon isi minimal salah satu kolom ISBN atau tanda "-"', 'error')
+                                                        return
+                                                    }
+                                                    handleSaveMetadata({
+                                                        isbnCetak: isbnCetakInput.trim() || '-',
+                                                        isbnDigital: isbnDigitalInput.trim() || '-'
+                                                    }, 'Data ISBN berhasil disimpan!')
+                                                }}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}
+                                            >
+                                                💾 Simpan Data ISBN
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                            🔒 {!isMyStage ? 'Hanya Penanggung Jawab (PJ) tahapan ini yang dapat mengisi dan menyimpan nomor ISBN.' : activeStage.status === 'done' ? 'Tahapan telah selesai (seluruh aset telah terkunci).' : 'Tahapan belum aktif atau terkunci untuk pengisian.'}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tahap 10: Pembuatan Dummy Final */}
+                            {isStageDummyFinal && (
+                                <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            📑 Berkas Dummy Final (PDF)
+                                        </div>
+                                        {activeStage.metadata?.dummyPdfUrl && (
+                                            <span className="badge badge-done" style={{ fontSize: '0.7rem' }}>✓ PDF Siap</span>
+                                        )}
+                                    </div>
+
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.85rem', lineHeight: '1.4' }}>
+                                        Unggah file naskah dummy final berformat <strong>PDF (.pdf)</strong> dengan ukuran <strong>maksimal 10 MB</strong>. Berkas ini akan diteruskan untuk publikasi dan baca daring di SiPena.
+                                    </p>
+
+                                    {activeStage.metadata?.dummyPdfUrl ? (
+                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '0.75rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #e2e8f0', marginBottom: '0.75rem' }}>
+                                            <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+                                                📕
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', wordBreak: 'break-all' }}>
+                                                    {activeStage.metadata.dummyPdfFileName || 'dummy_final_buku.pdf'}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.2rem' }}>
+                                                    ✓ Berkas PDF tersimpan di server
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                                                <a
+                                                    href={activeStage.metadata.dummyPdfUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="btn btn-ghost btn-sm"
+                                                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                                                >
+                                                    📥 Unduh / Buka ↗
+                                                </a>
+                                                {canEditStageAsset && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary btn-sm"
+                                                        disabled={isUploadingAsset}
+                                                        onClick={() => dummyPdfFileRef.current?.click()}
+                                                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                                                    >
+                                                        {isUploadingAsset ? 'Mengunggah...' : '🔄 Ganti PDF'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '1rem', textAlign: 'center', background: '#fff', borderRadius: '0.5rem', border: '2px dashed #cbd5e1', marginBottom: '0.75rem' }}>
+                                            <div style={{ fontSize: '1.5rem', marginBottom: '0.35rem' }}>📄</div>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                                                Belum ada berkas dummy final PDF
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                                                Format PDF dokumen resmi (maksimal 10 MB)
+                                            </div>
+                                            {canEditStageAsset ? (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary btn-sm"
+                                                    disabled={isUploadingAsset}
+                                                    onClick={() => dummyPdfFileRef.current?.click()}
+                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}
+                                                >
+                                                    {isUploadingAsset ? 'Mengunggah...' : '📤 Unggah Berkas Dummy Final (.PDF)'}
+                                                </button>
+                                            ) : (
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                                                    🔒 {!isMyStage ? 'Hanya Penanggung Jawab (PJ) Pembuatan Dummy Final yang dapat mengunggah berkas ini.' : activeStage.status === 'done' ? 'Tahapan telah selesai (seluruh aset telah terkunci).' : 'Tahapan belum aktif atau terkunci untuk pengunggahan.'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <input
+                                        type="file"
+                                        ref={dummyPdfFileRef}
+                                        onChange={handleDummyPdfUpload}
+                                        accept=".pdf,application/pdf"
+                                        style={{ display: 'none' }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Tahap 11: Unggah ke SiPena dan Ipusnas */}
+                            {isStageUploadSipena && (
+                                <div style={{ marginBottom: '1.25rem', padding: '1.25rem', background: '#eff6ff', borderRadius: '0.75rem', border: '1px solid #bfdbfe' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                                            🚀 Integrasi SiPena (Zero Double Work)
+                                        </h4>
+                                        <span className="badge" style={{ background: '#dbeafe', color: '#1d4ed8', border: '1px solid #93c5fd', fontSize: '0.7rem' }}>
+                                            Siap Kirim ke Katalog
+                                        </span>
+                                    </div>
+
+                                    <p style={{ fontSize: '0.78rem', color: '#1e40af', marginBottom: '1rem', lineHeight: '1.45' }}>
+                                        Naskah telah siap diunggah. Seluruh data hasil tahapan proyek di bawah ini telah dikumpulkan secara otomatis. Klik tombol <strong>Input ke SiPena</strong> untuk langsung membuka formulir katalog SiPena dengan data yang telah terisi lengkap. Anda cukup melengkapi sinopsis dan kategori!
+                                    </p>
+
+                                    {/* Ringkasan Data Proyek yang siap dimasukkan */}
+                                    <div style={{ background: '#fff', borderRadius: '0.5rem', border: '1px solid #dbeafe', padding: '0.85rem', marginBottom: '1rem' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            📋 Ringkasan Data yang Akan Diteruskan:
+                                        </div>
+                                        
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', fontSize: '0.78rem' }}>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Judul Buku:</span>{' '}
+                                                <strong style={{ color: '#0f172a' }}>{project.title || '—'}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Penulis:</span>{' '}
+                                                <strong style={{ color: '#0f172a' }}>{project.author || '—'}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Nomor Induk (NIP):</span>{' '}
+                                                <strong style={{ color: aggregatedNip ? '#0f172a' : '#ef4444' }}>
+                                                    {aggregatedNip || 'Belum diisi di Tahap 5'}
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Tahun Terbit:</span>{' '}
+                                                <strong style={{ color: '#0f172a' }}>{aggregatedYear}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>ISBN Cetak:</span>{' '}
+                                                <strong style={{ color: aggregatedIsbnCetak ? '#0f172a' : '#ef4444' }}>
+                                                    {aggregatedIsbnCetak || 'Belum diisi di Tahap 9'}
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>ISBN Digital:</span>{' '}
+                                                <strong style={{ color: aggregatedIsbnDigital ? '#0f172a' : '#ef4444' }}>
+                                                    {aggregatedIsbnDigital || 'Belum diisi di Tahap 9'}
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Berkas Sampul Depan:</span>{' '}
+                                                {aggregatedCover ? (
+                                                    <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Tersedia (.PNG)</span>
+                                                ) : (
+                                                    <span style={{ color: '#ef4444', fontWeight: 500 }}>Belum diunggah di Tahap 6</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Berkas Dummy Final:</span>{' '}
+                                                {aggregatedDummyPdf ? (
+                                                    <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Tersedia (.PDF)</span>
+                                                ) : (
+                                                    <span style={{ color: '#ef4444', fontWeight: 500 }}>Belum diunggah di Tahap 10</span>
+                                                )}
+                                            </div>
+                                            <div style={{ gridColumn: '1 / -1', borderTop: '1px dashed #e2e8f0', paddingTop: '0.4rem', color: '#64748b' }}>
+                                                <span>Tim Produksi:</span>{' '}
+                                                <span style={{ color: '#334155' }}>
+                                                    Editor: <strong>{editorName || '—'}</strong> | Penata Letak: <strong>{layoutName || '—'}</strong> | Desain Sampul: <strong>{coverDesignerName || '—'}</strong>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        <Link
+                                            to={`/admin/katalog?action=add&judul=${encodeURIComponent(project.title || '')}&penulis=${encodeURIComponent(project.author || '')}&tahun=${encodeURIComponent(aggregatedYear || '')}&nip=${encodeURIComponent(aggregatedNip || '')}&isbn=${encodeURIComponent(aggregatedIsbnCetak || '')}&isbnDigital=${encodeURIComponent(aggregatedIsbnDigital || '')}&sampul=${encodeURIComponent(aggregatedCover || '')}&pdf=${encodeURIComponent(aggregatedDummyPdf || '')}&editor=${encodeURIComponent(editorName || '')}&penataLetak=${encodeURIComponent(layoutName || '')}&desainSampul=${encodeURIComponent(coverDesignerName || '')}&projectId=${encodeURIComponent(project.id || '')}&fromProject=1`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-primary btn-sm"
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#2563eb', border: 'none', padding: '0.5rem 1rem', fontSize: '0.825rem', fontWeight: 600 }}
+                                        >
+                                            📥 Input ke SiPena ↗
+                                        </Link>
+                                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                            (Membuka tab baru Form Input Katalog SiPena)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Progress */}
                             {activeStage.status !== 'done' && activeStage.status !== 'archived' && (
                                 <div style={{ marginBottom: '1rem' }}>
@@ -1895,33 +2510,11 @@ export default function ProjectDetail() {
                                                         ? '✓ Usulan telah diterima! Silakan klik "Ajukan Review" di atas untuk mengirimkan hasil kerja ke Admin.'
                                                         : (activeStage.proposalStatus === 'pending'
                                                             ? '🔒 Progress terkunci di 100% — usulan sedang diproses oleh Reviewer (PJ Penyuntingan)'
-                                                            : '🔒 Progress terkunci — sedang menunggu review admin')}
+                                                            : `🔒 Progress terkunci — sedang menunggu review admin${activeStage.submittedAt ? ` (Diajukan: ${formatDateTime(activeStage.submittedAt)})` : ''}`)}
                                                 </div>
                                             )}
                                         </>
                                     )}
-
-                                    {/* --- TOMBOL INTEGRASI SIPENA --- */}
-                                    {activeStage.label?.toLowerCase().includes('sipena') && (
-                                        <div style={{ marginTop: '1rem', padding: '1rem', background: '#eff6ff', borderRadius: '0.75rem', border: '1px solid #bfdbfe' }}>
-                                            <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                🚀 Integrasi SiPena
-                                            </h4>
-                                            <p style={{ fontSize: '0.75rem', color: '#3b82f6', marginBottom: '0.75rem', lineHeight: '1.4' }}>
-                                                Naskah ini sudah mencapai tahap unggah. Klik tombol di bawah untuk membuka tab baru Dasbor SiPena dan mengisi form katalog secara otomatis berdasarkan data proyek ini.
-                                            </p>
-                                            <a 
-                                                href={`https://admin.sipena.perpusnas.go.id/katalog?action=add&judul=${encodeURIComponent(project.title)}`}
-                                                target="_blank" 
-                                                rel="noopener noreferrer" 
-                                                className="btn btn-primary btn-sm"
-                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#2563eb', border: 'none' }}
-                                            >
-                                                Input ke SiPena
-                                            </a>
-                                        </div>
-                                    )}
-
                                 </div>
                             )}
 
@@ -2073,38 +2666,75 @@ export default function ProjectDetail() {
                             <div className="card-title" style={{ marginBottom: '0.75rem' }}>Panel QC</div>
 
                             {activeStage.status === 'review' && (
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                    <button className="btn btn-success" onClick={() => {
-                                        setQcAction('approve')
-                                        setQcConfirmed(false)
-                                        setQcScore(getStageDynamicScore(project, activeStage, categoriesMap))
-                                        // Non-aktifkan auto-select next stage untuk kategori terbitan (hybrid workflow)
-                                        if (isSequential && project.category !== 'terbitan') {
-                                            const nextPendingIdx = stages.findIndex((s, idx) => idx > activeStageIdx && s.status !== 'done' && s.status !== 'archived')
-                                            if (nextPendingIdx !== -1) {
-                                                setNextStageIdx(nextPendingIdx.toString())
-                                                fetchCandidates(stages[nextPendingIdx].id, setNextCandidates, setNextCandidatesLoading)
+                                <>
+                                    <div style={{
+                                        background: '#fffbeb',
+                                        border: '1px solid #fde68a',
+                                        borderRadius: '8px',
+                                        padding: '10px 12px',
+                                        marginBottom: '0.85rem',
+                                        fontSize: '0.8rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '4px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#92400e' }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>assignment_turned_in</span>
+                                            <span>Pengajuan Review</span>
+                                        </div>
+                                        <div style={{ color: '#78350f', marginTop: '2px' }}>
+                                            <strong>Diajukan oleh:</strong> {activeStage.pj?.name || 'PJ Terpilih'}
+                                        </div>
+                                        <div style={{ color: '#78350f' }}>
+                                            <strong>Waktu Pengajuan:</strong> {activeStage.submittedAt ? formatDateTime(activeStage.submittedAt) : 'Menunggu Review'}
+                                        </div>
+                                        {activeStage.resultLink && (
+                                            <div style={{ marginTop: '2px' }}>
+                                                <strong>Hasil Kerja:</strong>{' '}
+                                                <a href={activeStage.resultLink} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                    Buka Tautan ↗
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <button className="btn btn-success" onClick={() => {
+                                            setQcAction('approve')
+                                            setQcConfirmed(false)
+                                            setQcScore(getStageDynamicScore(project, activeStage, categoriesMap))
+                                            // Non-aktifkan auto-select next stage untuk kategori terbitan (hybrid workflow)
+                                            if (isSequential && project.category !== 'terbitan') {
+                                                const nextPendingIdx = stages.findIndex((s, idx) => idx > activeStageIdx && s.status !== 'done' && s.status !== 'archived')
+                                                if (nextPendingIdx !== -1) {
+                                                    setNextStageIdx(nextPendingIdx.toString())
+                                                    fetchCandidates(stages[nextPendingIdx].id, setNextCandidates, setNextCandidatesLoading)
+                                                } else {
+                                                    setNextStageIdx('')
+                                                }
                                             } else {
                                                 setNextStageIdx('')
                                             }
-                                        } else {
-                                            setNextStageIdx('')
-                                        }
-                                        setShowQcModal(true)
-                                    }}>
-                                        Setuju
-                                    </button>
-                                    <button className="btn btn-danger" onClick={() => { setQcAction('revise'); setShowQcModal(true) }}>
-                                        Revisi
-                                    </button>
-                                </div>
+                                            setShowQcModal(true)
+                                        }}>
+                                            Setuju
+                                        </button>
+                                        <button className="btn btn-danger" onClick={() => { setQcAction('revise'); setShowQcModal(true) }}>
+                                            Revisi
+                                        </button>
+                                    </div>
+                                </>
                             )}
 
                             {activeStage.status === 'done' && (
                                 <div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginBottom: '0.5rem' }}>
-                                        ✅ Tahap ini telah disetujui
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginBottom: '0.25rem' }}>
+                                        ✅ Tahap ini telah disetujui {activeStage.approvedAt ? `(${formatDate(activeStage.approvedAt)})` : ''}
                                     </div>
+                                    {activeStage.submittedAt && (
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                                            🕒 Tanggal perolehan poin (Diajukan): {formatDateTime(activeStage.submittedAt)}
+                                        </div>
+                                    )}
                                     <button
                                         className="btn btn-outline btn-sm"
                                         style={{ fontSize: '0.75rem' }}
@@ -2285,6 +2915,15 @@ export default function ProjectDetail() {
                                     value={editProjectFields.title || ''}
                                     onChange={e => setEditProjectFields(f => ({ ...f, title: e.target.value }))}
                                     placeholder="Judul proyek..."
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Nama Penulis / Kontributor</label>
+                                <input
+                                    type="text"
+                                    value={editProjectFields.author || ''}
+                                    onChange={e => setEditProjectFields(f => ({ ...f, author: e.target.value }))}
+                                    placeholder="Contoh: Dr. Budi Santoso, M.Hum."
                                 />
                             </div>
                             <div className="form-group">

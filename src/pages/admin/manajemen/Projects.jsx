@@ -229,6 +229,7 @@ export default function Projects() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {filteredProjects.map(project => {
                         const currentStage = getCurrentStage(project)
+                        const reviewStage  = project.stages?.find(s => s.status === 'review')
                         const pj           = currentStage?.pj
                         const overdue      = isOverdue(currentStage)
                         const totalStages  = project.stages?.length || 1
@@ -278,9 +279,26 @@ export default function Projects() {
                                     </h3>
 
                                     {/* Row 3: Type label */}
-                                    <p className="text-xs text-slate-400 font-medium mb-4 truncate">
+                                    <p className="text-xs text-slate-400 font-medium mb-3 truncate">
                                         {project.typeLabel || '—'}
                                     </p>
+
+                                    {/* Review Submission Notice */}
+                                    {reviewStage && (
+                                        <div className="mb-3 px-2.5 py-1.5 bg-amber-50 border border-amber-200/80 rounded-lg flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <span className="material-symbols-outlined text-amber-600 text-[14px]">schedule</span>
+                                                <span className="text-[11px] font-bold text-amber-800 truncate">
+                                                    Menunggu Review
+                                                </span>
+                                            </div>
+                                            {reviewStage.submittedAt && (
+                                                <span className="text-[10px] font-mono font-semibold text-amber-700 flex-shrink-0">
+                                                    Diajukan: {formatDate(reviewStage.submittedAt)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Row 4: Stage progress */}
                                     <div className="mb-4">

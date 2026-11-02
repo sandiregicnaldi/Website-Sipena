@@ -16,7 +16,11 @@ const CATEGORIES = [
   'Inkubator Literasi',
   'Kesehatan',
   'Komik',
-  'Lifestyle'
+  'Lifestyle',
+  'Pedoman / Standar',
+  'Prosiding',
+  'Laporan',
+  'Majalah / Jurnal'
 ];
 
 const CATEGORY_COLORS = {
@@ -30,6 +34,10 @@ const CATEGORY_COLORS = {
   'Kesehatan': '#10b981',
   'Komik': '#f59e0b',
   'Lifestyle': '#ec4899',
+  'Pedoman / Standar': '#d97706',
+  'Prosiding': '#dc2626',
+  'Laporan': '#059669',
+  'Majalah / Jurnal': '#0891b2',
   // Backward compatibility
   'Sastra': '#1e3a8a',
   'Sejarah': '#b91c1c',
@@ -167,7 +175,15 @@ const BooksPage = () => {
               return (
                 <Link to={`/buku/${book.id}`} key={book.id} className="row-card">
                   <div className="row-cover" style={{ backgroundColor: bgColor }}>
-                    <span className="row-cover-title">{book.title}</span>
+                    {book.coverUrl ? (
+                      <img
+                        src={book.coverUrl}
+                        alt={book.title}
+                        className="row-cover-img"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : null}
+                    <span className="row-cover-title" style={book.coverUrl ? { display: 'none' } : {}}>{book.title}</span>
                     <div className="row-cover-overlay">
                       <span className="overlay-play">▶ Baca</span>
                     </div>

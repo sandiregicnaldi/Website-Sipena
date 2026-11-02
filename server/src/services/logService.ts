@@ -9,6 +9,7 @@ export type AuditAction =
     | 'duplicate_project'
     | 'approve_stage'
     | 'revise_stage'
+    | 'submit_review'
     | 'update_user'
     | 'delete_user'
     | 'update_profile'

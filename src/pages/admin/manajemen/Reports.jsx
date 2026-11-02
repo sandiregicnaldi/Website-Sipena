@@ -269,9 +269,11 @@ export default function Reports() {
                     }
 
                     if (stage.status === 'done' || stage.status === 'archived') {
-                        const completionDate = stage.approvedAt
-                            ? new Date(stage.approvedAt)
-                            : (project.updatedAt ? new Date(project.updatedAt) : new Date())
+                        const completionDate = stage.submittedAt
+                            ? new Date(stage.submittedAt)
+                            : (stage.approvedAt
+                                ? new Date(stage.approvedAt)
+                                : (project.updatedAt ? new Date(project.updatedAt) : new Date()))
 
                         if (completionDate < periodStart || completionDate > periodEnd) return
 

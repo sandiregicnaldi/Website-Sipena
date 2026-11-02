@@ -126,13 +126,16 @@ export const RankingsController = {
                 if (!stage.project) continue;
 
                 // Urutan tanggal untuk menentukan BULAN penghitungan poin:
-                // Poin dihitung di bulan stage DISETUJUI (approvedAt), bukan bulan deadline.
+                // Prioritas utama: tanggal PJ mengajukan review (submittedAt).
+                // Jika belum ada submittedAt (data lama), fallback ke approvedAt, lalu updatedAt.
                 const completionDate: Date =
-                    stage.approvedAt
-                        ? new Date(stage.approvedAt)
-                        : (stage.project.updatedAt
-                            ? new Date(stage.project.updatedAt)
-                            : new Date());
+                    stage.submittedAt
+                        ? new Date(stage.submittedAt)
+                        : (stage.approvedAt
+                            ? new Date(stage.approvedAt)
+                            : (stage.project.updatedAt
+                                ? new Date(stage.project.updatedAt)
+                                : new Date()));
 
                 if (completionDate < monthStart || completionDate > monthEnd) continue;
 

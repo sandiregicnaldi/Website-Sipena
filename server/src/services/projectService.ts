@@ -206,6 +206,7 @@ export const ProjectService = {
     // Create new project
     async createProject(data: {
         title: string;
+        author?: string;
         category: keyof typeof CATEGORIES;
         type: string;
         description?: string;
@@ -284,6 +285,7 @@ export const ProjectService = {
                 .values({
                     id,
                     title: data.title,
+                    author: data.author || null,
                     category: data.category,
                     type: data.type,
                     workflowType: categoryConfig.workflow,
@@ -581,6 +583,7 @@ export const ProjectService = {
                 .values({
                     id: newId,
                     title: newTitle,
+                    author: source.author || null,
                     category: source.category,
                     type: source.type,
                     workflowType: source.workflowType,

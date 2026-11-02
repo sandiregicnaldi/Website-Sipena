@@ -1,17 +1,26 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp } from '../../../context/AppContext'
 import { api } from '../../../services/api'
 
 export default function ProjectNew() {
     const { addProject, categoriesMap, currentUser } = useApp()
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
 
-    const [title, setTitle] = useState('')
+    const initialTitle = searchParams.get('title') || ''
+    const initialAuthor = searchParams.get('author') || ''
+    const initialDrive = searchParams.get('drive') || searchParams.get('gdrive') || ''
+    const initialManuscriptId = searchParams.get('manuscriptId') || ''
+    const initialCategory = searchParams.get('category') || (initialTitle ? 'terbitan' : '')
+    const initialType = searchParams.get('type') || (initialCategory === 'terbitan' ? 'reguler' : '')
+
+    const [title, setTitle] = useState(initialTitle)
+    const [author, setAuthor] = useState(initialAuthor)
     const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-    const [category, setCategory] = useState('')
-    const [projectType, setProjectType] = useState('')
-    const [gdriveLink, setGdriveLink] = useState('')
+    const [category, setCategory] = useState(initialCategory)
+    const [projectType, setProjectType] = useState(initialType)
+    const [gdriveLink, setGdriveLink] = useState(initialDrive)
     const [pageCount, setPageCount] = useState('')
     const [projectScore, setProjectScore] = useState(0)
     const [startFromStage, setStartFromStage] = useState(0)
@@ -90,6 +99,28 @@ export default function ProjectNew() {
 
         fetchAllCandidates();
     }, [category, projectType, customStages]);
+
+    useEffect(() => {
+        const titleParam = searchParams.get('title');
+        const authorParam = searchParams.get('author');
+        const driveParam = searchParams.get('drive') || searchParams.get('gdrive');
+        const catParam = searchParams.get('category');
+        const typeParam = searchParams.get('type');
+
+        if (titleParam) setTitle(titleParam);
+        if (authorParam) setAuthor(authorParam);
+        if (driveParam) setGdriveLink(driveParam);
+        if (catParam) {
+            setCategory(catParam);
+        } else if (titleParam && !category) {
+            setCategory('terbitan');
+        }
+        if (typeParam) {
+            setProjectType(typeParam);
+        } else if (titleParam && !projectType) {
+            setProjectType('reguler');
+        }
+    }, [searchParams]);
 
     const handleCategoryChange = (e) => {
         const cat = e.target.value
@@ -302,6 +333,7 @@ export default function ProjectNew() {
 
         const newProject = {
             title,
+            author: author.trim() || null,
             date,
             category,
             categoryLabel: catObj?.label || category,
@@ -315,6 +347,7 @@ export default function ProjectNew() {
             score: isFlexibleCategory ? projectStages.reduce((sum, s) => sum + (Number(s.score) || 0), 0) : 0,
             createdBy: currentUser?.id || null,
             assignMode: finalAssignMode,
+            manuscriptId: initialManuscriptId || undefined,
             stages: projectStages
         }
 
@@ -406,6 +439,29 @@ export default function ProjectNew() {
                 <p className="text-[13px] text-slate-500 mt-1">Isi detail proyek dan penugasan tahapan di bawah ini.</p>
             </div>
 
+            {initialAuthor && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-xl p-4 mb-6 flex items-center justify-between text-blue-900 shadow-xs">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-600/10 text-[#1c51a1] flex items-center justify-center flex-shrink-0">
+                            <span className="material-symbols-outlined text-[22px]">auto_stories</span>
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Inisiasi dari Naskah Masuk SiPena</p>
+                            <p className="text-xs text-slate-700 mt-0.5">
+                                Naskah karya <strong>{initialAuthor}</strong> telah disetujui. Judul, tautan Google Drive, dan alur tahapan terbitan telah diisi secara otomatis.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/admin/naskah')}
+                        className="text-xs font-semibold text-[#1c51a1] hover:text-blue-900 underline whitespace-nowrap ml-4"
+                    >
+                        Lihat Naskah
+                    </button>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit}>
                 {/* Informasi Proyek */}
                 <div className="bg-white border border-slate-200/60 rounded-xl mb-6 shadow-sm">
@@ -414,16 +470,28 @@ export default function ProjectNew() {
                         <h2 className="text-[15px] font-bold text-slate-900">Informasi Proyek</h2>
                     </div>
                     <div className="p-6 space-y-5">
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Judul Proyek *</label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={e => setTitle(e.target.value)}
-                                placeholder="Contoh: Kampanye Buku Tahunan 2024"
-                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-[#1c51a1] focus:ring-1 focus:ring-[#1c51a1] transition-all"
-                                required
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Judul Proyek *</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    placeholder="Contoh: Kampanye Buku Tahunan 2024"
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-[#1c51a1] focus:ring-1 focus:ring-[#1c51a1] transition-all"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Nama Penulis / Kontributor</label>
+                                <input
+                                    type="text"
+                                    value={author}
+                                    onChange={e => setAuthor(e.target.value)}
+                                    placeholder="Contoh: Dr. Ahmad Fauzi / Tim Redaksi"
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-[#1c51a1] focus:ring-1 focus:ring-[#1c51a1] transition-all"
+                                />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

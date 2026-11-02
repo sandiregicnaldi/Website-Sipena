@@ -18,6 +18,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import ManagementLayout from './pages/admin/manajemen/ManagementLayout';
 import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
+import { AppProvider } from './context/AppContext';
 import { EventProvider } from './context/EventContext';
 import { TentangProvider } from './context/TentangContext';
 import { PanduanProvider } from './context/PanduanContext';
@@ -35,11 +36,12 @@ const PublicLayout = () => (
 function App() {
   return (
     <AuthProvider>
-      <EventProvider>
-        <TentangProvider>
-          <PanduanProvider>
-            <DialogProvider>
-              <Router>
+      <AppProvider>
+        <EventProvider>
+          <TentangProvider>
+            <PanduanProvider>
+              <DialogProvider>
+                <Router>
                 <ScrollToTop />
                 <Routes>
                   {/* ── Dedicated Workspace: Manajemen Penerbitan ── */}
@@ -70,7 +72,8 @@ function App() {
           </PanduanProvider>
         </TentangProvider>
       </EventProvider>
-    </AuthProvider>
+    </AppProvider>
+  </AuthProvider>
   );
 }
 

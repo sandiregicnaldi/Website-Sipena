@@ -144,12 +144,18 @@ export const StageService = {
             if (data.notes !== undefined) setValues.notes = data.notes;
             if (data.revisionReason !== undefined) setValues.revisionReason = data.revisionReason;
             if (data.revisionCount !== undefined) setValues.revisionCount = data.revisionCount;
+            if (data.submittedAt !== undefined) setValues.submittedAt = data.submittedAt;
             if (data.approvedAt !== undefined) setValues.approvedAt = data.approvedAt;
             if (data.revisedAt !== undefined) setValues.revisedAt = data.revisedAt;
             if (data.reviewerId !== undefined) setValues.reviewerId = data.reviewerId;
             if ((data as any).proposalStatus !== undefined) setValues.proposalStatus = (data as any).proposalStatus;
+            if (data.metadata !== undefined) setValues.metadata = data.metadata;
 
             console.log(`[updateStage] setValues=`, JSON.stringify(setValues));
+
+            if (Object.keys(setValues).length === 0) {
+                return currentStage;
+            }
 
             const [updatedStage] = await tx
                 .update(stages)

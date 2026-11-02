@@ -2,8 +2,8 @@
 import { Request, Response } from "express";
 import { StageService } from "../services/stageService";
 import { db } from "../db";
-import { stages, projects, users, appSettings, auditLogs } from "../db/schema";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { stages, projects, users, appSettings, auditLogs, notifications } from "../db/schema";
+import { eq, and, asc, desc, or, like, sql } from "drizzle-orm";
 import { CATEGORIES } from "../data/categories";
 import { z } from "zod";
 import { notifyUser, notifyAllAdmins } from "../services/telegramService";
@@ -25,6 +25,8 @@ const updateStageSchema = z.object({
     notes: z.array(z.object({ from: z.string(), text: z.string(), time: z.string() })).optional(),
     score: z.number().min(0).optional(),
     proposalStatus: z.enum(['pending', 'accepted', 'rejected']).nullable().optional(),
+    submittedAt: z.string().nullable().optional(),
+    metadata: z.record(z.any()).optional(),
 });
 
 const addNoteSchema = z.object({
@@ -89,6 +91,9 @@ export const StageController = {
                 
                 // isTataLetakReviewer gets full pass — checked BEFORE the isMyStage gate
                 if (!isTataLetakReviewer) {
+                    if (data.metadata !== undefined && !isMyStage) {
+                        return res.status(403).json({ error: "Forbidden: Hanya Penanggung Jawab (PJ) tahapan ini yang dapat mengisi atau mengubah data/aset tahapan" });
+                    }
                     if (!isMyStage && !isProjectCreator) {
                         const isFlexible = !['terbitan', 'medsos', 'keuangan'].includes(stageProjectAuth?.category || '');
                         const isUpdatingLabel = (data.label !== undefined || data.description !== undefined) && Object.keys(data).every(k => ['label', 'description'].includes(k));
@@ -127,7 +132,7 @@ export const StageController = {
                     }
                 }
             } else {
-                // Admin restriction: cannot update progress or resultLink on stages assigned to other PJs
+                // Admin restriction: cannot update progress, resultLink, or metadata on stages assigned to other PJs
                 // EXCEPT when performing QC actions (status change to 'revision' or 'done')
                 const isAdminPjOfStage = existingStage.pjId === userId || 
                     (existingStage.coPjIds && Array.isArray(existingStage.coPjIds) && (existingStage.coPjIds as string[]).includes(userId as string)) || 
@@ -140,6 +145,12 @@ export const StageController = {
                     if (data.resultLink) {
                         return res.status(403).json({ error: "Forbidden: Admin tidak bisa mengubah link hasil kerja PJ lain" });
                     }
+                    if (data.metadata !== undefined) {
+                        return res.status(403).json({ error: "Forbidden: Admin tidak bisa mengubah input atau aset tahapan PJ lain" });
+                    }
+                }
+                if (!isAdminPjOfStage && !existingStage.pjId && data.metadata !== undefined) {
+                    return res.status(403).json({ error: "Forbidden: Tahapan belum memiliki PJ. Tentukan PJ terlebih dahulu." });
                 }
             }
 
@@ -167,10 +178,47 @@ export const StageController = {
             if (data.notes) updateData.notes = data.notes;
             if (data.score !== undefined) updateData.score = data.score;
             if (data.proposalStatus !== undefined) updateData.proposalStatus = data.proposalStatus;
+            if (data.metadata !== undefined) {
+                updateData.metadata = {
+                    ...((existingStage.metadata as any) || {}),
+                    ...data.metadata
+                };
+            }
 
             // --- PRELIM SAJA: Jika Tata Letak Naskah & isPrelimOnly ---
             if (existingStage.label?.trim().toLowerCase() === 'tata letak naskah' && ((data as any).isPrelimOnly === true || (data as any).meta?.isPrelimOnly === true)) {
                 updateData.score = 5;
+            }
+
+            // Saat status berubah menjadi 'review' (PJ mengajukan review)
+            if (data.status === 'review') {
+                updateData.submittedAt = data.submittedAt ? new Date(data.submittedAt) : new Date();
+
+                // Tambahkan entri log riwayat otomatis ke dalam notes
+                if (existingStage.status !== 'review') {
+                    let submitterName = 'PJ';
+                    if (userId) {
+                        const pjUser = await db.query.users.findFirst({
+                            where: eq(users.id, userId),
+                            columns: { name: true },
+                        });
+                        if (pjUser?.name) submitterName = pjUser.name;
+                    }
+                    const nowIso = new Date().toISOString();
+                    const existingNotes = Array.isArray(updateData.notes || existingStage.notes)
+                        ? (updateData.notes || existingStage.notes)
+                        : [];
+                    updateData.notes = [
+                        ...existingNotes,
+                        {
+                            from: 'system',
+                            text: `[SUBMITTED] Pengajuan review dikirimkan oleh ${submitterName}.`,
+                            time: nowIso,
+                        }
+                    ];
+                }
+            } else if (data.submittedAt !== undefined) {
+                updateData.submittedAt = data.submittedAt ? new Date(data.submittedAt) : null;
             }
 
             console.log(`[StageController.update] updateData=`, JSON.stringify(updateData));
@@ -179,6 +227,29 @@ export const StageController = {
             if (data.status === 'done' && existingStage.status !== 'done') {
                 if (!existingStage.approvedAt) {
                     updateData.approvedAt = new Date();
+                }
+                // Jika submittedAt belum pernah ada, cari dari riwayat notifikasi pengajuan review terlebih dahulu!
+                if (!existingStage.submittedAt && !updateData.submittedAt) {
+                    try {
+                        const notif = await db.query.notifications.findFirst({
+                            where: and(
+                                eq(notifications.projectId, existingStage.projectId),
+                                or(
+                                    eq(notifications.type, 'review'),
+                                    like(notifications.message, '%menunggu review%')
+                                ),
+                                like(notifications.message, `%${existingStage.label}%`)
+                            ),
+                            orderBy: [desc(notifications.createdAt)],
+                        });
+                        if (notif?.createdAt) {
+                            updateData.submittedAt = notif.createdAt;
+                        } else {
+                            updateData.submittedAt = updateData.approvedAt || new Date();
+                        }
+                    } catch (err) {
+                        updateData.submittedAt = updateData.approvedAt || new Date();
+                    }
                 }
                 // Simpan siapa yang approve (admin reviewer atau PJ penyuntingan)
                 let isTataLetakReviewerObj = false;
@@ -295,6 +366,30 @@ export const StageController = {
                         pjId: existingStage.pjId || null,
                         pjName: pjUser?.name || '—',
                         score: calculatedScore,
+                    },
+                    ipAddress: req.ip,
+                });
+            }
+
+            // Audit log: stage review submitted
+            if (data.status === 'review' && existingStage.status !== 'review') {
+                const stageWithProject = await db.query.stages.findFirst({
+                    where: eq(stages.id, stageId),
+                    with: { project: true, pj: true },
+                });
+                const pjUser = (stageWithProject as any)?.pj;
+                writeAuditLog({
+                    userId,
+                    action: 'submit_review',
+                    target: `${(stageWithProject as any)?.project?.title || 'Proyek'} → ${existingStage.label}`,
+                    targetId: stageId,
+                    meta: {
+                        projectId: existingStage.projectId,
+                        stageLabel: existingStage.label,
+                        pjId: existingStage.pjId || null,
+                        pjName: pjUser?.name || '—',
+                        submittedAt: updateData.submittedAt || new Date(),
+                        resultLink: updateData.resultLink || existingStage.resultLink || null,
                     },
                     ipAddress: req.ip,
                 });

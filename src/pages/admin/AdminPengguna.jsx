@@ -5,6 +5,7 @@ import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileT
 import { useAuth } from '../../context/AuthContext';
 import { useDialog } from '../../context/DialogContext';
 import { api } from '../../services/api';
+import AdminPagination from '../../components/AdminPagination';
 
 const STATUS_BADGE = { 'Aktif': 'badge-green', 'Menunggu': 'badge-amber', 'Nonaktif': 'badge-red' };
 
@@ -287,9 +288,15 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   const { isSuperAdmin } = useAuth();
   const { showConfirm, showToast: triggerToast } = useDialog();
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [toast, setToast] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
   const [editAuthorModal, setEditAuthorModal] = useState(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, type]);
 
   const showToast = (msg, t = 'success') => { 
     setToast({ msg, type: t }); 
@@ -301,6 +308,10 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
     u.nama.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedUsers = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const handleSetujuiPegawai = async (u) => {
     const ok = await showConfirm({
@@ -511,7 +522,7 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
             <tbody>
               {filtered.length === 0
                 ? <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada data.</td></tr>
-                : filtered.map((u, i) => (
+                : paginatedUsers.map((u, i) => (
                   <tr key={`${u.id}-${u.email}`}>
                     {type === 'pengunjung' ? (
                       <>
@@ -617,7 +628,7 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
                       </>
                     ) : (
                       <>
-                        <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
+                        <td style={{ color: 'var(--text-tertiary)' }}>{(safePage - 1) * pageSize + i + 1}</td>
                         <td style={{ fontWeight: 600 }}>{u.nama}</td>
                         <td style={{ fontSize: '0.82rem' }}>{u.email}</td>
                         <td>{u.instansi}</td>
@@ -674,6 +685,15 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={safePage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName={type === 'pengunjung' ? 'pengunjung' : 'pegawai'}
+        />
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <UserDetailModal user={detailModal} onClose={() => setDetailModal(null)} onApprove={handleUpgradePenulis} onReject={handleTolakPenulis} />

@@ -85,6 +85,7 @@ export const verifications = pgTable("verification", {
 export const projects = pgTable("projects", {
     id: text("id").primaryKey(), // PRJ-YYYY-XXXX
     title: text("title").notNull(),
+    author: text("author"), // Nama Penulis Buku
     category: text("category").notNull(), // 'terbitan', 'medsos', etc.
     type: text("type"), // 'reguler', etc.
     workflowType: text("workflow_type").default("sequential"), // 'sequential', 'parallel'
@@ -116,10 +117,12 @@ export const stages = pgTable("stages", {
     notes: jsonb("notes").$type<{ from: string, text: string, time: string, attachment?: string }[]>(), // Array of chat notes
     revisionReason: text("revision_reason"), // Alasan terakhir revisi
     revisionCount: integer("revision_count").default(0), // Jumlah revisi yang pernah terjadi
+    submittedAt: timestamp("submitted_at"), // Timestamp saat PJ mengajukan review
     approvedAt: timestamp("approved_at"),   // Timestamp saat status berubah ke 'done'
     revisedAt: timestamp("revised_at"),     // Timestamp saat revisi terakhir diminta
     reviewerId: text("reviewer_id").references(() => users.id), // Admin yang menyetujui tahapan ini
     proposalStatus: text("proposal_status"), // 'pending', 'accepted', 'rejected'
+    metadata: jsonb("metadata").$type<Record<string, any>>().default({}), // Output data khusus tahapan (NIP, ISBN, Cover PNG, Dummy PDF, dll)
 });
 
 // Notifications
@@ -220,7 +223,20 @@ export const bookDownloads = pgTable("book_downloads", {
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     downloadedAt: timestamp("downloaded_at").defaultNow(),
-});
+}, (table) => [
+    uniqueIndex("unique_user_book_download").on(table.bookId, table.userId),
+]);
+
+export const bookReads = pgTable("book_reads", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookId: uuid("book_id").references(() => books.id, { onDelete: 'cascade' }).notNull(),
+    userId: text("user_id").references(() => users.id, { onDelete: 'set null' }),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+    uniqueIndex("unique_user_book_read").on(table.bookId, table.userId),
+]);
 
 export const manuscripts = pgTable("manuscripts", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -285,6 +301,7 @@ export const booksRelations = relations(books, ({ one, many }) => ({
     project: one(projects, { fields: [books.projectId], references: [projects.id] }),
     ratings: many(bookRatings),
     downloads: many(bookDownloads),
+    reads: many(bookReads),
 }));
 
 export const bookRatingsRelations = relations(bookRatings, ({ one }) => ({
@@ -295,6 +312,11 @@ export const bookRatingsRelations = relations(bookRatings, ({ one }) => ({
 export const bookDownloadsRelations = relations(bookDownloads, ({ one }) => ({
     book: one(books, { fields: [bookDownloads.bookId], references: [books.id] }),
     user: one(users, { fields: [bookDownloads.userId], references: [users.id] }),
+}));
+
+export const bookReadsRelations = relations(bookReads, ({ one }) => ({
+    book: one(books, { fields: [bookReads.bookId], references: [books.id] }),
+    user: one(users, { fields: [bookReads.userId], references: [users.id] }),
 }));
 
 export const manuscriptsRelations = relations(manuscripts, ({ one }) => ({

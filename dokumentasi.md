@@ -32,6 +32,14 @@ Dokumentasi lengkap dan kronologi pengembangan sistem SiPena serta integrasi Man
    - Standardisasi istilah **"Sinopsis"** menjadi **"Abstrak"** pada modal formulir admin dan halaman publik.
    - Penyelarasan kartu metadata (`.metadata-grid`) dan info detail buku publik (`/buku/:id`) serta filter kategori (`/buku`).
    - Migrasi skema database PostgreSQL `books` (`nip`, `editor`, `cover_designer`, `layout_designer`).
+11. **Bab 23 - 24**: Fitur Drag & Drop Urutan Tahapan, Scroll Mandiri Timeline, dan Penyelarasan Alur Terbitan (Tahap 11 selesai langsung buka Tahap 13).
+12. **Bab 25**: Fitur Pelacakan Pembaca & Pengunduh Buku (Tracking Dwell Time 15s, Anti-Spam Sesi, dan Agregasi Real-Time).
+13. **Bab 26**: Kolom Khusus Aset Proyek Terbitan & Integrasi Otomatis SiPena (*Zero Double Work*).
+14. **Bab 27**: Pembatasan Hak Akses Khusus Penanggung Jawab (PJ) pada Proyek Penerbitan (NIP, ISBN, Upload Sampul PNG, Dummy Final PDF, dan Progress Kerja).
+15. **Bab 28**: Otomasi Siklus Hidup Naskah Masuk (*Sedang Diproses* -> *Sudah Terbit*), Pembuatan Proyek, dan Upgrade Penulis Terverifikasi Otomatis.
+16. **Bab 29**: Deduplikasi Komprehensif Interaksi Pembaca (Ulasan Rating, Baca, & Unduh) Antar Sesi Relogin dengan Tabel `book_reads`.
+17. **Bab 30**: Dasbor Admin Live Action (`GET /api/sipena/stats`) & Dropdown Kategori Terbitan Khusus (Pedoman/Standar, Prosiding, Laporan, Majalah/Jurnal).
+18. **Bab 31**: Standarisasi Fitur Pagination & Pemilihan Jumlah Baris (10, 25, 50, 100) di 5 Menu Admin SiPena (`AdminPagination.jsx`).
 
 ---
 *Silakan buka [DOKUMENTASI_PENGEMBANGAN.md](./DOKUMENTASI_PENGEMBANGAN.md) untuk detail teknis, tabel skema, dan panduan pengujian alur kerja.*

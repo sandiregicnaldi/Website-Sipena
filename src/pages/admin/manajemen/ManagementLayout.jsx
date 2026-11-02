@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { AppProvider } from '../../../context/AppContext';
 
 // Manajemen Penerbitan Workflow Pages
 import ManagementDashboard from './Dashboard';
@@ -80,44 +79,42 @@ export default function ManagementLayout() {
   }
 
   return (
-    <AppProvider>
-      <div className="manajemen-scope min-h-screen bg-surface flex">
-        {/* Sidebar Asli dasbor-penerbitan2 + Tombol Inovasi */}
-        <ManagementSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="manajemen-scope min-h-screen bg-surface flex">
+      {/* Sidebar Asli dasbor-penerbitan2 + Tombol Inovasi */}
+      <ManagementSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Overlay backdrop untuk mobile */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+      {/* Overlay backdrop untuk mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        {/* Main Content Area (Layout Asli C:\dev\dasbor-penerbitan2) */}
-        <div className="flex-1 flex flex-col min-h-screen min-w-0 md:ml-[240px]">
-          <ManagementHeader onMenuClick={() => setSidebarOpen(p => !p)} />
-          <main className="flex-1 bg-surface overflow-y-auto">
-            <Routes>
-              <Route index element={<ManagementDashboard />} />
-              <Route path="proyek" element={<ManagementProjects />} />
-              <Route path="proyek/baru" element={<ManagementProjectNew />} />
-              <Route path="proyek/:id" element={<ManagementProjectDetail />} />
-              <Route path="nip" element={<ManagementNIPGenerator />} />
-              <Route path="dokumen" element={<ManagementDocuments />} />
-              <Route path="chat" element={<ManagementChat />} />
-              <Route path="arsip" element={<ManagementArchive />} />
-              <Route path="trash" element={<ManagementTrash />} />
-              <Route path="laporan" element={<ManagementReports />} />
-              <Route path="pengaturan" element={<ManagementSettings />} />
-              <Route path="users" element={<UserManagement />} />
-              <Route path="bantuan" element={<ManagementBantuan />} />
-            </Routes>
-          </main>
-        </div>
-
-        {/* Floating Note Alert for Publishing Team */}
-        <FloatingNoteAlert />
+      {/* Main Content Area (Layout Asli C:\dev\dasbor-penerbitan2) */}
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 md:ml-[240px]">
+        <ManagementHeader onMenuClick={() => setSidebarOpen(p => !p)} />
+        <main className="flex-1 bg-surface overflow-y-auto">
+          <Routes>
+            <Route index element={<ManagementDashboard />} />
+            <Route path="proyek" element={<ManagementProjects />} />
+            <Route path="proyek/baru" element={<ManagementProjectNew />} />
+            <Route path="proyek/:id" element={<ManagementProjectDetail />} />
+            <Route path="nip" element={<ManagementNIPGenerator />} />
+            <Route path="dokumen" element={<ManagementDocuments />} />
+            <Route path="chat" element={<ManagementChat />} />
+            <Route path="arsip" element={<ManagementArchive />} />
+            <Route path="trash" element={<ManagementTrash />} />
+            <Route path="laporan" element={<ManagementReports />} />
+            <Route path="pengaturan" element={<ManagementSettings />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="bantuan" element={<ManagementBantuan />} />
+          </Routes>
+        </main>
       </div>
-    </AppProvider>
+
+      {/* Floating Note Alert for Publishing Team */}
+      <FloatingNoteAlert />
+    </div>
   );
 }

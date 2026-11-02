@@ -28,6 +28,23 @@ export const SipenaAPI = {
     createBook: (data) => api.post('/sipena/books', data).then(res => res.data),
     updateBook: (id, data) => api.patch(`/sipena/books/${id}`, data).then(res => res.data),
     deleteBook: (id) => api.delete(`/sipena/books/${id}`).then(res => res.data),
+    getDashboardStats: () => api.get('/sipena/stats').then(res => res.data),
+
+    // Uploads
+    uploadCover: (file) => {
+        const fd = new FormData();
+        fd.append('cover', file);
+        return api.post('/upload/cover', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }).then(res => res.data);
+    },
+    uploadDocument: (file) => {
+        const fd = new FormData();
+        fd.append('document', file);
+        return api.post('/upload/document', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }).then(res => res.data);
+    },
 
     // Events
     getEvents: () => api.get('/sipena/events').then(res => res.data),

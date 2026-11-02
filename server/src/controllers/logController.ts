@@ -270,7 +270,7 @@ export const LogController = {
                         target: `${(s as any).project?.title || '—'} → ${s.label}`,
                         targetId: s.id,
                         user: { name: fallbackApproverName, role: 'admin' },
-                        meta: { pjName: (s as any).pj?.name || '—', score: s.score || 0 },
+                        meta: { pjName: (s as any).pj?.name || '—', score: s.score || 0, submittedAt: s.submittedAt || null },
                         ipAddress: null,
                     });
                 }

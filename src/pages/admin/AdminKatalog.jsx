@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './AdminLayout.css';
 import { ExternalLink, Image as ImageIcon, FileText, Edit, Trash2, Eye, CheckCircle, BookOpen } from 'lucide-react';
+import AdminPagination from '../../components/AdminPagination';
 
 const KATEGORI_BUKU_OPTIONS = [
   'Anak-anak',
@@ -12,7 +13,18 @@ const KATEGORI_BUKU_OPTIONS = [
   'Inkubator Literasi',
   'Kesehatan',
   'Komik',
-  'Lifestyle'
+  'Lifestyle',
+  'Pedoman / Standar',
+  'Prosiding',
+  'Laporan',
+  'Majalah / Jurnal'
+];
+
+const KATEGORI_KHUSUS = [
+  'Pedoman / Standar',
+  'Prosiding',
+  'Laporan',
+  'Majalah / Jurnal'
 ];
 
 const INITIAL_BOOKS = [
@@ -57,9 +69,80 @@ const Toast = ({ msg, onClose }) => (
 const ModalBuku = ({ data, onSave, onClose }) => {
   const [form, setForm] = useState(data || EMPTY_FORM);
   const isEdit = !!data?.id;
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const coverInputRef = useRef(null);
+  const pdfInputRef = useRef(null);
+
+  const handleCoverUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!validTypes.includes(file.type) && !['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+      setUploadError('File sampul harus berupa gambar (.png, .jpg, .webp)');
+      if (coverInputRef.current) coverInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Ukuran file sampul maksimal 5 MB');
+      if (coverInputRef.current) coverInputRef.current.value = '';
+      return;
+    }
+    try {
+      setUploadingCover(true);
+      const res = await SipenaAPI.uploadCover(file);
+      if (res?.url) {
+        setForm(p => ({ ...p, sampul: res.url }));
+      } else {
+        throw new Error('Gagal mengunggah file sampul');
+      }
+    } catch (err) {
+      console.error('Upload cover failed:', err);
+      setUploadError(err.response?.data?.error || err.message || 'Gagal mengunggah gambar sampul');
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setUploadError('File dummy final harus berformat PDF (.pdf)');
+      if (pdfInputRef.current) pdfInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError('Ukuran file dummy final PDF maksimal 50 MB');
+      if (pdfInputRef.current) pdfInputRef.current.value = '';
+      return;
+    }
+    try {
+      setUploadingPdf(true);
+      const res = await SipenaAPI.uploadDocument(file);
+      if (res?.url) {
+        setForm(p => ({ ...p, pdf: res.url }));
+      } else {
+        throw new Error('Gagal mengunggah file dummy PDF');
+      }
+    } catch (err) {
+      console.error('Upload PDF failed:', err);
+      setUploadError(err.response?.data?.error || err.message || 'Gagal mengunggah file dummy PDF');
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (uploadingCover || uploadingPdf) {
+      setUploadError('Mohon tunggu hingga proses unggah file selesai');
+      return;
+    }
     onSave(form);
   };
 
@@ -86,6 +169,17 @@ const ModalBuku = ({ data, onSave, onClose }) => {
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '1.5rem' }}>
+          {data?.fromProject && (
+            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 'var(--radius-md)', padding: '0.75rem 1rem', marginBottom: '1.25rem', color: '#065f46', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CheckCircle size={16} color="#059669" />
+              <span><strong>Data Terhubung Otomatis:</strong> Judul, Penulis, NIP, ISBN, Cover PNG, dan Dummy PDF telah diimpor dari Manajemen Penerbitan. Silakan lengkapi <strong>Kategori Buku</strong> dan <strong>Abstrak</strong>.</span>
+            </div>
+          )}
+          {uploadError && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.85rem', marginBottom: '1rem', color: '#dc2626', fontSize: '0.8rem' }}>
+              ⚠️ {uploadError}
+            </div>
+          )}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label style={labelStyle}>Judul Buku *</label>
@@ -108,9 +202,16 @@ const ModalBuku = ({ data, onSave, onClose }) => {
                   value={form.kategori || 'Anak-anak'} 
                   onChange={e => setForm(p => ({ ...p, kategori: e.target.value }))}
                 >
-                  {KATEGORI_BUKU_OPTIONS.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
+                  <optgroup label="Kategori Buku Umum">
+                    {KATEGORI_BUKU_OPTIONS.filter(cat => !KATEGORI_KHUSUS.includes(cat)).map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Produk Terbitan Khusus (Sesuai Kartu Beranda)">
+                    {KATEGORI_KHUSUS.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             </div>
@@ -126,11 +227,11 @@ const ModalBuku = ({ data, onSave, onClose }) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={labelStyle}>ISBN Cetak</label>
-                <input style={inputStyle} value={form.isbnCetak || ''} onChange={e => setForm(p => ({ ...p, isbnCetak: e.target.value }))} placeholder="978-..." />
+                <input style={inputStyle} value={form.isbnCetak || ''} onChange={e => setForm(p => ({ ...p, isbnCetak: e.target.value }))} placeholder="978-... atau -" />
               </div>
               <div>
                 <label style={labelStyle}>ISBN Digital</label>
-                <input style={inputStyle} value={form.isbnDigital || ''} onChange={e => setForm(p => ({ ...p, isbnDigital: e.target.value }))} placeholder="978-..." />
+                <input style={inputStyle} value={form.isbnDigital || ''} onChange={e => setForm(p => ({ ...p, isbnDigital: e.target.value }))} placeholder="978-... atau -" />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -149,12 +250,96 @@ const ModalBuku = ({ data, onSave, onClose }) => {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
-                <label style={labelStyle}>File Sampul</label>
-                <input type="file" style={inputStyle} accept="image/*" onChange={() => setForm(p => ({ ...p, sampul: true }))} />
+                <label style={labelStyle}>File Sampul (.png / .jpg / .webp)</label>
+                {form.sampul && typeof form.sampul === 'string' && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.65rem', marginBottom: '0.45rem', padding: '0.4rem 0.6rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <img src={form.sampul} alt="Sampul" style={{ width: '38px', height: '54px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <div style={{ fontSize: '0.75rem', color: '#059669', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
+                          <CheckCircle size={13} /> Sampul aktif
+                        </span>
+                        <a href={form.sampul} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
+                          Buka Sampul ↗
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm(p => ({ ...p, sampul: null }));
+                        if (coverInputRef.current) coverInputRef.current.value = '';
+                      }}
+                      style={{ background: '#fee2e2', border: 'none', color: '#dc2626', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: '0.25rem 0.5rem', borderRadius: '4px' }}
+                      title="Hapus sampul"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  style={inputStyle}
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleCoverUpload}
+                  disabled={uploadingCover}
+                />
+                {uploadingCover && (
+                  <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <div style={{ width: 14, height: 14, border: '2px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <span style={{ fontWeight: 600 }}>Sedang mengunggah gambar sampul...</span>
+                  </div>
+                )}
+                {form.sampul && typeof form.sampul === 'string' && !uploadingCover && (
+                  <small style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>
+                    Pilih file baru di atas jika ingin mengganti file sampul saat ini.
+                  </small>
+                )}
               </div>
               <div>
-                <label style={labelStyle}>File PDF Buku</label>
-                <input type="file" style={inputStyle} accept="application/pdf" onChange={() => setForm(p => ({ ...p, pdf: true }))} />
+                <label style={labelStyle}>File PDF Buku (Dummy Final)</label>
+                {form.pdf && typeof form.pdf === 'string' && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', padding: '0.4rem 0.6rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.75rem', color: '#059669' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <CheckCircle size={13} />
+                      <span style={{ fontWeight: 600 }}>Dummy PDF aktif:</span>
+                      <a href={form.pdf} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
+                        Buka PDF ↗
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm(p => ({ ...p, pdf: null }));
+                        if (pdfInputRef.current) pdfInputRef.current.value = '';
+                      }}
+                      style={{ background: '#fee2e2', border: 'none', color: '#dc2626', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: '0.25rem 0.5rem', borderRadius: '4px' }}
+                      title="Hapus PDF"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  style={inputStyle}
+                  accept="application/pdf"
+                  onChange={handlePdfUpload}
+                  disabled={uploadingPdf}
+                />
+                {uploadingPdf && (
+                  <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <div style={{ width: 14, height: 14, border: '2px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <span style={{ fontWeight: 600 }}>Sedang mengunggah berkas PDF...</span>
+                  </div>
+                )}
+                {form.pdf && typeof form.pdf === 'string' && !uploadingPdf && (
+                  <small style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>
+                    Pilih file baru di atas jika ingin mengganti file PDF saat ini.
+                  </small>
+                )}
               </div>
             </div>
             <div>
@@ -166,8 +351,10 @@ const ModalBuku = ({ data, onSave, onClose }) => {
               <input style={inputStyle} type="url" value={form.youtube || ''} onChange={e => setForm(p => ({ ...p, youtube: e.target.value }))} placeholder="https://youtube.com/..." />
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button type="button" onClick={onClose} className="btn btn-outline">Batal</button>
-              <button type="submit" className="btn btn-primary">{isEdit ? 'Simpan Perubahan' : 'Tambah Buku'}</button>
+              <button type="button" onClick={onClose} className="btn btn-outline" disabled={uploadingCover || uploadingPdf}>Batal</button>
+              <button type="submit" className="btn btn-primary" disabled={uploadingCover || uploadingPdf}>
+                {(uploadingCover || uploadingPdf) ? 'Mengunggah file...' : (isEdit ? 'Simpan Perubahan' : 'Tambah Buku')}
+              </button>
             </div>
           </form>
         </div>
@@ -182,8 +369,14 @@ const AdminKatalog = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -235,10 +428,19 @@ const AdminKatalog = () => {
         ...EMPTY_FORM,
         judul: params.get('judul') || '',
         penulis: params.get('penulis') || '',
+        tahun: Number(params.get('tahun')) || new Date().getFullYear(),
         kategori: params.get('kategori') || 'Anak-anak',
         nip: params.get('nip') || '',
         isbnCetak: params.get('isbn') || '',
-        sinopsis: params.get('sinopsis') || ''
+        isbnDigital: params.get('isbnDigital') || '',
+        sampul: params.get('sampul') || null,
+        pdf: params.get('pdf') || null,
+        editor: params.get('editor') || '',
+        penataLetak: params.get('penataLetak') || '',
+        desainSampul: params.get('desainSampul') || '',
+        sinopsis: params.get('sinopsis') || '',
+        projectId: params.get('projectId') || null,
+        fromProject: !!(params.get('projectId') || params.get('nip') || params.get('sampul'))
       };
       setModal({ mode: 'tambah', data });
       // Remove query params from URL without reloading
@@ -253,6 +455,10 @@ const AdminKatalog = () => {
     (b.nip && b.nip.toLowerCase().includes(search.toLowerCase())) ||
     (b.editor && b.editor.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedBooks = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const handleOpenTambah = () => setModal({ mode: 'tambah', data: null });
   const handleOpenEdit = (book) => setModal({ mode: 'edit', data: { ...book } });
@@ -290,9 +496,10 @@ const AdminKatalog = () => {
       coverDesigner: formData.desainSampul,
       layoutDesigner: formData.penataLetak,
       synopsis: formData.sinopsis,
-      coverUrl: formData.sampul === true ? '/default-cover.jpg' : formData.sampul,
-      fileUrl: formData.pdf === true ? '/default-pdf.pdf' : formData.pdf,
-      audioUrl: formData.youtube
+      coverUrl: (typeof formData.sampul === 'string' && formData.sampul) ? formData.sampul : null,
+      fileUrl: (typeof formData.pdf === 'string' && formData.pdf) ? formData.pdf : null,
+      audioUrl: formData.youtube,
+      projectId: formData.projectId || undefined
     };
 
     try {
@@ -307,7 +514,7 @@ const AdminKatalog = () => {
       setModal(null);
     } catch (err) {
       console.error(err);
-      showToast('Gagal menyimpan data buku.');
+      showToast('Gagal menyimpan data buku: ' + (err.response?.data?.error || err.message || 'Terjadi kesalahan'));
     }
   };
 
@@ -352,11 +559,27 @@ const AdminKatalog = () => {
             <tbody>
               {filtered.length === 0 ? (
                 <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada buku yang sesuai.</td></tr>
-              ) : filtered.map(b => (
+              ) : paginatedBooks.map(b => (
                 <tr key={b.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{b.judul}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Oleh: {b.penulis}</div>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      {b.sampul ? (
+                        <img
+                          src={b.sampul}
+                          alt={b.judul}
+                          style={{ width: '40px', height: '56px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)', flexShrink: 0 }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div style={{ width: '40px', height: '56px', borderRadius: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <BookOpen size={18} color="var(--text-tertiary)" />
+                        </div>
+                      )}
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{b.judul}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Oleh: {b.penulis}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <span className="badge badge-blue" style={{ fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -393,8 +616,8 @@ const AdminKatalog = () => {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {b.sampul && <a href="#" target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><ImageIcon size={12} /> Sampul</a>}
-                      {b.pdf && <a href="#" target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><FileText size={12} /> PDF</a>}
+                      {b.sampul && <a href={b.sampul} target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><ImageIcon size={12} /> Sampul</a>}
+                      {b.pdf && <a href={b.pdf} target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><FileText size={12} /> PDF</a>}
                       {b.youtube && <a href={b.youtube} target="_blank" rel="noopener noreferrer" className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}><ExternalLink size={12} /> Youtube</a>}
                       {!b.sampul && !b.pdf && !b.youtube && <span style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>-</span>}
                     </div>
@@ -414,6 +637,15 @@ const AdminKatalog = () => {
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={safePage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="buku"
+        />
       </div>
 
       {modal && <ModalBuku data={modal.data} onSave={handleSave} onClose={() => setModal(null)} />}

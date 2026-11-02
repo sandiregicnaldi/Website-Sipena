@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { CheckCircle, Image, Layout, Edit, Trash2, Plus, Save, Compass, Target, BarChart2, History, Users, MapPin, HelpCircle, BookMarked, FileText, Upload, ClipboardCheck, MessageSquare, BookOpen, Package, Award, Globe, DollarSign, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePanduan } from '../../context/PanduanContext';
 import { useDialog } from '../../context/DialogContext';
+import AdminPagination from '../../components/AdminPagination';
 import './AdminLayout.css';
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -28,6 +29,8 @@ const BannerEditor = () => {
     { id: 1, kategori: 'BUDAYA · ENSIKLOPEDIA', judul: 'SERAT CENTHINI', subjudul: 'Ensiklopedia Budaya Jawa', deskripsi: 'Mahakarya sastra Jawa yang merangkum pengetahuan, kepercayaan, dan adat istiadat masyarakat Jawa secara lengkap.', btn1Label: 'Baca Sekarang', btn1Url: '#', btn2Label: 'Unduh PDF', btn2Url: '#', aktif: true },
     { id: 2, kategori: 'TEKNOLOGI', judul: 'Literasi Digital 2026', subjudul: 'Membangun Masyarakat Cerdas Informasi', deskripsi: 'Panduan dan wawasan terbaru seputar dunia literasi digital di era transformasi kecerdasan buatan.', btn1Label: 'Selengkapnya', btn1Url: '#', btn2Label: '', btn2Url: '', aktif: true },
   ]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState(null); // { mode: 'edit' | 'tambah', data: {} }
   const [nextId, setNextId] = useState(3);
@@ -67,6 +70,10 @@ const BannerEditor = () => {
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' };
 
+  const totalPages = Math.max(1, Math.ceil(banners.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedBanners = banners.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
     <div>
       <div className="admin-page-header">
@@ -77,16 +84,18 @@ const BannerEditor = () => {
       </div>
       <div className="admin-card">
         <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="admin-card-title">Daftar Banner Aktif</span>
+          <span className="admin-card-title">Daftar Banner Aktif ({banners.length} banner)</span>
           <button className="btn btn-primary" onClick={() => setModal({ mode: 'tambah', data: EMPTY_BANNER })}>+ Tambah Banner</button>
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead><tr><th>#</th><th>Info Banner</th><th>Deskripsi</th><th>Tombol Aksi</th><th>Status</th><th>Aksi</th></tr></thead>
             <tbody>
-              {banners.map((b, i) => (
+              {banners.length === 0 ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Belum ada banner.</td></tr>
+              ) : paginatedBanners.map((b, i) => (
                 <tr key={b.id}>
-                  <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
+                  <td style={{ color: 'var(--text-tertiary)' }}>{(safePage - 1) * pageSize + i + 1}</td>
                   <td>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{b.kategori}</div>
                     <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem', marginTop: '0.2rem' }}>{b.judul}</div>
@@ -112,6 +121,15 @@ const BannerEditor = () => {
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={safePage}
+          totalItems={banners.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="banner"
+        />
       </div>
       {modal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
@@ -413,10 +431,17 @@ const INITIAL_FAQS = [
 const FAQEditor = () => {
   const { showConfirm } = useDialog();
   const [faqs, setFaqs] = useState(INITIAL_FAQS);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
   const [nextId, setNextId] = useState(INITIAL_FAQS.length + 1);
   const [activeTab, setActiveTab] = useState('Semua');
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
@@ -450,6 +475,9 @@ const FAQEditor = () => {
   };
 
   const filteredFaqs = activeTab === 'Semua' ? faqs : faqs.filter(f => f.kategori === activeTab);
+  const totalPages = Math.max(1, Math.ceil(filteredFaqs.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedFaqs = filteredFaqs.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <div>
@@ -477,12 +505,12 @@ const FAQEditor = () => {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
           {filteredFaqs.length === 0 && <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem 0' }}>Tidak ada FAQ di kategori ini.</div>}
-          {filteredFaqs.map((f, i) => (
+          {paginatedFaqs.map((f, i) => (
             <div key={f.id} style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1rem', background: 'var(--bg-secondary)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-                    <span style={{ color: 'var(--accent-color)', marginRight: '0.5rem' }}>Q{i + 1}.</span>{f.pertanyaan}
+                    <span style={{ color: 'var(--accent-color)', marginRight: '0.5rem' }}>Q{(safePage - 1) * pageSize + i + 1}.</span>{f.pertanyaan}
                   </div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: '0.5rem' }}>{f.jawaban}</div>
                   <span className="badge badge-gray">{f.kategori}</span>
@@ -495,6 +523,15 @@ const FAQEditor = () => {
             </div>
           ))}
         </div>
+
+        <AdminPagination
+          currentPage={safePage}
+          totalItems={filteredFaqs.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="pertanyaan"
+        />
       </div>
       {modal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>

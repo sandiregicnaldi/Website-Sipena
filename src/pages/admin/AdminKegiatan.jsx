@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './AdminLayout.css';
 import { Users, FileDown, Calendar, Globe, Edit, Trash2, CheckCircle, Plus, Save } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
 import { useDialog } from '../../context/DialogContext';
+import AdminPagination from '../../components/AdminPagination';
 
 const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
@@ -31,15 +32,25 @@ const AdminKegiatan = () => {
   const { showConfirm } = useDialog();
 
   const [search, setSearch]         = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize]     = useState(10);
   const [modal, setModal]           = useState(null);
   const [pesertaModal, setPesertaModal] = useState(null);
   const [toast, setToast]           = useState('');
 
   const fileRef = useRef(null);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const filtered = events.filter(e => e.judul.toLowerCase().includes(search.toLowerCase()));
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedKegiatan = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const handleSave = (form) => {
     if (modal.mode === 'edit') {
@@ -122,9 +133,9 @@ const AdminKegiatan = () => {
             <tbody>
               {filtered.length === 0
                 ? <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada kegiatan ditemukan.</td></tr>
-                : filtered.map((e, i) => (
+                : paginatedKegiatan.map((e, i) => (
                   <tr key={e.id}>
-                    <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
+                    <td style={{ color: 'var(--text-tertiary)' }}>{(safePage - 1) * pageSize + i + 1}</td>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{e.judul}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -168,6 +179,15 @@ const AdminKegiatan = () => {
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={safePage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="kegiatan"
+        />
       </div>
 
       {/* MODAL TAMBAH/EDIT KEGIATAN */}

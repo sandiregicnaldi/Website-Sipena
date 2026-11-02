@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Settings, Shield, Save, Key, CheckCircle, XCircle, Power } from 'lucide-react';
+import { Settings, Save, Key, CheckCircle, XCircle } from 'lucide-react';
 import './AdminLayout.css';
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ const ProfilAdmin = () => {
                 />
               </div>
             ))}
-            <button className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-start' }} onClick={handleSaveProfile}>
+            <button className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-start' }} onClick={handleSimpan}>
                 <Save size={16} /> Simpan Perubahan
               </button>
           </form>
@@ -110,7 +110,7 @@ const ProfilAdmin = () => {
         {/* Ubah Kata Sandi */}
         <div className="admin-card">
           <div className="admin-card-header"><span className="admin-card-title">Ubah Kata Sandi</span></div>
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleUbahPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {[
               { label: 'Kata Sandi Saat Ini', key: 'lama' },
               { label: 'Kata Sandi Baru', key: 'baru' },
@@ -127,73 +127,10 @@ const ProfilAdmin = () => {
                 />
               </div>
             ))}
-            <button className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-start' }} onClick={handleSavePassword}>
+            <button className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-start' }} onClick={handleUbahPassword}>
                 <Key size={16} /> Ubah Kata Sandi
               </button>
           </form>
-        </div>
-      </div>
-      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
-  );
-};
-
-// ── Pengguna Sistem (Akun Admin) ────────────────────────────────────────────
-const ADMIN_ACCOUNTS = [
-  { id: 1, nama: 'Administrator',   email: 'admin@sipena.id',  jabatan: 'Super Admin',       status: 'Aktif' },
-  { id: 2, nama: 'Pengelola Konten', email: 'konten@sipena.id', jabatan: 'Pengelola Konten',  status: 'Aktif' },
-];
-
-const PenggunaSistem = () => {
-  const [accounts, setAccounts] = useState(ADMIN_ACCOUNTS);
-  const [toast, setToast] = useState(null);
-  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
-
-  const handleToggle = (id) => {
-    setAccounts(prev => prev.map(a => a.id === id ? { ...a, status: a.status === 'Aktif' ? 'Nonaktif' : 'Aktif' } : a));
-    const acc = accounts.find(a => a.id === id);
-    showToast(`Akun ${acc.nama} berhasil ${acc.status === 'Aktif' ? 'dinonaktifkan' : 'diaktifkan'}.`);
-  };
-
-  return (
-    <div>
-      <div className="admin-page-header">
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Shield size={24} color="var(--accent-color)" /> Pengguna Sistem
-        </h1>
-        <p>Kelola akun admin dan hak akses pengguna sistem SiPena.</p>
-      </div>
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <span className="admin-card-title">Daftar Akun Administrator</span>
-        </div>
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr><th>#</th><th>Nama</th><th>Email</th><th>Jabatan</th><th>Status</th><th>Aksi</th></tr>
-            </thead>
-            <tbody>
-              {accounts.map((a, i) => (
-                <tr key={a.id}>
-                  <td style={{ color: 'var(--text-tertiary)' }}>{i + 1}</td>
-                  <td style={{ fontWeight: 600 }}>{a.nama}</td>
-                  <td style={{ fontSize: '0.82rem' }}>{a.email}</td>
-                  <td>{a.jabatan}</td>
-                  <td>
-                    <span className={`badge ${a.status === 'Aktif' ? 'badge-green' : 'badge-red'}`}>{a.status}</span>
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => handleToggle(a.id)}
-                      style={{ background: 'none', border: 'none', color: a.status === 'Aktif' ? 'var(--danger)' : '#059669', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                    >
-                      <Power size={14} /> {a.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
@@ -205,7 +142,6 @@ const AdminPengaturan = () => (
   <Routes>
     <Route index        element={<ProfilAdmin />} />
     <Route path="profil"  element={<ProfilAdmin />} />
-    <Route path="sistem"  element={<PenggunaSistem />} />
   </Routes>
 );
 

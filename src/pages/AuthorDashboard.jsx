@@ -95,10 +95,23 @@ const AuthorDashboard = () => {
             judul: n.title,
             linkDrive: n.fileUrl,
             tanggal: n.createdAt ? new Date(n.createdAt).toISOString().split('T')[0] : '-',
-            status: n.status === 'pending' ? 'Menunggu' : n.status === 'approved' ? 'Disetujui' : n.status === 'rejected' ? 'Ditolak' : n.status,
+            status: n.status === 'pending' ? 'Menunggu' 
+                  : n.status === 'approved' ? 'Disetujui' 
+                  : n.status === 'in_progress' ? 'Sedang Diproses' 
+                  : n.status === 'published' ? 'Sudah Terbit' 
+                  : n.status === 'rejected' ? 'Ditolak' 
+                  : n.status,
+            rawStatus: n.status,
+            bookId: n.bookId,
             alasan: n.reviewerNotes || ''
           }));
           setNaskahList(mapped);
+
+          // Jika ada naskah yang sudah terbit, otomatis tab Profil Penulis Publik terbuka
+          const hasPublished = mapped.some(n => n.rawStatus === 'published' || n.status === 'Sudah Terbit');
+          if (hasPublished) {
+            setActiveTab('karya');
+          }
         }
       } catch (err) {
         console.warn('Failed to load user manuscripts:', err);
@@ -106,6 +119,9 @@ const AuthorDashboard = () => {
     };
     fetchUserManuscripts();
   }, [user]);
+
+  const hasPublishedManuscript = naskahList.some(n => n.status === 'Sudah Terbit' || n.rawStatus === 'published');
+  const hasAuthorAccess = isAuthor || user?.role === 'penulis' || hasPublishedManuscript;
 
   // SEMUA HOOKS DI ATAS SUDAH DIEKSEKUSI.
   // SEKARANG AMAN UNTUK CONDITIONAL RETURNS:
@@ -377,7 +393,7 @@ const AuthorDashboard = () => {
               />
               <h2 className="sidebar-name">{user.namaLengkap || user.username}</h2>
               <span className="role-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                {isAuthor ? (
+                {hasAuthorAccess ? (
                   <>
                     <PenTool size={13} /> Penulis Terverifikasi
                   </>
@@ -424,12 +440,11 @@ const AuthorDashboard = () => {
               <button className={`dash-tab ${activeTab === 'kegiatan' ? 'active' : ''}`} onClick={() => setActiveTab('kegiatan')}>
                 <Calendar size={16} /> Kegiatan Saya
               </button>
-              {isAuthor && (
+              {hasAuthorAccess ? (
                 <button className={`dash-tab ${activeTab === 'karya' ? 'active' : ''}`} onClick={() => setActiveTab('karya')}>
                   <PenTool size={16} /> Profil Penulis Publik
                 </button>
-              )}
-              {!isAuthor && (
+              ) : (
                 <button className={`dash-tab ${activeTab === 'pengajuan-penulis' ? 'active' : ''}`} onClick={() => setActiveTab('pengajuan-penulis')}>
                   <CheckCircle size={16} /> Verifikasi Penulis
                   {(user?.isApplicant || user?.role === 'calon_penulis') && (
@@ -799,9 +814,16 @@ const AuthorDashboard = () => {
                           </td>
                           <td style={{fontSize: '0.85rem'}}>{n.tanggal}</td>
                           <td>
-                            <span className={`admin-badge ${n.status === 'Disetujui' ? 'badge-green' : n.status === 'Ditolak' ? 'badge-red' : 'badge-amber'}`}>
+                            <span className={`badge ${n.status === 'Disetujui' ? 'badge-green' : n.status === 'Sedang Diproses' ? 'badge-blue' : n.status === 'Sudah Terbit' ? 'badge-green' : n.status === 'Ditolak' ? 'badge-red' : 'badge-amber'}`}>
                               {n.status}
                             </span>
+                            {n.status === 'Sudah Terbit' && n.bookId && (
+                              <div style={{ marginTop: '0.35rem' }}>
+                                <Link to={`/buku/${n.bookId}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}>
+                                  Lihat Buku <ExternalLink size={11} />
+                                </Link>
+                              </div>
+                            )}
                           </td>
                           <td style={{fontSize: '0.85rem', color: 'var(--danger)', maxWidth: '150px'}}>
                             {n.status === 'Ditolak' ? n.alasan : '-'}
@@ -859,7 +881,7 @@ const AuthorDashboard = () => {
             )}
 
             {/* ── TAB PROFIL PENULIS (Only Verified Author) ─────────── */}
-            {activeTab === 'karya' && isAuthor && (
+            {activeTab === 'karya' && hasAuthorAccess && (
               <div className="tab-panel">
                 <div className="author-tab-header">
                   <div>
