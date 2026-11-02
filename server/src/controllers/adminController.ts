@@ -48,6 +48,15 @@ export class AdminController {
     static async updateUser(req: Request, res: Response) {
         try {
             const { id } = req.params;
+            const isSuperAdmin = req.user?.isSuperAdmin;
+
+            const targetUser = await db.query.users.findFirst({
+                where: eq(users.id, String(id)),
+            });
+
+            if (!targetUser) {
+                return res.status(404).json({ error: "User not found" });
+            }
 
             const schema = z.object({
                 role: z.enum(["admin", "personil", "pegawai", "reviewer", "penulis", "pengunjung", "calon_penulis"]).optional(),
@@ -70,6 +79,20 @@ export class AdminController {
             });
 
             const data = schema.parse(req.body);
+
+            // Otoritas Keamanan:
+            // Pegawai biasa & reviewer dapat mengelola pengunjung & penulis (upgrade/downgrade/verifikasi/edit profil).
+            // Namun hanya Super Administrator yang dapat mengubah data sesama pegawai / personil redaksi,
+            // atau mengangkat seseorang menjadi admin / reviewer.
+            const isTargetStaff = targetUser.role === "admin" || targetUser.role === "personil" || targetUser.role === "pegawai" || targetUser.role === "reviewer";
+            if (!isSuperAdmin) {
+                if (isTargetStaff) {
+                    return res.status(403).json({ error: "Hanya Super Administrator yang dapat mengubah akun pegawai / personil redaksi." });
+                }
+                if (data.role === "admin" || data.role === "personil" || data.role === "pegawai" || data.role === "reviewer" || data.isReviewer !== undefined) {
+                    return res.status(403).json({ error: "Hanya Super Administrator yang dapat mengangkat akun menjadi pegawai atau admin." });
+                }
+            }
 
             // Build update object — only include fields that were provided
             const updateObj: Record<string, any> = {};

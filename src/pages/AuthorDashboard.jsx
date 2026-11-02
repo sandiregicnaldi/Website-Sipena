@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { SipenaAPI } from '../lib/api';
@@ -11,37 +11,55 @@ import jsPDF from 'jspdf';
 import './AuthorDashboard.css';
 
 const AuthorDashboard = () => {
-  const { user, updateProfile, logout, isAuthor, isApplicant, isAdmin } = useAuth();
+  const { user, updateProfile, logout, isAuthor, isApplicant, isAdmin, isPending } = useAuth();
   const { showAlert, showConfirm, showToast } = useDialog();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  
-  // Redirect if not logged in or is admin
-  if (!user || isAdmin) {
-    if (isAdmin) navigate('/admin');
-    else navigate('/login');
-    return null;
-  }
 
   const [form, setForm] = useState({
-    namaLengkap: user.namaLengkap || user.name || '',
-    email: user.email || '',
-    profesi: user.profesi || '',
-    domisili: user.domisili || (user.kota ? `${user.kota}, ${user.provinsi}` : ''),
-    bio: user.bio || '',
-    website: user.website || '',
-    tempatLahir: user.tempatLahir || '',
-    tanggalLahir: user.tanggalLahir || '',
-    pekerjaan: user.pekerjaan || '',
-    instansi: user.instansi || '',
-    alamat: user.alamat || '',
-    provinsi: user.provinsi || '',
-    kota: user.kota || '',
-    kecamatan: user.kecamatan || '',
-    kelurahan: user.kelurahan || '',
-    karyaEksternal: Array.isArray(user.karyaEksternal) ? user.karyaEksternal : [],
-    fotoProfil: user.fotoProfil || user.image || null,
+    namaLengkap: user?.namaLengkap || user?.name || '',
+    email: user?.email || '',
+    profesi: user?.profesi || '',
+    domisili: user?.domisili || (user?.kota ? `${user.kota}, ${user.provinsi}` : ''),
+    bio: user?.bio || '',
+    website: user?.website || '',
+    tempatLahir: user?.tempatLahir || '',
+    tanggalLahir: user?.tanggalLahir || '',
+    pekerjaan: user?.pekerjaan || '',
+    instansi: user?.instansi || '',
+    alamat: user?.alamat || '',
+    provinsi: user?.provinsi || '',
+    kota: user?.kota || '',
+    kecamatan: user?.kecamatan || '',
+    kelurahan: user?.kelurahan || '',
+    karyaEksternal: Array.isArray(user?.karyaEksternal) ? user.karyaEksternal : [],
+    fotoProfil: user?.fotoProfil || user?.image || null,
   });
+
+  // Sinkronkan form saat data session pengguna selesai dimuat
+  useEffect(() => {
+    if (user) {
+      setForm({
+        namaLengkap: user.namaLengkap || user.name || '',
+        email: user.email || '',
+        profesi: user.profesi || '',
+        domisili: user.domisili || (user.kota ? `${user.kota}, ${user.provinsi}` : ''),
+        bio: user.bio || '',
+        website: user.website || '',
+        tempatLahir: user.tempatLahir || '',
+        tanggalLahir: user.tanggalLahir || '',
+        pekerjaan: user.pekerjaan || '',
+        instansi: user.instansi || '',
+        alamat: user.alamat || '',
+        provinsi: user.provinsi || '',
+        kota: user.kota || '',
+        kecamatan: user.kecamatan || '',
+        kelurahan: user.kelurahan || '',
+        karyaEksternal: Array.isArray(user.karyaEksternal) ? user.karyaEksternal : [],
+        fotoProfil: user.fotoProfil || user.image || null,
+      });
+    }
+  }, [user]);
 
   const [newKarya, setNewKarya] = useState({ judul: '', penerbit: '', tahun: '', url: '', storeName: '' });
   const [tokenAkselerasi, setTokenAkselerasi] = useState('');
@@ -63,6 +81,56 @@ const AuthorDashboard = () => {
 
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('biodata');
+  const [submittingNaskah, setSubmittingNaskah] = useState(false);
+
+  // Muat riwayat pengajuan naskah asli dari database
+  useEffect(() => {
+    if (!user) return;
+    const fetchUserManuscripts = async () => {
+      try {
+        const data = await SipenaAPI.getManuscripts();
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map(n => ({
+            id: n.id,
+            judul: n.title,
+            linkDrive: n.fileUrl,
+            tanggal: n.createdAt ? new Date(n.createdAt).toISOString().split('T')[0] : '-',
+            status: n.status === 'pending' ? 'Menunggu' : n.status === 'approved' ? 'Disetujui' : n.status === 'rejected' ? 'Ditolak' : n.status,
+            alasan: n.reviewerNotes || ''
+          }));
+          setNaskahList(mapped);
+        }
+      } catch (err) {
+        console.warn('Failed to load user manuscripts:', err);
+      }
+    };
+    fetchUserManuscripts();
+  }, [user]);
+
+  // SEMUA HOOKS DI ATAS SUDAH DIEKSEKUSI.
+  // SEKARANG AMAN UNTUK CONDITIONAL RETURNS:
+
+  // Menunggu pengecekan sesi Better-Auth
+  if (isPending) {
+    return (
+      <main className="author-dashboard-page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Memuat profil pengguna...</p>
+      </main>
+    );
+  }
+
+  // Pengalihan deklaratif jika belum login
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: '/profil-saya' }} />;
+  }
+
+  // Pengalihan jika akun adalah staf / admin
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
+
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -171,25 +239,53 @@ const AuthorDashboard = () => {
     }
   };
 
-  const handleAjukanNaskah = (e) => {
+
+
+  const handleAjukanNaskah = async (e) => {
     e.preventDefault();
-    if(!naskahBaru.judul || !naskahBaru.linkDrive) return;
-    const judulDiajukan = naskahBaru.judul;
-    setNaskahList(prev => [...prev, {
-      id: Date.now(),
-      judul: judulDiajukan,
-      linkDrive: naskahBaru.linkDrive,
-      tanggal: new Date().toISOString().split('T')[0],
-      status: 'Menunggu',
-      alasan: ''
-    }]);
-    setNaskahBaru({ judul: '', linkDrive: '' });
-    showAlert({
-      title: 'Naskah Berhasil Diajukan!',
-      message: `Naskah "${judulDiajukan}" berhasil dikirim ke sistem kurasi redaksi. Tim editor Perpusnas Press akan segera menelaah kelayakan naskah Anda.`,
-      type: 'success',
-      confirmText: 'Mengerti'
-    });
+    if (!naskahBaru.judul.trim() || !naskahBaru.linkDrive.trim()) {
+      showToast({ message: 'Mohon isi judul dan link file naskah Anda', type: 'error' });
+      return;
+    }
+    const judulDiajukan = naskahBaru.judul.trim();
+    const linkDiajukan = naskahBaru.linkDrive.trim();
+
+    try {
+      setSubmittingNaskah(true);
+      const res = await SipenaAPI.createManuscript({
+        title: judulDiajukan,
+        fileUrl: linkDiajukan,
+        authorId: user?.id,
+      });
+
+      const newEntry = {
+        id: res?.id || Date.now(),
+        judul: judulDiajukan,
+        linkDrive: linkDiajukan,
+        tanggal: new Date().toISOString().split('T')[0],
+        status: 'Menunggu',
+        alasan: ''
+      };
+      setNaskahList(prev => [newEntry, ...prev]);
+      setNaskahBaru({ judul: '', linkDrive: '' });
+
+      showAlert({
+        title: 'Naskah Berhasil Diajukan!',
+        message: `Naskah "${judulDiajukan}" berhasil dikirim ke sistem kurasi redaksi. Tim editor Perpusnas Press akan segera menelaah kelayakan naskah Anda.`,
+        type: 'success',
+        confirmText: 'Mengerti'
+      });
+    } catch (err) {
+      console.error('Failed to submit manuscript:', err);
+      showAlert({
+        title: 'Pengajuan Naskah Gagal',
+        message: err.response?.data?.error || err.message || 'Terjadi kesalahan pada server saat mengirim naskah. Silakan coba beberapa saat lagi.',
+        type: 'danger',
+        confirmText: 'Tutup'
+      });
+    } finally {
+      setSubmittingNaskah(false);
+    }
   };
 
   const downloadSertifikat = (kegiatan) => {
@@ -322,11 +418,9 @@ const AuthorDashboard = () => {
               <button className={`dash-tab ${activeTab === 'biodata' ? 'active' : ''}`} onClick={() => setActiveTab('biodata')}>
                 <User size={16} /> Biodata & Profil
               </button>
-              {isAuthor && (
-                <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
-                  <FileText size={16} /> Pengajuan Naskah
-                </button>
-              )}
+              <button className={`dash-tab ${activeTab === 'naskah' ? 'active' : ''}`} onClick={() => setActiveTab('naskah')}>
+                <FileText size={16} /> Pengajuan Naskah
+              </button>
               <button className={`dash-tab ${activeTab === 'kegiatan' ? 'active' : ''}`} onClick={() => setActiveTab('kegiatan')}>
                 <Calendar size={16} /> Kegiatan Saya
               </button>
@@ -657,7 +751,7 @@ const AuthorDashboard = () => {
             )}
 
             {/* ── TAB PENGUJUAN NASKAH ─────────────────────────────────── */}
-            {activeTab === 'naskah' && isAuthor && (
+            {activeTab === 'naskah' && (
               <div className="tab-panel">
                 <p className="tab-desc">Ajukan draf naskah baru dan pantau status naskah yang sedang dalam proses review.</p>
                 

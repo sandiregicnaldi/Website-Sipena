@@ -168,6 +168,12 @@ async function runMigrations() {
         console.warn("[migration] books.read_count skipped:", (e as Error).message);
     }
     try {
+        await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS unique_user_book_rating ON book_ratings (book_id, user_id)`);
+        console.log("[migration] book_ratings unique index ensured");
+    } catch (e) {
+        console.warn("[migration] books.read_count skipped:", (e as Error).message);
+    }
+    try {
         await db.execute(`
             CREATE TABLE IF NOT EXISTS app_settings (
                 key TEXT PRIMARY KEY,

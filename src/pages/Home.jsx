@@ -1,25 +1,64 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import HeroCarousel from '../components/HeroCarousel';
 import BookRow from '../components/BookRow';
 import FeaturedAuthors from '../components/FeaturedAuthors';
 import EventSection from '../components/EventSection';
+import { SipenaAPI } from '../lib/api';
 import './Home.css';
 
-const Home = () => {
+const DEFAULT_NEW_BOOKS = [
+  { id: 1, title: 'Syair Ulama Saleh', author: 'Penulis Anonim', color: '#1e293b' },
+  { id: 2, title: 'Alih Bahasa Rapport von het Vernigen', author: 'Johannes de Hartogh', color: '#b91c1c' },
+  { id: 3, title: 'USANA, SAGARA, BANAWA', author: 'Pande Putu Abdi Jaya', color: '#1d4ed8' },
+  { id: 4, title: 'Hikayat Tuanku nan Muda Pagaruyung', author: 'M. Yusuf', color: '#047857' },
+  { id: 5, title: 'Mari Mengenal Lebih Dekat HATIBALI', author: 'Perpusnas Press', color: '#6d28d9' },
+  { id: 14, title: 'Babad Diponegoro', author: 'Kyai Mojo', color: '#0f766e' },
+  { id: 15, title: 'Sejarah Nasional Indonesia', author: 'Sartono Kartodirdjo', color: '#c2410c' },
+  { id: 16, title: 'Kesusastraan Melayu Klasik', author: 'Liaw Yock Fang', color: '#6d28d9' },
+  { id: 17, title: 'Kitab Primbon Jawa', author: 'Kanjeng Pangeran', color: '#1d4ed8' },
+  { id: 18, title: 'Serat Centhini', author: 'Paku Buwana V', color: '#b91c1c' },
+];
 
-  const newBooks = [
-    { id: 1, title: 'Syair Ulama Saleh', author: 'Penulis Anonim', color: '#1e293b' },
-    { id: 2, title: 'Alih Bahasa Rapport von het Vernigen', author: 'Johannes de Hartogh', color: '#b91c1c' },
-    { id: 3, title: 'USANA, SAGARA, BANAWA', author: 'Pande Putu Abdi Jaya', color: '#1d4ed8' },
-    { id: 4, title: 'Hikayat Tuanku nan Muda Pagaruyung', author: 'M. Yusuf', color: '#047857' },
-    { id: 5, title: 'Mari Mengenal Lebih Dekat HATIBALI', author: 'Perpusnas Press', color: '#6d28d9' },
-    { id: 14, title: 'Babad Diponegoro', author: 'Kyai Mojo', color: '#0f766e' },
-    { id: 15, title: 'Sejarah Nasional Indonesia', author: 'Sartono Kartodirdjo', color: '#c2410c' },
-    { id: 16, title: 'Kesusastraan Melayu Klasik', author: 'Liaw Yock Fang', color: '#6d28d9' },
-    { id: 17, title: 'Kitab Primbon Jawa', author: 'Kanjeng Pangeran', color: '#1d4ed8' },
-    { id: 18, title: 'Serat Centhini', author: 'Paku Buwana V', color: '#b91c1c' },
-  ];
+const CATEGORY_COLORS = {
+  'Anak-anak': '#0ea5e9',
+  'Biografi & Memoar': '#8b5cf6',
+  'Ekonomi & Management': '#059669',
+  'Fiksi': '#e11d48',
+  'Hukum & Politik': '#4f46e5',
+  'Humaniora': '#d97706',
+  'Inkubator Literasi': '#2563eb',
+  'Kesehatan': '#10b981',
+  'Komik': '#f59e0b',
+  'Lifestyle': '#ec4899',
+  'Sastra': '#1e3a8a',
+  'Sejarah': '#b91c1c',
+  'Budaya': '#047857',
+  'Umum': '#475569'
+};
+
+const Home = () => {
+  const [newBooks, setNewBooks] = useState(DEFAULT_NEW_BOOKS);
+
+  useEffect(() => {
+    SipenaAPI.getBooks({ limit: 10 })
+      .then(res => {
+        const items = res?.data || (Array.isArray(res) ? res : []);
+        if (items && items.length > 0) {
+          setNewBooks(items.map(b => ({
+            id: b.id,
+            title: b.title,
+            author: b.authorName || 'Penulis Anonim',
+            color: CATEGORY_COLORS[b.category] || '#1e293b',
+            readCount: b.readCount || 0,
+            downloadCount: b.downloadCount || 0,
+          })));
+        }
+      })
+      .catch(err => {
+        console.warn('Failed to fetch dynamic books for Home, using fallback:', err);
+      });
+  }, []);
 
   const authors = [
     {

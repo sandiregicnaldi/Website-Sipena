@@ -26,8 +26,8 @@ const sidebarScrollStyle = `
 
 export default function ManagementSidebar({ open, onClose }) {
     const { currentUser, projects } = useApp()
-    const { isSuperAdmin } = useAuth()
-    const allItems = [...NAV_ITEMS, ...(isSuperAdmin ? ADMIN_ITEMS : [])]
+    const { isSuperAdmin, isStaff } = useAuth()
+    const allItems = [...NAV_ITEMS, ...((isSuperAdmin || isStaff) ? ADMIN_ITEMS : [])]
     const [totalChatUnread, setTotalChatUnread] = useState(0)
 
     // Polling unread chat + notes count

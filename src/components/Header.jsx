@@ -49,7 +49,7 @@ const Header = () => {
             <Search size={18} className="search-icon" />
           </div>
 
-          <Link to="/login" state={{ from: location }} className="btn-terbitkan">TERBITKAN BUKU</Link>
+          <Link to={isLoggedIn ? "/profil-saya" : "/login"} state={isLoggedIn ? undefined : { from: '/profil-saya' }} className="btn-terbitkan">TERBITKAN BUKU</Link>
 
           <div className="auth-section">
             {isLoggedIn ? (
@@ -110,7 +110,7 @@ const Header = () => {
 
             <div className="mobile-menu-divider" />
 
-            <Link to="/login" className="mobile-nav-item mobile-terbitkan" onClick={closeMenu}>
+            <Link to={isLoggedIn ? "/profil-saya" : "/login"} state={isLoggedIn ? undefined : { from: '/profil-saya' }} className="mobile-nav-item mobile-terbitkan" onClick={closeMenu}>
               TERBITKAN BUKU
             </Link>
 

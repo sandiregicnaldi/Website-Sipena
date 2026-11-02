@@ -40,6 +40,39 @@ export const SipenaContentController = {
     }
 };
 
+
+// Helper: resolve book ID whether it's a UUID or a legacy numeric identifier / index
+async function resolveBookId(id: string): Promise<string | null> {
+    if (!id) return null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (isUuid) {
+        const book = await db.query.books.findFirst({
+            where: eq(books.id, id),
+            columns: { id: true }
+        });
+        return book ? book.id : null;
+    }
+
+    // Try numeric index (e.g. "1" -> 1st book, "2" -> 2nd book)
+    const num = parseInt(id, 10);
+    if (!isNaN(num) && num > 0) {
+        const list = await db.query.books.findMany({
+            orderBy: (b, { asc }) => [asc(b.createdAt)],
+            limit: 1,
+            offset: num - 1,
+            columns: { id: true }
+        });
+        if (list[0]) return list[0].id;
+    }
+
+    // Fallback: search first book
+    const fallback = await db.query.books.findFirst({
+        orderBy: (b, { asc }) => [asc(b.createdAt)],
+        columns: { id: true }
+    });
+    return fallback ? fallback.id : null;
+}
+
 // ── KATALOG BUKU ──
 export const SipenaBooksController = {
     getAll: async (req: Request, res: Response) => {
@@ -109,35 +142,22 @@ export const SipenaBooksController = {
     getOne: async (req: Request, res: Response) => {
         try {
             const id = req.params.id as string;
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-            
-            let book = null;
-            if (isUuid) {
-                book = await db.query.books.findFirst({
-                    where: eq(books.id, id),
-                    with: {
-                        author: true,
-                        ratings: {
-                            with: { user: true },
-                            orderBy: (r, { desc }) => [desc(r.createdAt)],
-                            limit: 10
-                        }
-                    }
-                });
-            } else {
-                // Graceful fallback for non-UUID / legacy routes
-                book = await db.query.books.findFirst({
-                    orderBy: (b, { asc }) => [asc(b.createdAt)],
-                    with: {
-                        author: true,
-                        ratings: {
-                            with: { user: true },
-                            orderBy: (r, { desc }) => [desc(r.createdAt)],
-                            limit: 10
-                        }
-                    }
-                });
+            const targetId = await resolveBookId(id);
+            if (!targetId) {
+                return res.status(404).json({ error: "Book not found" });
             }
+
+            const book = await db.query.books.findFirst({
+                where: eq(books.id, targetId),
+                with: {
+                    author: true,
+                    ratings: {
+                        with: { user: true },
+                        orderBy: (r, { desc }) => [desc(r.createdAt)],
+                        limit: 10
+                    }
+                }
+            });
 
             if (!book) {
                 return res.status(404).json({ error: "Book not found" });
@@ -153,18 +173,14 @@ export const SipenaBooksController = {
     getRelated: async (req: Request, res: Response) => {
         try {
             const id = req.params.id as string;
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
-            let currentBook = null;
-            if (isUuid) {
-                currentBook = await db.query.books.findFirst({
-                    where: eq(books.id, id)
-                });
-            } else {
-                currentBook = await db.query.books.findFirst({
-                    orderBy: (b, { asc }) => [asc(b.createdAt)]
-                });
+            const targetId = await resolveBookId(id);
+            if (!targetId) {
+                return res.status(404).json({ error: "Book not found" });
             }
+
+            const currentBook = await db.query.books.findFirst({
+                where: eq(books.id, targetId)
+            });
 
             if (!currentBook) {
                 return res.status(404).json({ error: "Book not found" });
@@ -199,9 +215,9 @@ export const SipenaBooksController = {
     rate: async (req: Request, res: Response) => {
         try {
             const id = req.params.id as string;
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-            if (!isUuid) {
-                return res.status(400).json({ error: "Invalid book ID" });
+            const targetId = await resolveBookId(id);
+            if (!targetId) {
+                return res.status(404).json({ error: "Buku tidak ditemukan" });
             }
 
             const userId = req.user?.id;
@@ -218,7 +234,7 @@ export const SipenaBooksController = {
             // Upsert user rating
             await db.insert(bookRatings)
                 .values({
-                    bookId: id,
+                    bookId: targetId,
                     userId,
                     rating: ratingNum,
                     review: review || null
@@ -239,7 +255,7 @@ export const SipenaBooksController = {
                     countRating: sql<number>`COUNT(*)::int`
                 })
                 .from(bookRatings)
-                .where(eq(bookRatings.bookId, id));
+                .where(eq(bookRatings.bookId, targetId));
 
             const newAvg = Math.round(Number(calc?.avgRating || 0) * 10) / 10;
             const newCount = Number(calc?.countRating || 0);
@@ -250,7 +266,7 @@ export const SipenaBooksController = {
                     ratingCount: newCount,
                     updatedAt: new Date()
                 })
-                .where(eq(books.id, id));
+                .where(eq(books.id, targetId));
 
             res.json({
                 success: true,
@@ -267,20 +283,34 @@ export const SipenaBooksController = {
     recordDownload: async (req: Request, res: Response) => {
         try {
             const id = req.params.id as string;
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-            if (!isUuid) {
-                return res.status(400).json({ error: "Invalid book ID" });
+            const targetId = await resolveBookId(id);
+            if (!targetId) {
+                return res.status(404).json({ error: "Buku tidak ditemukan" });
             }
 
             const userId = req.user?.id || null;
             const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || null;
+            const cleanIp = typeof ipAddress === "string" ? ipAddress.split(",")[0].trim() : null;
             const userAgent = req.headers["user-agent"] || null;
+
+            // POINT 4: Satu akun jika mengunduh berkali-kali buku yang sama tetap terhitung 1x di log download
+            if (userId) {
+                const existing = await db.query.bookDownloads.findFirst({
+                    where: and(
+                        eq(bookDownloads.bookId, targetId),
+                        eq(bookDownloads.userId, userId)
+                    )
+                });
+                if (existing) {
+                    return res.json({ success: true, alreadyDownloaded: true });
+                }
+            }
 
             // Log download
             await db.insert(bookDownloads).values({
-                bookId: id,
+                bookId: targetId,
                 userId,
-                ipAddress: typeof ipAddress === "string" ? ipAddress.split(",")[0].trim() : null,
+                ipAddress: cleanIp,
                 userAgent
             });
 
@@ -290,9 +320,9 @@ export const SipenaBooksController = {
                     downloadCount: sql`COALESCE(${books.downloadCount}, 0) + 1`,
                     updatedAt: new Date()
                 })
-                .where(eq(books.id, id));
+                .where(eq(books.id, targetId));
 
-            res.json({ success: true });
+            res.json({ success: true, alreadyDownloaded: false });
         } catch (error) {
             console.error("[SipenaBooksController.recordDownload] Error:", error);
             res.status(500).json({ error: "Failed to record download" });
@@ -302,9 +332,9 @@ export const SipenaBooksController = {
     recordRead: async (req: Request, res: Response) => {
         try {
             const id = req.params.id as string;
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-            if (!isUuid) {
-                return res.status(400).json({ error: "Invalid book ID" });
+            const targetId = await resolveBookId(id);
+            if (!targetId) {
+                return res.status(404).json({ error: "Buku tidak ditemukan" });
             }
 
             // Increment book read counter
@@ -313,7 +343,7 @@ export const SipenaBooksController = {
                     readCount: sql`COALESCE(${books.readCount}, 0) + 1`,
                     updatedAt: new Date()
                 })
-                .where(eq(books.id, id));
+                .where(eq(books.id, targetId));
 
             res.json({ success: true });
         } catch (error) {
@@ -354,21 +384,49 @@ export const SipenaBooksController = {
 export const SipenaManuscriptsController = {
     getAll: async (req: Request, res: Response) => {
         try {
+            const isStaff = req.user?.role === "admin" || req.user?.role === "personil" || req.user?.role === "pegawai" || req.user?.role === "reviewer";
+            const authorId = isStaff ? (req.query.authorId as string) : req.user?.id;
+
+            const whereClause = authorId ? eq(manuscripts.authorId, authorId) : undefined;
             const allManuscripts = await db.query.manuscripts.findMany({
+                where: whereClause,
                 orderBy: (manuscripts, { desc }) => [desc(manuscripts.createdAt)],
                 with: { author: true }
             });
             res.json(allManuscripts);
         } catch (error) {
+            console.error("SipenaManuscriptsController.getAll error:", error);
             res.status(500).json({ error: "Failed to fetch manuscripts" });
         }
     },
     create: async (req: Request, res: Response) => {
         try {
-            const [newManuscript] = await db.insert(manuscripts).values(req.body).returning();
+            const authorId = req.user?.id || req.body.authorId;
+            if (!authorId) {
+                return res.status(401).json({ error: "Silakan login terlebih dahulu untuk mengajukan naskah" });
+            }
+
+            const { title, fileUrl, synopsis, category } = req.body;
+            if (!title || !title.trim()) {
+                return res.status(400).json({ error: "Judul naskah wajib diisi" });
+            }
+            if (!fileUrl || !fileUrl.trim()) {
+                return res.status(400).json({ error: "Tautan naskah (Google Drive / cloud link) wajib diisi" });
+            }
+
+            const [newManuscript] = await db.insert(manuscripts).values({
+                title: title.trim(),
+                fileUrl: fileUrl.trim(),
+                synopsis: synopsis?.trim() || null,
+                category: category?.trim() || "Umum",
+                authorId,
+                status: "pending",
+            }).returning();
+
             res.status(201).json(newManuscript);
         } catch (error) {
-            res.status(500).json({ error: "Failed to submit manuscript" });
+            console.error("SipenaManuscriptsController.create error:", error);
+            res.status(500).json({ error: "Gagal mengajukan naskah: " + (error as Error).message });
         }
     },
     updateStatus: async (req: Request, res: Response) => {

@@ -55,12 +55,13 @@ const BookDetail = () => {
 
   // Trigger pencatatan pembaca: deduplikasi per sesi via sessionStorage
   const recordReadTrigger = async () => {
-    if (!id) return;
-    const sessionKey = `sipena_read_${id}`;
+    const targetBookId = book?.id || id;
+    if (!targetBookId) return;
+    const sessionKey = `sipena_read_${targetBookId}`;
     if (sessionStorage.getItem(sessionKey)) return;
     sessionStorage.setItem(sessionKey, '1');
     try {
-      await SipenaAPI.recordBookRead(id);
+      await SipenaAPI.recordBookRead(targetBookId);
       setBook(prev => prev ? ({ ...prev, readCount: (prev.readCount || 0) + 1 }) : prev);
     } catch (err) {
       console.error('Failed to record read:', err);
@@ -149,9 +150,10 @@ const BookDetail = () => {
   const handleDownload = () => {
     handleProtectedAction(async () => {
       try {
+        const targetBookId = book?.id || id;
         // Record real download count in PostgreSQL
-        await SipenaAPI.downloadBook(id);
-        if (book) {
+        const res = await SipenaAPI.downloadBook(targetBookId);
+        if (book && !res?.alreadyDownloaded) {
           setBook(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
         }
       } catch (err) {
@@ -174,7 +176,8 @@ const BookDetail = () => {
 
     try {
       setSubmittingRating(true);
-      const res = await SipenaAPI.rateBook(id, { rating: ratingVal });
+      const targetBookId = book?.id || id;
+      const res = await SipenaAPI.rateBook(targetBookId, { rating: ratingVal });
       if (res && res.success) {
         setRating(ratingVal);
         if (book) {
@@ -189,9 +192,10 @@ const BookDetail = () => {
       }
     } catch (err) {
       console.error('Failed to submit rating:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Terjadi kesalahan saat menyimpan rating.';
       showAlert({
         title: 'Gagal Menyimpan Rating',
-        message: 'Pastikan Anda sudah login untuk memberikan ulasan dan rating buku.',
+        message: errorMsg,
         type: 'warning'
       });
     } finally {

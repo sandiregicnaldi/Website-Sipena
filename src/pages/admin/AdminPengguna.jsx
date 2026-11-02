@@ -603,13 +603,15 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
                             >
                               <Power size={12}/> {u.statusAkun === 'Nonaktif' ? 'Aktifkan' : 'Nonaktifkan'}
                             </button>
-                            <button
-                              onClick={() => handleHapus(u)}
-                              className="btn btn-outline"
-                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#64748b', borderColor: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
-                            >
-                              <Trash2 size={12}/> Hapus
-                            </button>
+                            {isSuperAdmin && (
+                              <button
+                                onClick={() => handleHapus(u)}
+                                className="btn btn-outline"
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', color: '#64748b', borderColor: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                              >
+                                <Trash2 size={12}/> Hapus
+                              </button>
+                            )}
                           </div>
                         </td>
                       </>
@@ -622,7 +624,15 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
                         <td>{getRoleBadge(u)}</td>
                         <td><span className={`badge ${STATUS_BADGE[u.statusAkun] || 'badge-gray'}`}>{u.statusAkun}</span></td>
                         <td>
-                          {isSuperAdmin ? (
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <button
+                              onClick={() => setDetailModal(u)}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                            >
+                              <Eye size={12}/> Detail
+                            </button>
+                            {isSuperAdmin ? (
                             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                               {u.statusAkun === 'Menunggu' && (
                                 <button
@@ -654,6 +664,7 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
                               Khusus Super Admin
                             </span>
                           )}
+                          </div>
                         </td>
                       </>
                     )}

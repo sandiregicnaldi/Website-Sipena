@@ -177,7 +177,8 @@ const LoginPage = () => {
   const [roleType, setRoleType] = useState('pengunjung'); // 'pengunjung' | 'penulis'
   const [form, setForm] = useState({ email: '', password: '', ...INITIAL_FORM });
 
-  const { login, register } = useAuth();
+  const { user, login, register, isPending } = useAuth();
+
   const { showAlert } = useDialog();
   const navigate = useNavigate();
   const location = useLocation();
@@ -224,6 +225,13 @@ const LoginPage = () => {
     }
     navigate('/', { replace: true });
   };
+
+  // Jika pengguna sudah memiliki sesi login aktif, otomatis arahkan
+  useEffect(() => {
+    if (!isPending && user) {
+      redirectAfter(user);
+    }
+  }, [user, isPending]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

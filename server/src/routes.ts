@@ -59,8 +59,8 @@ router.patch("/notifications/:id/read", NotificationController.markRead);
 router.patch("/notifications/read-all", NotificationController.markAllRead);
 
 // Admin - User Management
-router.get("/admin/users", requireAdmin, AdminController.getUsers);
-router.patch("/admin/users/:id", requireAdmin, AdminController.updateUser);
+router.get("/admin/users", requirePJOrAdmin, AdminController.getUsers);
+router.patch("/admin/users/:id", requirePJOrAdmin, AdminController.updateUser);
 router.post("/admin/users/:id/set-password", requireAdmin, AdminController.setPassword);
 router.delete("/admin/users/:id", requireAdmin, AdminController.deleteUser);
 
@@ -140,7 +140,7 @@ router.patch("/sipena/books/:id", requirePJOrAdmin, SipenaBooksController.update
 router.delete("/sipena/books/:id", requirePJOrAdmin, SipenaBooksController.delete);
 
 // Pengajuan Naskah
-router.get("/sipena/manuscripts", requirePJOrAdmin, SipenaManuscriptsController.getAll); // Admin views all
+router.get("/sipena/manuscripts", requireAuth, SipenaManuscriptsController.getAll); // Admin views all or user views own
 router.post("/sipena/manuscripts", requireAuth, SipenaManuscriptsController.create); // Any logged in user (penulis/pengunjung)
 router.patch("/sipena/manuscripts/:id/status", requirePJOrAdmin, SipenaManuscriptsController.updateStatus);
 

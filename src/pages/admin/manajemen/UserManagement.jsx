@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../../../services/api'
 import { useApp } from '../../../context/AppContext'
 import { useAuth } from '../../../context/AuthContext'
@@ -202,12 +203,16 @@ export default function UserManagement() {
                 <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
                     <span className="material-symbols-outlined text-3xl">lock</span>
                 </div>
-                <h2 className="text-xl font-bold text-slate-800 mb-2">Akses Terbatas</h2>
+                <h2 className="text-xl font-bold text-slate-800 mb-2">Konfigurasi Hak Akses Khusus Super Admin</h2>
                 <p className="text-sm text-slate-500 mb-6">
-                    Menu Manajemen Pengguna dan pengaturan hak akses tim hanya dapat diakses oleh <strong>Super Administrator</strong>.
+                    Konfigurasi keahlian teknis personil redaksi hanya dapat diubah oleh <strong>Super Administrator</strong>. Untuk mengelola verifikasi, upgrade/downgrade penulis dan pengunjung, silakan buka menu Manajemen Pengguna SiPena.
                 </p>
-                <div className="inline-block px-4 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg">
-                    Peran Anda saat ini tidak memiliki hak konfigurasi akun.
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <Link to="/admin/pengguna" className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
+                        <span className="material-symbols-outlined text-[18px]">group</span>
+                        Buka Pengguna & Penulis SiPena
+                    </Link>
+
                 </div>
             </div>
         )
