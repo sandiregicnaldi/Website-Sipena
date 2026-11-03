@@ -7,8 +7,9 @@ import fs from "fs";
 const uploadDir = path.join(process.cwd(), "uploads");
 const coversDir = path.join(uploadDir, "covers");
 const documentsDir = path.join(uploadDir, "documents");
+const certificatesDir = path.join(uploadDir, "certificates");
 
-[uploadDir, coversDir, documentsDir].forEach(d => {
+[uploadDir, coversDir, documentsDir, certificatesDir].forEach(d => {
     if (!fs.existsSync(d)) {
         fs.mkdirSync(d, { recursive: true });
     }
@@ -90,6 +91,37 @@ const uploadDocMulter = multer({
     }
 });
 
+// Storage for Certificate Templates (PNG, JPG, JPEG, WEBP, PDF, max 15MB)
+const certStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        if (!fs.existsSync(certificatesDir)) {
+            fs.mkdirSync(certificatesDir, { recursive: true });
+        }
+        cb(null, certificatesDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname).toLowerCase() || '.png';
+        cb(null, 'cert-template-' + uniqueSuffix + ext);
+    }
+});
+
+const uploadCertMulter = multer({
+    storage: certStorage,
+    limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const allowedExts = ['.png', '.jpg', '.jpeg', '.webp', '.pdf'];
+        const allowedMimes = ['image/png', 'image/x-png', 'image/jpeg', 'image/jpg', 'image/webp', 'application/pdf'];
+        const isValid = allowedMimes.includes(file.mimetype) || allowedExts.includes(ext);
+        if (isValid) {
+            cb(null, true);
+        } else {
+            cb(new Error("Hanya berkas format .PNG, .JPG, .WEBP, atau .PDF yang diperbolehkan untuk template sertifikat"));
+        }
+    }
+});
+
 export const UploadController = {
     // Middleware
     uploadSingle: (req: Request, res: Response, next: any) => {
@@ -127,6 +159,20 @@ export const UploadController = {
                     return res.status(400).json({ error: "Ukuran berkas dummy final maksimal 50 MB" });
                 }
                 return res.status(400).json({ error: err.message || "Gagal mengunggah berkas dummy final" });
+            }
+            if ((req as any).files && Array.isArray((req as any).files) && (req as any).files.length > 0) {
+                req.file = (req as any).files[0];
+            }
+            next();
+        });
+    },
+    uploadCertificate: (req: Request, res: Response, next: any) => {
+        uploadCertMulter.any()(req, res, (err) => {
+            if (err) {
+                if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: "Ukuran berkas template sertifikat maksimal 15 MB" });
+                }
+                return res.status(400).json({ error: err.message || "Gagal mengunggah berkas template sertifikat" });
             }
             if ((req as any).files && Array.isArray((req as any).files) && (req as any).files.length > 0) {
                 req.file = (req as any).files[0];
@@ -172,6 +218,19 @@ export const UploadController = {
         } catch (error: any) {
             console.error("Upload document error:", error);
             res.status(500).json({ error: error.message || "Gagal mengunggah file dummy PDF" });
+        }
+    },
+
+    async handleUploadCertificate(req: Request, res: Response) {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: "Tidak ada berkas template sertifikat yang diunggah" });
+            }
+            const fileUrl = `/api/uploads/certificates/${req.file.filename}`;
+            res.json({ url: fileUrl, filename: req.file.originalname, size: req.file.size });
+        } catch (error: any) {
+            console.error("Upload certificate error:", error);
+            res.status(500).json({ error: error.message || "Gagal mengunggah berkas template sertifikat" });
         }
     }
 };

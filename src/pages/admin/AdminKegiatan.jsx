@@ -52,12 +52,14 @@ const AdminKegiatan = () => {
   const [togglingId, setTogglingId]   = useState(null);
   const [toast, setToast]             = useState('');
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [uploadingCertTemplate, setUploadingCertTemplate] = useState(false);
   const [cropModal, setCropModal] = useState({
     isOpen: false,
     imageSrc: null,
     fileName: 'banner-kegiatan.jpg',
   });
   const bannerFileRef = useRef(null);
+  const certTemplateFileRef = useRef(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -144,6 +146,50 @@ const AdminKegiatan = () => {
       showToast(err.response?.data?.error || err.message || 'Gagal mengunggah banner.');
     } finally {
       setUploadingBanner(false);
+    }
+  };
+
+  const handleCertTemplateUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'application/pdf'];
+    const validExts = ['.png', '.jpg', '.jpeg', '.webp', '.pdf'];
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
+      showToast('Template sertifikat harus berformat PNG, JPG, WEBP, atau PDF.');
+      if (certTemplateFileRef.current) certTemplateFileRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('Ukuran berkas template sertifikat maksimal 15 MB.');
+      if (certTemplateFileRef.current) certTemplateFileRef.current.value = '';
+      return;
+    }
+
+    try {
+      setUploadingCertTemplate(true);
+      const res = await SipenaAPI.uploadCertificateTemplate(file);
+      if (res?.url) {
+        setModal(p => ({
+          ...p,
+          data: {
+            ...p.data,
+            certificateTemplateUrl: res.url
+          }
+        }));
+        showToast('Berkas template sertifikat berhasil diunggah!');
+      } else {
+        throw new Error('Gagal mengunggah template sertifikat.');
+      }
+    } catch (err) {
+      console.error('Upload template sertifikat failed:', err);
+      showToast(err.response?.data?.error || err.message || 'Gagal mengunggah template sertifikat.');
+    } finally {
+      setUploadingCertTemplate(false);
+      if (certTemplateFileRef.current) certTemplateFileRef.current.value = '';
     }
   };
 
@@ -775,19 +821,123 @@ const AdminKegiatan = () => {
 
               {/* PENGATURAN TEMPLATE & TATA LETAK SERTIFIKAT */}
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <input
+                  type="file"
+                  ref={certTemplateFileRef}
+                  style={{ display: 'none' }}
+                  accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
+                  onChange={handleCertTemplateUpload}
+                  disabled={uploadingCertTemplate}
+                />
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <label style={{ ...labelStyle, marginBottom: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <Award size={16} color="var(--primary-color)" /> Template &amp; Pengaturan Sertifikat
                   </label>
                   <button
                     type="button"
-                    onClick={handleDownloadCertificateTemplate}
-                    className="btn btn-outline"
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fff', borderColor: '#bfdbfe', color: '#1d4ed8' }}
+                    onClick={() => certTemplateFileRef.current?.click()}
+                    className="btn btn-primary"
+                    disabled={uploadingCertTemplate}
+                    style={{
+                      padding: '0.35rem 0.85rem',
+                      fontSize: '0.75rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontWeight: 600
+                    }}
                   >
-                    <FileDown size={14} /> Unduh Template Sertifikat (A4 PDF)
+                    {uploadingCertTemplate ? (
+                      <>
+                        <Loader2 size={13} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>Mengunggah...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={13} />
+                        <span>{modal.data.certificateTemplateUrl ? 'Ganti Template' : 'Unggah Template Sertifikat'}</span>
+                      </>
+                    )}
                   </button>
                 </div>
+
+                {/* Status Berkas Template */}
+                {modal.data.certificateTemplateUrl ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.65rem 0.85rem',
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '6px',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
+                      <CheckCircle size={16} color="#16a34a" style={{ flexShrink: 0 }} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#166534' }}>
+                          Template Sertifikat Kustom Terpasang
+                        </div>
+                        <a
+                          href={modal.data.certificateTemplateUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: '0.72rem',
+                            color: '#2563eb',
+                            textDecoration: 'underline',
+                            display: 'block',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {modal.data.certificateTemplateUrl.split('/').pop()}
+                        </a>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                      <a
+                        href={modal.data.certificateTemplateUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-outline"
+                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem', background: '#fff' }}
+                      >
+                        Buka File
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setModal(p => ({ ...p, data: { ...p.data, certificateTemplateUrl: '' } }))}
+                        className="btn btn-outline"
+                        title="Hapus template kustom dan gunakan standar"
+                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem', color: '#dc2626', borderColor: '#fca5a5', background: '#fff' }}
+                      >
+                        <Trash2 size={12} /> Hapus
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0.55rem 0.75rem',
+                    background: '#ffffff',
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    color: '#64748b',
+                    gap: '0.4rem'
+                  }}>
+                    <Sparkles size={14} color="#3b82f6" style={{ flexShrink: 0 }} />
+                    <span>
+                      Belum ada template kustom diunggah. Sertifikat peserta akan otomatis menggunakan <strong>desain resmi standar Perpusnas Press</strong>. Unggah template piagam (PNG, JPG, atau PDF) jika memiliki desain sendiri.
+                    </span>
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
                   <div>
@@ -798,8 +948,8 @@ const AdminKegiatan = () => {
                       <input
                         style={{ ...inputStyle, width: '100px', fontWeight: 700, background: '#fff' }}
                         type="number"
-                        min="50"
-                        max="160"
+                        min="30"
+                        max="180"
                         step="1"
                         required
                         value={modal.data.certNamePosY ?? 96}
@@ -822,9 +972,9 @@ const AdminKegiatan = () => {
                   lineHeight: 1.5
                 }}>
                   <div style={{ fontWeight: 700, color: '#1e293b', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <Sparkles size={13} color="#ca8a04" /> Panduan Format Kode Placeholder &amp; Koordinat
+                    <Sparkles size={13} color="#ca8a04" /> Panduan Penempatan Identitas &amp; Kode Koordinat
                   </div>
-                  Sistem SiPena otomatis mencetak identitas peserta ke dokumen resmi PDF saat klaim. Anda dapat mencocokkan desain piagam Anda dengan tag kode berikut:
+                  Sistem SiPena otomatis mencetak identitas peserta ke dokumen resmi PDF saat klaim. Sesuaikan template kustom Anda dengan posisi cetak berikut:
                   <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <div>
                       <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA}}'}</code> atau <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA_PESERTA}}'}</code> : Nama lengkap peserta (Posisi Y: <strong>{modal.data.certNamePosY ?? 96} mm</strong>)
@@ -838,6 +988,26 @@ const AdminKegiatan = () => {
                     <div>
                       <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{TANGGAL}}'}</code> : Tanggal kegiatan (Posisi Y: 144 mm)
                     </div>
+                  </div>
+                  <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={handleDownloadCertificateTemplate}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: '#2563eb',
+                        fontSize: '0.72rem',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      <FileDown size={12} /> Unduh Contoh Guideline Template Standar (A4 Landscape PDF)
+                    </button>
                   </div>
                 </div>
               </div>

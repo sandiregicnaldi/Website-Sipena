@@ -112,58 +112,122 @@ const EventDetail = () => {
   }
 
   // Generate & Unduh Dokumen Resmi PDF Sertifikat
-  const downloadCertificatePDF = (certData) => {
+  const downloadCertificatePDF = async (certData) => {
     if (!event) return;
     try {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const width = 297;
       const height = 210;
 
-      // Background
-      doc.setFillColor(250, 250, 252);
-      doc.rect(0, 0, width, height, 'F');
-
-      // Bingkai ganda elegan (Biru Perpusnas & Emas)
-      doc.setDrawColor(30, 58, 138); // Blue 900
-      doc.setLineWidth(2.5);
-      doc.rect(10, 10, width - 20, height - 20);
-
-      doc.setDrawColor(202, 138, 4); // Amber 600
-      doc.setLineWidth(0.8);
-      doc.rect(14, 14, width - 28, height - 28);
-
-      // Header Lembaga
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138);
-      doc.text('PERPUSNAS PRESS • PERPUSTAKAAN NASIONAL REPUBLIK INDONESIA', 148.5, 30, { align: 'center' });
-
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 116, 139);
-      doc.text('Sistem Informasi & Pengelolaan Penerbitan Buku SiPena', 148.5, 36, { align: 'center' });
-
-      // Judul Sertifikat
-      doc.setFontSize(26);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      doc.text('SERTIFIKAT KEHADIRAN', 148.5, 54, { align: 'center' });
-
-      // Nomor Registrasi Sertifikat Resmi
+      const templateUrl = event.certificateTemplateUrl || event.certificate_template_url;
+      const recipientName = certData?.name || user?.namaLengkap || user?.name || 'Peserta Terdaftar';
+      const namePosY = Number(event.certNamePosY || event.cert_name_pos_y) || 96;
       const certNumber = certData?.certificateNumber || certData?.certificate_number || `SIPENA/CERT/${new Date().getFullYear()}/XI/0001`;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
 
-      // Diberikan kepada
-      doc.setFontSize(12);
-      doc.setTextColor(100, 116, 139);
-      doc.text('Diberikan dengan hormat kepada:', 148.5, 80, { align: 'center' });
+      let hasCustomTemplate = false;
+
+      if (templateUrl) {
+        try {
+          const img = await new Promise((resolve, reject) => {
+            const i = new window.Image();
+            i.crossOrigin = 'anonymous';
+            i.onload = () => resolve(i);
+            i.onerror = reject;
+            i.src = templateUrl;
+          });
+          doc.addImage(img, 'PNG', 0, 0, width, height);
+          hasCustomTemplate = true;
+        } catch (imgErr) {
+          console.warn('Template sertifikat kustom tidak dapat dimuat sebagai gambar, menggunakan format standar:', imgErr);
+        }
+      }
+
+      if (!hasCustomTemplate) {
+        // Background
+        doc.setFillColor(250, 250, 252);
+        doc.rect(0, 0, width, height, 'F');
+
+        // Bingkai ganda elegan (Biru Perpusnas & Emas)
+        doc.setDrawColor(30, 58, 138); // Blue 900
+        doc.setLineWidth(2.5);
+        doc.rect(10, 10, width - 20, height - 20);
+
+        doc.setDrawColor(202, 138, 4); // Amber 600
+        doc.setLineWidth(0.8);
+        doc.rect(14, 14, width - 28, height - 28);
+
+        // Header Lembaga
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 138);
+        doc.text('PERPUSNAS PRESS • PERPUSTAKAAN NASIONAL REPUBLIK INDONESIA', 148.5, 30, { align: 'center' });
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text('Sistem Informasi & Pengelolaan Penerbitan Buku SiPena', 148.5, 36, { align: 'center' });
+
+        // Judul Sertifikat
+        doc.setFontSize(26);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text('SERTIFIKAT KEHADIRAN', 148.5, 54, { align: 'center' });
+
+        // Nomor Registrasi Sertifikat Resmi
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
+
+        // Diberikan kepada
+        doc.setFontSize(12);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Diberikan dengan hormat kepada:', 148.5, 80, { align: 'center' });
+
+        // Keterangan Partisipasi
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text('Atas partisipasi aktif dan kehadirannya dalam kegiatan:', 148.5, 120, { align: 'center' });
+
+        // Judul Kegiatan
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(event.judul || event.title || 'Kegiatan SiPena', 148.5, 134, { align: 'center' });
+
+        // Tanggal & Waktu
+        const eventDateStr = new Date(event.tanggal || event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        doc.setFontSize(10.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Diselenggarakan pada ${eventDateStr} • ${event.jamKegiatan || event.time || ''}`, 148.5, 144, { align: 'center' });
+
+        // Tanda Tangan
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.5);
+        doc.line(40, 168, 100, 168);
+        doc.line(197, 168, 257, 168);
+
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 138);
+        doc.text('Panitia Pelaksana', 70, 175, { align: 'center' });
+        doc.text('Perpusnas Press', 227, 175, { align: 'center' });
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.text('Dokumen ini resmi diterbitkan secara elektronik melalui Portal SiPena Perpusnas Press.', 148.5, 194, { align: 'center' });
+      } else {
+        // Pada template kustom: tetap cetak nomor registrasi di guideline atas jika disediakan
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
+      }
 
       // Nama Peserta (Menggunakan posisi vertikal kustom certNamePosY jika ditentukan)
-      const recipientName = certData?.name || user?.namaLengkap || user?.name || 'Peserta Terdaftar';
-      const namePosY = Number(event.certNamePosY) || 96;
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 138);
@@ -176,42 +240,6 @@ const EventDetail = () => {
         doc.setTextColor(71, 85, 105);
         doc.text(certData.institution, 148.5, namePosY + 8, { align: 'center' });
       }
-
-      // Keterangan Partisipasi
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      doc.text('Atas partisipasi aktif dan kehadirannya dalam kegiatan:', 148.5, 120, { align: 'center' });
-
-      // Judul Kegiatan
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      doc.text(event.judul || event.title || 'Kegiatan SiPena', 148.5, 134, { align: 'center' });
-
-      // Tanggal & Waktu
-      const eventDateStr = new Date(event.tanggal || event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      doc.setFontSize(10.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 116, 139);
-      doc.text(`Diselenggarakan pada ${eventDateStr} • ${event.jamKegiatan || event.time || ''}`, 148.5, 144, { align: 'center' });
-
-      // Tanda Tangan
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.5);
-      doc.line(40, 168, 100, 168);
-      doc.line(197, 168, 257, 168);
-
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138);
-      doc.text('Panitia Pelaksana', 70, 175, { align: 'center' });
-      doc.text('Perpusnas Press', 227, 175, { align: 'center' });
-
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(148, 163, 184);
-      doc.text('Dokumen ini resmi diterbitkan secara elektronik melalui Portal SiPena Perpusnas Press.', 148.5, 194, { align: 'center' });
 
       const fileName = `Sertifikat_${(event.judul || event.title || 'Kegiatan').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       doc.save(fileName);

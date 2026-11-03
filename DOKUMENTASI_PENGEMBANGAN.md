@@ -1554,6 +1554,77 @@ Perbaikan dilakukan pada 3 komponen inti:
 3. **Status Data:**
    - Seluruh relasi data antara `books` dan `stages` kini selaras dan aman dari reset otomatis.
 
+---
+
+## BAB 37: FITUR UNGGAH TEMPLATE SERTIFIKAT DI FORMULIR ADMIN SIPENA & RENDERING DINAMIS PIAGAM KUSTOM
+
+**Tanggal:** 3 November 2026  
+**Status:** Teruji & Terselesaikan (*Production Ready*)
+
+---
+
+### A. Latar Belakang & Klarifikasi Kebutuhan
+Pengguna menyampaikan koreksi pada antarmuka formulir kegiatan di Admin SiPena:
+> *"A. Tombol Unduh Template Sertifikat di Formulir Admin, maksud gua bukan unduh template, tapi unggah template, sorry salah gua, perbaiki seakrang"*
+
+Sebelumnya, tombol di panel admin bertuliskan *"Unduh Template Sertifikat (A4 PDF)"* yang men-download draf acuan. Kebutuhan operasional admin yang sebenarnya adalah:
+1. **Fitur Unggah Template Kustom (*Upload Custom Certificate Template*):** Admin dapat mengunggah file desain piagam/sertifikat yang dibuat khusus untuk kegiatan tersebut (format PNG, JPG, WEBP, atau PDF) langsung dari modal tambah/edit kegiatan.
+2. **Manajemen Berkas Template Terpasang:** Menampilkan status template aktif, tautan berkas, tombol ganti template, serta opsi hapus template kustom jika ingin kembali menggunakan template standar.
+3. **Penyisipan Dinamis (*Dynamic Overlay Rendering*):**
+   - Saat peserta mengklaim dan mengunduh sertifikat dari `EventDetail.jsx` maupun dasbor penulis `AuthorDashboard.jsx`, sistem secara cerdas memeriksa keberadaan `certificateTemplateUrl`.
+   - Jika template kustom terpasang, gambar template tersebut dijadikan latar belakang (*full background A4 Landscape*), lalu nama peserta dicetak otomatis pada koordinat vertikal $Y$ (`certNamePosY`), disertai nomor unik registrasi dan instansi peserta.
+   - Jika belum ada template kustom yang diunggah, generator PDF secara otomatis menggunakan desain resmi standar Perpusnas Press (bingkai ganda biru-emas dengan kop resmi).
+
+---
+
+### B. Implementasi Backend Server API & Penyimpanan Berkas
+1. **Direktori & Filter Multer Khusus (`server/src/controllers/uploadController.ts`):**
+   - Menambahkan folder penyimpanan khusus `uploads/certificates/`.
+   - Membuat konfigurasi multer `uploadCertMulter` yang mendukung format `.png`, `.jpg`, `.jpeg`, `.webp`, `.pdf` dengan batasan ukuran berkas hingga 15 MB:
+     ```typescript
+     const certStorage = multer.diskStorage({
+         destination: (req, file, cb) => cb(null, certificatesDir),
+         filename: (req, file, cb) => {
+             const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+             const ext = path.extname(file.originalname).toLowerCase() || '.png';
+             cb(null, 'cert-template-' + uniqueSuffix + ext);
+         }
+     });
+     ```
+   - Menambahkan middleware `uploadCertificate` dan handler `handleUploadCertificate` yang mengembalikan URL `/api/uploads/certificates/{filename}`.
+2. **Rute Endpoint Baru (`server/src/routes.ts`):**
+   - `POST /api/upload/certificate` (terlindungi `requireAuth`).
+3. **Klien Frontend API (`src/lib/api.js`):**
+   - Menambahkan method `SipenaAPI.uploadCertificateTemplate(file)` berbasis `FormData` multipart.
+
+---
+
+### C. Implementasi Antarmuka Frontend
+1. **Panel Admin Kegiatan (`src/pages/admin/AdminKegiatan.jsx`):**
+   - Menggantikan tombol unduh dengan tombol aksi utama **"Unggah Template Sertifikat"** / **"Ganti Template"** dengan ikon `Upload` dan indikator animasi saat proses upload berlangsung.
+   - Menambahkan kartu visual status berkas:
+     - **Template Kustom Aktif:** Ditandai dengan badge hijau `CheckCircle`, nama berkas, tombol *"Buka File"*, dan tombol *"Hapus"* (ikon tempat sampah).
+     - **Belum Ada Template:** Menampilkan kotak panduan bahwa sertifikat otomatis menggunakan template resmi standar Perpusnas Press.
+   - Tetap menyertakan tautan kecil diskrit *"Unduh Contoh Guideline Template Standar (A4 Landscape PDF)"* di bagian bawah kotak panduan koordinat sebagai referensi desainer grafis.
+2. **Halaman Publik Detail Kegiatan (`src/pages/EventDetail.jsx`):**
+   - Fungsi `downloadCertificatePDF` diubah menjadi `async` dan memuat gambar template via `window.Image()`.
+   - Menggambar background template dengan `doc.addImage(img, 'PNG', 0, 0, 297, 210)` lalu menyematkan teks nama peserta di koordinat $Y$ `certNamePosY`.
+3. **Ruang Penulis Dasbor (`src/pages/AuthorDashboard.jsx`):**
+   - Menambahkan pemetaan `certificateTemplateUrl` dan `certNamePosY` pada data riwayat klaim `kegiatanList`.
+   - Mengintegrasikan rendering gambar template kustom pada fungsi `downloadSertifikat(kegiatan)`.
+
+---
+
+### D. Hasil Pengujian & Verifikasi
+1. **Automated Upload Test (`test_cert_upload.ts`):**
+   - Endpoint `POST /api/upload/certificate` teruji sukses menerima unggahan berkas dengan status HTTP 200 dan mengembalikan URL `/api/uploads/certificates/cert-template-...`.
+2. **Build Kompilasi Frontend & Backend:**
+   - Frontend Vite build: Sukses dalam 2.21s (*0 error*).
+   - Backend TypeScript build: Sukses (*0 error*).
+3. **UX Feedback:**
+   - Unggah template, pratinjau tautan berkas, penggantian berkas, dan penghapusan template kustom berjalan lancar dan reaktif.
+
+
 
 
 

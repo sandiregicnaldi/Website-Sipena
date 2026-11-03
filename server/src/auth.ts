@@ -1,11 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { createAuthMiddleware } from "better-auth/api";
 import { db } from "./db";
 import * as schema from "./db/schema";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./lib/resend";
-import { SecurityLogger } from "./services/securityLogger";
-import { recordFailedAttempt, recordSuccessfulAttempt } from "./middlewares/authSecurity";
 
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5000",
@@ -35,21 +32,6 @@ export const auth = betterAuth({
             const resetLink = `${frontendUrl}/reset-password?token=${token}`;
             await sendPasswordResetEmail(user.email, resetLink);
         },
-    },
-    hooks: {
-        after: createAuthMiddleware(async (ctx) => {
-            if (ctx.path === "/sign-in/email") {
-                const ip = ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
-                const email = (ctx.body as any)?.email || "";
-                const userAgent = ctx.headers?.get("user-agent") || "Unknown";
-                recordSuccessfulAttempt(ip, email);
-                await SecurityLogger.logSuccessfulLogin({
-                    email,
-                    ip,
-                    userAgent,
-                });
-            }
-        }),
     },
     socialProviders: {
         google: {
@@ -142,22 +124,8 @@ export const auth = betterAuth({
     },
     onAPIError: {
         throw: false,
-        onError: async (error: any, ctx: any) => {
-            // Log error tetapi jangan redirect — biarkan frontend yang menangani
+        onError: (error: any, ctx: any) => {
             console.error("[BetterAuth API Error]:", error?.message || error);
-            if (ctx?.path === "/sign-in/email") {
-                const ip = ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
-                const email = (ctx.body as any)?.email || "";
-                const userAgent = ctx.headers?.get("user-agent") || "Unknown";
-                const failureCount = recordFailedAttempt(ip, email);
-                await SecurityLogger.logFailedLogin({
-                    email,
-                    ip,
-                    userAgent,
-                    reason: error?.message || "Email atau kata sandi tidak sesuai",
-                    consecutiveFailures: failureCount,
-                });
-            }
         },
     },
 });

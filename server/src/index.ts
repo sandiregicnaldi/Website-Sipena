@@ -15,6 +15,8 @@ import {
     AuthSecurityController,
     getClientIp,
     getFailedAttempts,
+    recordFailedAttempt,
+    recordSuccessfulAttempt,
     verifyCaptchaSolution,
 } from "./middlewares/authSecurity";
 import { SecurityLogger } from "./services/securityLogger";
@@ -138,7 +140,15 @@ app.post(
                         requiresVerification: true,
                     };
                 } else {
-                    const currentFailures = getFailedAttempts(ip, email);
+                    const currentFailures = recordFailedAttempt(ip, email);
+                    SecurityLogger.logFailedLogin({
+                        email,
+                        ip,
+                        userAgent: req.headers["user-agent"] as string,
+                        reason: "Email atau kata sandi tidak sesuai",
+                        consecutiveFailures: currentFailures,
+                    });
+
                     newBody = {
                         error: "Email atau kata sandi tidak sesuai.",
                         message: "Email atau kata sandi tidak sesuai.",
@@ -152,6 +162,15 @@ app.post(
                 interceptedHeaders["content-length"] = buf.length;
                 originalWriteHead(interceptedStatus, interceptedHeaders);
                 return originalEnd(buf);
+            }
+
+            if (interceptedStatus >= 200 && interceptedStatus < 300) {
+                recordSuccessfulAttempt(ip, email);
+                SecurityLogger.logSuccessfulLogin({
+                    email,
+                    ip,
+                    userAgent: req.headers["user-agent"] as string,
+                });
             }
 
             const combined = Buffer.concat(chunks);

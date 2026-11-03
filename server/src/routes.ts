@@ -85,6 +85,7 @@ router.post("/profile/change-password", requireAuth, ProfileController.changePas
 router.post("/upload", requireAuth, UploadController.uploadSingle, UploadController.handleUpload);
 router.post("/upload/cover", requireAuth, UploadController.uploadCover, UploadController.handleUploadCover);
 router.post("/upload/document", requireAuth, UploadController.uploadDocument, UploadController.handleUploadDocument);
+router.post("/upload/certificate", requireAuth, UploadController.uploadCertificate, UploadController.handleUploadCertificate);
 
 // Telegram
 router.get("/telegram/status", requireAuth, TelegramController.getStatus);

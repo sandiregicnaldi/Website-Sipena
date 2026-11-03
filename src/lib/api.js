@@ -46,6 +46,13 @@ export const SipenaAPI = {
             headers: { 'Content-Type': 'multipart/form-data' }
         }).then(res => res.data);
     },
+    uploadCertificateTemplate: (file) => {
+        const fd = new FormData();
+        fd.append('certificate', file);
+        return api.post('/upload/certificate', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }).then(res => res.data);
+    },
 
     // Events
     getEvents: () => api.get('/sipena/events').then(res => res.data),
