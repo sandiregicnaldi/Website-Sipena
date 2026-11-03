@@ -3,7 +3,7 @@ import './AdminLayout.css';
 import { 
   Users, FileDown, Calendar, Globe, Edit, Trash2, 
   CheckCircle, Plus, Save, KeyRound, Sparkles, RefreshCw, 
-  ToggleLeft, ToggleRight, Loader2, Award, Clock, Upload, Image, X, Eye
+  ToggleLeft, ToggleRight, Loader2, Award, Clock, Upload, Image, X, Eye, Type
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useEvent, checkIfClaimOpen } from '../../context/EventContext';
@@ -15,11 +15,33 @@ import ImageCropModal from '../../components/ImageCropModal';
 const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
 
+const CERT_FONT_FAMILIES = [
+  { 
+    id: 'helvetica', 
+    name: 'Sans-Serif (Modern / Helvetica / Arial)', 
+    cssFont: "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+    desc: 'Bersih, modern, dan kontemporer'
+  },
+  { 
+    id: 'times', 
+    name: 'Serif (Klasik Piagam / Times New Roman)', 
+    cssFont: "'Times New Roman', Times, Georgia, serif",
+    desc: 'Formal, resmi, bernuansa piagam penghargaan'
+  },
+  { 
+    id: 'courier', 
+    name: 'Monospace (Mesin Ketik / Courier)', 
+    cssFont: "'Courier New', Courier, monospace",
+    desc: 'Nuansa dokumen teknis atau stempel'
+  }
+];
+
 const EMPTY_FORM = {
   judul: '', tanggal: '', jamKegiatan: '09:00 - 12:00 WIB', lokasi: '', urlZoom: '',
   narasumber: [''], penjelasan: '', status: 'Akan Datang',
   peserta: 0, certificateToken: '', isClaimOpen: null, claimOpensAt: null,
-  bannerUrl: '', certificateTemplateUrl: '', certNamePosY: 96
+  bannerUrl: '', certificateTemplateUrl: '', certNamePosY: 96,
+  certFontSize: 24, certFontFamily: 'helvetica'
 };
 
 const Toast = ({ msg, onClose }) => (
@@ -316,6 +338,10 @@ const AdminKegiatan = () => {
 
       // Guideline box untuk Nama Peserta
       const targetPosY = Number(modal?.data?.certNamePosY) || 96;
+      const targetFontSize = Number(modal?.data?.certFontSize) || 24;
+      const rawFont = String(modal?.data?.certFontFamily || 'helvetica').toLowerCase();
+      const targetFontFamily = ['helvetica', 'times', 'courier'].includes(rawFont) ? rawFont : 'helvetica';
+
       doc.setDrawColor(37, 99, 235);
       doc.setLineWidth(0.4);
       doc.setLineDashPattern([3, 2], 0);
@@ -323,16 +349,16 @@ const AdminKegiatan = () => {
       doc.setLineDashPattern([], 0);
 
       // Nama Peserta Placeholder
-      doc.setFontSize(20);
-      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(targetFontSize);
+      doc.setFont(targetFontFamily, 'bold');
       doc.setTextColor(37, 99, 235);
-      doc.text(`{{NAMA_PESERTA}} (Posisi Vertikal Y: ${targetPosY} mm)`, 148.5, targetPosY, { align: 'center' });
+      doc.text(`{{NAMA_PESERTA}} (Y: ${targetPosY} mm, Font: ${targetFontFamily}, ${targetFontSize} pt)`, 148.5, targetPosY, { align: 'center' });
 
       // Instansi Placeholder
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(Math.max(9, Math.round(targetFontSize * 0.45)));
+      doc.setFont(targetFontFamily, 'italic');
       doc.setTextColor(100, 116, 139);
-      doc.text(`{{INSTANSI}} (Posisi Y: ${targetPosY + 8} mm)`, 148.5, targetPosY + 8, { align: 'center' });
+      doc.text(`{{INSTANSI}} (Posisi Y: ${targetPosY + Math.round(targetFontSize * 0.35)} mm)`, 148.5, targetPosY + Math.round(targetFontSize * 0.35), { align: 'center' });
 
       // Keterangan Partisipasi
       doc.setFontSize(12);
@@ -964,9 +990,13 @@ const AdminKegiatan = () => {
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       <Eye size={15} color="#2563eb" /> Live Preview Penempatan Nama (A4 Landscape)
                     </div>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                      Pergeseran vertikal realtime: <strong>{modal.data.certNamePosY ?? 96} mm</strong> dari atas
-                    </span>
+                    <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.72rem', color: '#64748b', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span>Y: <strong>{modal.data.certNamePosY ?? 96} mm</strong></span>
+                      <span>•</span>
+                      <span>Ukuran: <strong>{modal.data.certFontSize ?? 24} pt</strong></span>
+                      <span>•</span>
+                      <span>Font: <strong>{CERT_FONT_FAMILIES.find(f => f.id === (modal.data.certFontFamily || 'helvetica'))?.name?.split(' ')[0] || 'Sans-Serif'}</strong></span>
+                    </div>
                   </div>
 
                   {/* KANVAS PREVIEW A4 (297 x 210 mm) */}
@@ -1042,12 +1072,15 @@ const AdminKegiatan = () => {
                       </div>
                     )}
 
-                    {/* OVERLAY NAMA PESERTA DENGAN GARIS GUIDELINE DINAMIS */}
+                    {/* OVERLAY NAMA PESERTA DENGAN GARIS GUIDELINE DINAMIS & TIPOGRAFI KUSTOM */}
                     {(() => {
                       const posNumber = Number(modal.data.certNamePosY ?? 96);
                       const safePosY = isNaN(posNumber) ? 96 : posNumber;
                       // Persentase top dihitung dari tinggi A4 Landscape (210 mm)
                       const topPercent = Math.min(100, Math.max(0, (safePosY / 210) * 100));
+                      const fontSizePt = Number(modal.data.certFontSize ?? 24) || 24;
+                      const fontFamilyKey = (modal.data.certFontFamily || 'helvetica').toLowerCase();
+                      const activeFontObj = CERT_FONT_FAMILIES.find(f => f.id === fontFamilyKey) || CERT_FONT_FAMILIES[0];
 
                       return (
                         <div style={{
@@ -1073,31 +1106,38 @@ const AdminKegiatan = () => {
                             opacity: 0.6
                           }} />
 
-                          {/* Badge Nama Peserta */}
+                          {/* Badge Nama Peserta dengan Font Family & Font Size Kustom */}
                           <div style={{
                             position: 'relative',
                             background: 'rgba(30, 58, 138, 0.95)',
                             color: '#ffffff',
-                            padding: '3px 10px',
-                            borderRadius: '4px',
-                            fontSize: 'clamp(8px, 1.8vw, 12px)',
+                            padding: '3px 12px',
+                            borderRadius: '5px',
+                            fontSize: `calc((${fontSizePt} / 24) * clamp(9px, 1.8vw, 13.5px))`,
+                            fontFamily: activeFontObj.cssFont,
                             fontWeight: 800,
-                            letterSpacing: '0.3px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            letterSpacing: fontFamilyKey === 'courier' ? '0px' : '0.3px',
+                            boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px'
+                            gap: '6px',
+                            maxWidth: '85%',
+                            textAlign: 'center',
+                            transition: 'all 0.15s ease-out'
                           }}>
-                            <span>Nama Lengkap Peserta, S.Kom., M.T.</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              Nama Lengkap Peserta, S.Kom., M.T.
+                            </span>
                             <span style={{
-                              fontSize: 'clamp(6px, 1.2vw, 9px)',
+                              fontSize: 'clamp(5.5px, 1.1vw, 8px)',
                               background: '#3b82f6',
                               color: '#fff',
                               padding: '1px 5px',
                               borderRadius: '3px',
-                              fontWeight: 700
+                              fontWeight: 700,
+                              fontFamily: 'sans-serif'
                             }}>
-                              Y: {safePosY} mm
+                              {fontSizePt}pt • Y: {safePosY}mm
                             </span>
                           </div>
                         </div>
@@ -1105,7 +1145,7 @@ const AdminKegiatan = () => {
                     })()}
                   </div>
 
-                  {/* KONTROL PENGATUR POSISI Y (SLIDER & NUMERIC INPUT) */}
+                  {/* ── KONTROL 1: PENGATUR POSISI Y (SLIDER & NUMERIC INPUT) ── */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.3rem', margin: 0 }}>
@@ -1208,6 +1248,125 @@ const AdminKegiatan = () => {
                       })()}
                     </div>
                   </div>
+
+                  {/* ── KONTROL 2: PENGATUR TIPOGRAFI (JENIS FONT & UKURAN FONT) ── */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0.65rem' }}>
+                    {/* PILIHAN JENIS FONT */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
+                          <Type size={14} color="#2563eb" /> Jenis Font Nama
+                        </label>
+                      </div>
+                      <select
+                        style={{ ...inputStyle, padding: '0.35rem 0.6rem', fontSize: '0.8rem', background: '#fff', cursor: 'pointer', fontWeight: 600 }}
+                        value={modal.data.certFontFamily || 'helvetica'}
+                        onChange={e => setModal(p => ({ ...p, data: { ...p.data, certFontFamily: e.target.value } }))}
+                      >
+                        {CERT_FONT_FAMILIES.map(f => (
+                          <option key={f.id} value={f.id}>
+                            {f.name}
+                          </option>
+                        ))}
+                      </select>
+                      {/* Preview Ringkas Karakteristik Font */}
+                      <div style={{
+                        background: '#fff',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '4px',
+                        padding: '0.35rem 0.6rem',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        color: '#1e3a8a',
+                        fontFamily: CERT_FONT_FAMILIES.find(f => f.id === (modal.data.certFontFamily || 'helvetica'))?.cssFont || 'sans-serif',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Aa: Dr. Ir. Budi Santoso, M.Kom.
+                      </div>
+                    </div>
+
+                    {/* PILIHAN UKURAN FONT */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
+                          Ukuran Font (Size)
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <input
+                            style={{
+                              ...inputStyle,
+                              width: '65px',
+                              padding: '0.3rem 0.4rem',
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              textAlign: 'center',
+                              background: '#fff'
+                            }}
+                            type="number"
+                            min="14"
+                            max="36"
+                            step="1"
+                            value={modal.data.certFontSize ?? 24}
+                            onChange={e => {
+                              const val = Number(e.target.value);
+                              setModal(p => ({ ...p, data: { ...p.data, certFontSize: isNaN(val) ? 24 : val } }));
+                            }}
+                          />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b' }}>pt</span>
+                        </div>
+                      </div>
+
+                      {/* Slider Range Font Size */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.1rem' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', width: '28px' }}>14 pt</span>
+                        <input
+                          type="range"
+                          min="14"
+                          max="36"
+                          step="1"
+                          value={modal.data.certFontSize ?? 24}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            setModal(p => ({ ...p, data: { ...p.data, certFontSize: val } }));
+                          }}
+                          style={{ flex: 1, cursor: 'pointer', accentColor: '#2563eb' }}
+                        />
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', width: '28px', textAlign: 'right' }}>36 pt</span>
+                      </div>
+
+                      {/* Tombol Pintas Preset Font Size */}
+                      <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.15rem' }}>
+                        {[
+                          { label: 'Kecil (18 pt)', size: 18 },
+                          { label: 'Standar (24 pt)', size: 24 },
+                          { label: 'Besar (30 pt)', size: 30 }
+                        ].map(preset => {
+                          const active = (modal.data.certFontSize ?? 24) === preset.size;
+                          return (
+                            <button
+                              key={preset.size}
+                              type="button"
+                              onClick={() => setModal(p => ({ ...p, data: { ...p.data, certFontSize: preset.size } }))}
+                              className="btn btn-outline"
+                              style={{
+                                flex: 1,
+                                padding: '0.2rem 0.3rem',
+                                fontSize: '0.68rem',
+                                background: active ? '#eff6ff' : '#fff',
+                                borderColor: active ? '#3b82f6' : '#cbd5e1',
+                                color: active ? '#1d4ed8' : '#334155',
+                                fontWeight: active ? 700 : 500
+                              }}
+                            >
+                              {preset.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* KOTAK PANDUAN REFERENSI KODE */}
@@ -1226,7 +1385,7 @@ const AdminKegiatan = () => {
                   Jika template sertifikat Anda dibuat di Canva / Photoshop, sesuaikan ruang kosong piagam Anda dengan posisi cetak otomatis berikut:
                   <div style={{ marginTop: '0.35rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.25rem' }}>
                     <div>
-                      <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA}}'}</code> : Posisi Y <strong>{modal.data.certNamePosY ?? 96} mm</strong>
+                      <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA}}'}</code> : Y <strong>{modal.data.certNamePosY ?? 96} mm</strong>, Size <strong>{modal.data.certFontSize ?? 24} pt</strong>, Font <strong>{CERT_FONT_FAMILIES.find(f => f.id === (modal.data.certFontFamily || 'helvetica'))?.name?.split(' ')[0] || 'Sans-Serif'}</strong>
                     </div>
                     <div>
                       <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NOMOR_SERTIFIKAT}}'}</code> : Posisi Y <strong>62 mm</strong>

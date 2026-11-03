@@ -334,6 +334,10 @@ async function runMigrations() {
         await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS zoom_url TEXT`);
         await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS speakers JSONB DEFAULT '[]'::jsonb`);
         await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS max_participants INTEGER DEFAULT 0`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS certificate_template_url TEXT`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cert_name_pos_y INTEGER DEFAULT 96`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cert_font_size INTEGER DEFAULT 24`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cert_font_family TEXT DEFAULT 'helvetica'`);
         await db.execute(`
             CREATE TABLE IF NOT EXISTS event_participants (
                 id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

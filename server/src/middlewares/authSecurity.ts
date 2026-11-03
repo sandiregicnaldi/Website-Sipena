@@ -80,6 +80,7 @@ export const loginRateLimiter = rateLimit({
     max: 5, // Maksimal 5 percobaan
     standardHeaders: true,
     legacyHeaders: false,
+    skipSuccessfulRequests: true, // Login berhasil tidak dihitung sebagai kegagalan
     keyGenerator: (req: Request) => {
         const ip = getClientIp(req);
         const email = req.body?.email || req.query?.email || "";

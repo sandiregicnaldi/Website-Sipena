@@ -111,6 +111,8 @@ const AuthorDashboard = () => {
           instansi: item.institution,
           certificateTemplateUrl: item.event?.certificateTemplateUrl || item.event?.certificate_template_url,
           certNamePosY: item.event?.certNamePosY || item.event?.cert_name_pos_y,
+          certFontSize: item.event?.certFontSize || item.event?.cert_font_size,
+          certFontFamily: item.event?.certFontFamily || item.event?.cert_font_family,
         })));
       }
     } catch (err) {
@@ -397,6 +399,9 @@ const AuthorDashboard = () => {
       const templateUrl = kegiatan.certificateTemplateUrl || kegiatan.certificate_template_url;
       const recipientName = kegiatan.nama || user?.namaLengkap || user?.name || user?.username || 'Peserta Terdaftar';
       const namePosY = Number(kegiatan.certNamePosY || kegiatan.cert_name_pos_y) || 96;
+      const certFontSize = Number(kegiatan.certFontSize || kegiatan.cert_font_size) || 24;
+      const certFontFamily = String(kegiatan.certFontFamily || kegiatan.cert_font_family || 'helvetica').toLowerCase();
+      const validFont = ['helvetica', 'times', 'courier'].includes(certFontFamily) ? certFontFamily : 'helvetica';
       const certNumber = kegiatan.certificateNumber || `SIPENA/CERT/${new Date().getFullYear()}/XI/0001`;
 
       let hasCustomTemplate = false;
@@ -502,18 +507,18 @@ const AuthorDashboard = () => {
         doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
       }
 
-      // Nama Peserta (Menggunakan posisi vertikal kustom certNamePosY jika diatur)
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
+      // Nama Peserta (Menggunakan posisi vertikal kustom certNamePosY, ukuran font, dan jenis font)
+      doc.setFontSize(certFontSize);
+      doc.setFont(validFont, 'bold');
       doc.setTextColor(30, 58, 138);
       doc.text(recipientName, 148.5, namePosY, { align: 'center' });
 
       // Instansi jika ada
       if (kegiatan.instansi) {
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(Math.max(9, Math.round(certFontSize * 0.45)));
+        doc.setFont(validFont, 'italic');
         doc.setTextColor(71, 85, 105);
-        doc.text(kegiatan.instansi, 148.5, namePosY + 8, { align: 'center' });
+        doc.text(kegiatan.instansi, 148.5, namePosY + (certFontSize * 0.35), { align: 'center' });
       }
 
       const certTitle = (kegiatan.judul || 'Kegiatan').replace(/[^a-zA-Z0-9]/g, '_');

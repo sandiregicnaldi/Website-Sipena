@@ -186,7 +186,7 @@ const LoginPage = () => {
   const [loginError, setLoginError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { user, login, register, isPending } = useAuth();
+  const { user, login, register, logout, isPending } = useAuth();
 
   const { showAlert } = useDialog();
   const navigate = useNavigate();
@@ -197,6 +197,11 @@ const LoginPage = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const fillCredentials = (email, password) => {
+    setForm(prev => ({ ...prev, email, password }));
+    setLoginError('');
+  };
+
   const redirectAfter = (resolvedUser) => {
     const fromPath = typeof location.state?.from === 'string'
       ? location.state.from
@@ -205,42 +210,49 @@ const LoginPage = () => {
     // 1. Jika sedang membaca atau mengunduh buku tertentu (misal: /buku/12), kembalikan ke buku tersebut
     const isViewingBook = fromPath && (fromPath.startsWith('/buku/') || fromPath.startsWith('/book/'));
     if (isViewingBook) {
-      navigate(fromPath, { replace: true });
+      window.location.href = fromPath;
       return;
     }
 
-    // 2. Cek apakah pengguna merupakan admin / personil / pegawai
+    // 2. Cek apakah pengguna merupakan admin / personil / pegawai / reviewer
     const isStaff = resolvedUser && (
       resolvedUser.role === 'admin' ||
       resolvedUser.role === 'personil' ||
-      resolvedUser.role === 'pegawai'
+      resolvedUser.role === 'pegawai' ||
+      resolvedUser.role === 'reviewer'
     );
 
     if (isStaff) {
       // Jika sebelumnya membuka halaman admin spesifik (misal: /admin/manajemen)
-      if (fromPath && fromPath.startsWith('/admin')) {
-        navigate(fromPath, { replace: true });
+      if (fromPath && (fromPath.startsWith('/admin') || fromPath.startsWith('/manajemen'))) {
+        window.location.href = fromPath;
       } else {
-        // Login biasa dari website publik -> langsung ke Dasbor Admin untuk bekerja
-        navigate('/admin', { replace: true });
+        window.location.href = '/admin';
       }
       return;
     }
 
-    // 3. Untuk pengguna umum / pengunjung publik
-    if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin')) {
-      navigate(fromPath, { replace: true });
+    // 3. Jika pengguna adalah Penulis
+    const isAuthor = resolvedUser && (
+      resolvedUser.role === 'penulis' ||
+      resolvedUser.isVerifiedAuthor === true
+    );
+    if (isAuthor) {
+      if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin') && !fromPath.startsWith('/manajemen')) {
+        window.location.href = fromPath;
+      } else {
+        window.location.href = '/profil-saya';
+      }
       return;
     }
-    navigate('/', { replace: true });
-  };
 
-  // Jika pengguna sudah memiliki sesi login aktif, otomatis arahkan
-  useEffect(() => {
-    if (!isPending && user) {
-      redirectAfter(user);
+    // 4. Untuk pengguna umum / pengunjung publik
+    if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin') && !fromPath.startsWith('/manajemen')) {
+      window.location.href = fromPath;
+      return;
     }
-  }, [user, isPending]);
+    window.location.href = '/';
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -380,6 +392,42 @@ const LoginPage = () => {
           {/* ── LOGIN FORM ──────────────────────────────────── */}
           {mode === 'login' && (
             <form className="login-form" onSubmit={handleLogin}>
+              {user && (
+                <div style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  marginBottom: '14px',
+                  textAlign: 'center',
+                }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#1e40af' }}>
+                    Sesi aktif: <strong>{user.name || user.email}</strong> (<span style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>{user.role}</span>)
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => redirectAfter(user)}
+                      className="btn btn-primary"
+                      style={{ padding: '4px 12px', fontSize: '0.78rem' }}
+                    >
+                      Buka Dasbor
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await logout();
+                        setForm({ email: '', password: '', ...INITIAL_FORM });
+                      }}
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 12px', fontSize: '0.78rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}
+                    >
+                      Keluar / Ganti Akun
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {loginError && (
                 <div style={{
                   background: '#fee2e2',
@@ -418,14 +466,43 @@ const LoginPage = () => {
                   Daftar di sini
                 </button>
               </p>
-              <div className="info-note" style={{marginTop:'0.75rem'}}>
-                <span>🔑</span>
-                <div style={{fontSize:'0.78rem', display:'flex', flexDirection:'column', gap:'0.25rem'}}>
-                  <p>Super Admin: <strong>admin@perpusnas.go.id</strong> / <strong>adminpassword123</strong></p>
-                  <p>Reviewer (QC): <strong>personil@dev.local</strong> / <strong>developer123</strong></p>
-                  <p>Personil Redaksi: <strong>editor@penerbitan.com</strong> / <strong>password123</strong></p>
-                  <p>Penulis: <strong>penulis@sipena.id</strong> / <strong>penulis123</strong></p>
-                  <p>Pengunjung: <strong>pengunjung@sipena.id</strong> / <strong>pengunjung123</strong></p>
+              <div className="info-note" style={{marginTop:'0.75rem', flexDirection:'column', alignItems:'stretch'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'6px', marginBottom:'4px'}}>
+                  <span>🔑</span>
+                  <strong style={{fontSize:'0.8rem', color:'#1e40af'}}>Pilih Akun Testing (Klik untuk Isi Otomatis):</strong>
+                </div>
+                <div style={{display:'flex', flexDirection:'column', gap:'0.35rem'}}>
+                  {[
+                    { label: 'Super Admin', email: 'admin@perpusnas.go.id', pass: 'adminpassword123', role: 'admin' },
+                    { label: 'Reviewer (QC)', email: 'personil@dev.local', pass: 'developer123', role: 'reviewer' },
+                    { label: 'Personil Redaksi', email: 'editor@penerbitan.com', pass: 'password123', role: 'personil' },
+                    { label: 'Penulis', email: 'penulis@sipena.id', pass: 'penulis123', role: 'penulis' },
+                    { label: 'Pengunjung', email: 'pengunjung@sipena.id', pass: 'pengunjung123', role: 'pengunjung' },
+                  ].map(acc => (
+                    <button
+                      key={acc.email}
+                      type="button"
+                      onClick={() => fillCredentials(acc.email, acc.pass)}
+                      style={{
+                        textAlign: 'left',
+                        background: form.email === acc.email ? '#dbeafe' : 'transparent',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '4px',
+                        padding: '5px 8px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        color: '#1e3a8a',
+                        transition: 'background 0.15s',
+                      }}
+                      title={`Klik untuk otomatis mengisi email & kata sandi ${acc.label}`}
+                    >
+                      <span><strong>{acc.label}:</strong> {acc.email}</span>
+                      <span style={{color: '#64748b', fontFamily: 'monospace'}}>({acc.pass})</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </form>

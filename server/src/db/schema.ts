@@ -267,6 +267,8 @@ export const events = pgTable("events", {
     certificateToken: text("certificate_token"),
     certificateTemplateUrl: text("certificate_template_url"),
     certNamePosY: integer("cert_name_pos_y").default(96),
+    certFontSize: integer("cert_font_size").default(24),
+    certFontFamily: text("cert_font_family").default("helvetica"),
     isClaimOpen: boolean("is_claim_open").default(false),
     claimOpensAt: text("claim_opens_at"),
     status: text("status").default("Akan Datang"), // 'Akan Datang' | 'Segera' | 'Selesai'

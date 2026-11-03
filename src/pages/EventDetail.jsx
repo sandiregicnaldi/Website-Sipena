@@ -122,6 +122,9 @@ const EventDetail = () => {
       const templateUrl = event.certificateTemplateUrl || event.certificate_template_url;
       const recipientName = certData?.name || user?.namaLengkap || user?.name || 'Peserta Terdaftar';
       const namePosY = Number(event.certNamePosY || event.cert_name_pos_y) || 96;
+      const certFontSize = Number(event.certFontSize || event.cert_font_size) || 24;
+      const certFontFamily = String(event.certFontFamily || event.cert_font_family || 'helvetica').toLowerCase();
+      const validFont = ['helvetica', 'times', 'courier'].includes(certFontFamily) ? certFontFamily : 'helvetica';
       const certNumber = certData?.certificateNumber || certData?.certificate_number || `SIPENA/CERT/${new Date().getFullYear()}/XI/0001`;
 
       let hasCustomTemplate = false;
@@ -227,18 +230,18 @@ const EventDetail = () => {
         doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
       }
 
-      // Nama Peserta (Menggunakan posisi vertikal kustom certNamePosY jika ditentukan)
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
+      // Nama Peserta (Menggunakan posisi vertikal kustom certNamePosY, ukuran font, dan jenis font)
+      doc.setFontSize(certFontSize);
+      doc.setFont(validFont, 'bold');
       doc.setTextColor(30, 58, 138);
       doc.text(recipientName, 148.5, namePosY, { align: 'center' });
 
       // Instansi jika ada
       if (certData?.institution) {
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(Math.max(9, Math.round(certFontSize * 0.45)));
+        doc.setFont(validFont, 'italic');
         doc.setTextColor(71, 85, 105);
-        doc.text(certData.institution, 148.5, namePosY + 8, { align: 'center' });
+        doc.text(certData.institution, 148.5, namePosY + (certFontSize * 0.35), { align: 'center' });
       }
 
       const fileName = `Sertifikat_${(event.judul || event.title || 'Kegiatan').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;

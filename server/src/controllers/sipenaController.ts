@@ -1149,6 +1149,8 @@ function sanitizeEventPayload(body: any) {
     if (body.certificateToken !== undefined) payload.certificateToken = body.certificateToken ? String(body.certificateToken).trim().toUpperCase() : null;
     if (body.certificateTemplateUrl !== undefined) payload.certificateTemplateUrl = body.certificateTemplateUrl;
     if (body.certNamePosY !== undefined) payload.certNamePosY = Number(body.certNamePosY) || 96;
+    if (body.certFontSize !== undefined) payload.certFontSize = Number(body.certFontSize) || 24;
+    if (body.certFontFamily !== undefined) payload.certFontFamily = String(body.certFontFamily || 'helvetica').trim().toLowerCase();
     if (body.isClaimOpen !== undefined) payload.isClaimOpen = body.isClaimOpen;
     if (body.claimOpensAt !== undefined) payload.claimOpensAt = body.claimOpensAt;
     if (body.status !== undefined) payload.status = body.status;

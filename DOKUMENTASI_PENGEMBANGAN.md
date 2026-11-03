@@ -1692,6 +1692,87 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
    - Pergeseran slider dan pengetikan angka langsung menggerakkan garis panduan nama di kanvas secara instan tanpa lag.
    - Pemilihan template kustom langsung mengganti background kanvas visualizer secara realtime.
 
+---
+
+## BAB 39: KUSTOMISASI UKURAN FONT & JENIS FONT PADA PREVIEW TEMPLATE SERTIFIKAT DAN GENERASI PDF
+
+**Tanggal:** 3 November 2026  
+**Status:** Teruji & Terselesaikan (*Production Ready*)
+
+---
+
+### A. Latar Belakang & Kebutuhan Pengguna
+Pengguna menginstruksikan penambahan fitur tipografi untuk penempatan nama pada template sertifikat kegiatan:
+> *"tambahkan ubah ukuran font dan juga jenis font pada preview template sertifikat"*
+
+Sebelumnya:
+- Ukuran font teks nama peserta masih di-hardcode sebesar $24\text{ pt}$.
+- Jenis font teks nama peserta masih di-hardcode ke `helvetica` (sans-serif standar).
+- Desain piagam penghargaan memiliki gaya ornamen yang beragam: ada yang bernuansa formal/klasik yang membutuhkan font serif (seperti Times New Roman), ada yang modern kontemporer (Sans-Serif), atau sertifikat keahlian teknis (Monospace).
+- Panjang nama peserta juga bervariasi (misalnya nama panjang bergelar membutuhkan ukuran font lebih kompak seperti $18-20\text{ pt}$, sedangkan nama singkat terlihat lebih gagah dengan $28-32\text{ pt}$).
+
+---
+
+### B. Arsitektur Data & Basis Data PostgreSQL
+1. **Penambahan Kolom Database (`events`):**
+   - `cert_font_size`: tipe `integer`, nilai default `24` (dalam satuan point pt jsPDF).
+   - `cert_font_family`: tipe `text`, nilai default `'helvetica'`.
+2. **Skema Drizzle ORM (`server/src/db/schema.ts`):**
+   ```typescript
+   certFontSize: integer("cert_font_size").default(24),
+   certFontFamily: text("cert_font_family").default("helvetica"),
+   ```
+3. **Migrasi Otomatis Server (`server/src/index.ts` & `server/src/scripts/migrate_cert_cols.ts`):**
+   - Menambahkan query idempotence:
+     ```sql
+     ALTER TABLE events ADD COLUMN IF NOT EXISTS cert_font_size integer DEFAULT 24;
+     ALTER TABLE events ADD COLUMN IF NOT EXISTS cert_font_family text DEFAULT 'helvetica';
+     ```
+4. **Sanitisasi Payload API Backend (`server/src/controllers/sipenaController.ts`):**
+   - Menjamin nilai `certFontSize` dan `certFontFamily` tersimpan aman saat proses `create` maupun `update` kegiatan.
+5. **Pemetaan Klien Frontend (`src/context/EventContext.jsx`):**
+   - Menyertakan `certFontSize` dan `certFontFamily` pada pemetaan `mapToFrontend` dan `mapToBackend`.
+
+---
+
+### C. Implementasi Antarmuka Admin & Live Typography Visualizer
+Pada `src/pages/admin/AdminKegiatan.jsx`:
+1. **Pilihan Font Family Terintegrasi (`CERT_FONT_FAMILIES`):**
+   - **Sans-Serif (Modern / Helvetica / Arial):** Bersih, modern, dan kontemporer (`'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif`).
+   - **Serif (Klasik Piagam / Times New Roman):** Formal, megah, bernuansa piagam penghargaan resmi (`'Times New Roman', Times, Georgia, serif`).
+   - **Monospace (Mesin Ketik / Courier):** Nuansa dokumen teknis atau stempel registrasi (`'Courier New', Courier, monospace`).
+   - Dilengkapi boks contoh teks font (*live sample text*): `Aa: Dr. Ir. Budi Santoso, M.Kom.` yang merender jenis font secara langsung di panel kontrol.
+2. **Kontrol Ukuran Font Dinamis (Range & Input Angka):**
+   - Rentang ukuran dari **$14\text{ pt}$ hingga $36\text{ pt}$**.
+   - Dilengkapi slider range realtime dan input angka.
+   - Tombol cepat preset: **Kecil ($18\text{ pt}$)**, **Standar ($24\text{ pt}$)**, dan **Besar ($30\text{ pt}$)**.
+3. **Simulasi Kanvas Realtime Berbasis Vektor & Skala Aspek:**
+   - Badge nama peserta di kanvas A4 Landscape (`Nama Lengkap Peserta, S.Kom., M.T.`) langsung merespons perubahan:
+     $$\text{fontSize} = \frac{\text{certFontSize}}{24} \times \text{clamp}(9\text{px}, 1.8\text{vw}, 13.5\text{px})$$
+   - Mengubah `fontFamily` CSS sesuai opsi yang dipilih tanpa jeda (*zero latency*).
+   - Pill informasi pada kanvas menampilkan metadata lengkap: `Y: ... mm • Ukuran: ... pt • Font: ...`.
+
+---
+
+### D. Penerapan Generasi PDF Sertifikat Dinamis
+1. **Halaman Publik Klaim Kegiatan (`src/pages/EventDetail.jsx`):**
+   - Fungsi unduh sertifikat membaca `certFontSize` dan `certFontFamily` dari data kegiatan.
+   - Mengaplikasikan `doc.setFont(validFont, 'bold')` dan `doc.setFontSize(certFontSize)` pada nama peserta.
+   - Ukuran font teks instansi peserta menyesuaikan secara proporsional.
+2. **Dasbor Penulis (`src/pages/AuthorDashboard.jsx`):**
+   - Riwayat klaim memetakan `certFontSize` dan `certFontFamily`.
+   - Tombol unduh sertifikat mencetak nama peserta sesuai konfigurasi tipografi yang ditetapkan panitia/admin.
+3. **Unduh Guideline Template Admin (`handleDownloadCertificateTemplate`):**
+   - Mencetak placeholder acuan lengkap dengan keterangan koordinat Y, ukuran font pt, dan jenis font yang aktif.
+
+---
+
+### E. Hasil Pengujian & Verifikasi
+1. **Kompilasi Frontend (`npm run build`):** Sukses dalam 1.80s (0 error).
+2. **Kompilasi Backend (`npm run build`):** Sukses (0 error).
+3. **Pengujian Database:** Kolom `cert_font_size` dan `cert_font_family` terverifikasi aktif pada tabel PostgreSQL `events`.
+
+
 
 
 

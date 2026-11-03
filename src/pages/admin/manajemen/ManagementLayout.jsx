@@ -26,7 +26,7 @@ import FloatingNoteAlert from '../../../components/FloatingNoteAlert';
 import '../../../styles/manajemen.css';
 
 export default function ManagementLayout() {
-  const { isAdmin, isLoading } = useAuth();
+  const { user, isAdmin, isLoading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -56,6 +56,11 @@ export default function ManagementLayout() {
     );
   }
 
+  // Jika belum login, arahkan otomatis ke login
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
   if (!isAdmin) {
     return (
       <div className="admin-shell min-h-screen bg-[#F3F4F6] flex items-center justify-center p-4">
@@ -65,14 +70,22 @@ export default function ManagementLayout() {
           </div>
           <h2 className="text-xl font-bold text-slate-800 mb-2">Akses Terbatas</h2>
           <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-            Anda tidak memiliki izin untuk mengakses ruang kerja manajemen penerbitan. Halaman ini hanya untuk personil redaksi.
+            Anda saat ini masuk sebagai <strong>{user?.name || user?.email}</strong> (Peran: <code className="bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-800">{user?.role}</code>). Halaman ini khusus untuk Administrator dan personil redaksi.
           </p>
-          <button
-            onClick={() => navigate('/login', { state: { from: location } })}
-            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-md shadow-blue-600/20"
-          >
-            Kembali ke Login
-          </button>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => navigate('/profil-saya')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm"
+            >
+              Dasbor Penulis
+            </button>
+            <button
+              onClick={async () => { await logout(); }}
+              className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl text-sm border border-rose-200 transition"
+            >
+              Keluar & Ganti Akun
+            </button>
+          </div>
         </div>
       </div>
     );
