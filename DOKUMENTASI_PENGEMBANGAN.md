@@ -1290,6 +1290,32 @@ Untuk menghadirkan pengalaman pengguna (*User Experience*) yang mudah (*easy*), 
    - Pencegahan klaim ganda terbukti aman via unique constraint PostgreSQL (*PASS*).
    - Pengambilan sertifikat pengguna pada profil berhasil (*PASS*).
 
+---
 
+## BAB 33: FITUR UPLOAD BANNER KEGIATAN & STANDAR SPESIFIKASI BANNER
 
+### A. Latar Belakang & Kebutuhan
+Sebelumnya, formulir tambah dan edit kegiatan di panel admin (`/admin/kegiatan`) hanya menyediakan kolom input teks URL manual untuk banner kegiatan. Hal ini menyulitkan admin jika ingin mengunggah file banner/poster langsung dari komputer lokal. Selain itu, diperlukan rekomendasi spesifikasi ukuran banner yang ideal agar tampilan kartu kegiatan maupun header hero detail kegiatan proporsional dan tidak terpotong.
+
+### B. Rekomendasi Ukuran & Spesifikasi Banner Ideal
+Berdasarkan layout UI SiPena (kartu grid `EventsPage` dan hero header `EventDetail`):
+1. **Aspek Rasio Utama:** **16:9** (Widescreen Standar).
+2. **Resolusi Ideal (Desktop & Mobile):**
+   - **1920 × 1080 piksel** (Full HD) — *Sangat Direkomendasikan* untuk kejernihan tajam pada layar Retina/HiDPI.
+   - **1280 × 720 piksel** (HD Standar) — Pilihan alternatif yang ringan.
+3. **Format Gambar yang Didukung:** **WEBP**, **JPG / JPEG**, atau **PNG**. Format WebP sangat dianjurkan untuk kompresi maksimal tanpa mengurangi kualitas.
+4. **Batas Ukuran File:** Maksimal **5 MB** (disarankan di bawah **2 MB** agar loading page tetap instan).
+5. **Safe Zone / Area Aman Konten:**
+   - Karena banner di halaman `EventDetail` digunakan sebagai background hero dengan overlay teks, letakkan elemen grafis/teks penting pada bagian tengah (*center safe area*) dan hindari menaruh teks kecil di tepi pinggir.
+
+### C. Implementasi Teknis (`src/pages/admin/AdminKegiatan.jsx`)
+1. **File Upload Integration:**
+   - Menghubungkan input file dengan `SipenaAPI.uploadCover(file)` yang mengunggah ke endpoint backend `/api/upload/cover`.
+   - Validasi tipe file sisi klien (`image/*`) dan pembatasan ukuran file maksimal 5 MB.
+2. **Interactive Preview Card:**
+   - Menampilkan cuplikan visual banner berasio 16:9 secara langsung saat banner sudah terpasang.
+   - Tautan langsung *"Buka Gambar Penuh ↗"* untuk verifikasi kualitas gambar.
+   - Tombol cepat *"Hapus"* dengan icon tong sampah untuk mereset banner.
+3. **Dual Input Mode:**
+   - Admin dapat memilih file lokal dari komputer lewat tombol *"Pilih File Banner"*, atau tetap dapat menempelkan URL gambar eksternal (misal: Unsplash atau cloud storage).
 

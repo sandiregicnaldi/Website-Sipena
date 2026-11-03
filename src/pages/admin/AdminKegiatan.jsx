@@ -3,10 +3,11 @@ import './AdminLayout.css';
 import { 
   Users, FileDown, Calendar, Globe, Edit, Trash2, 
   CheckCircle, Plus, Save, KeyRound, Sparkles, RefreshCw, 
-  ToggleLeft, ToggleRight, Loader2, Award, Clock
+  ToggleLeft, ToggleRight, Loader2, Award, Clock, Upload, Image, X
 } from 'lucide-react';
 import { useEvent, checkIfClaimOpen } from '../../context/EventContext';
 import { useDialog } from '../../context/DialogContext';
+import { SipenaAPI } from '../../lib/api';
 import AdminPagination from '../../components/AdminPagination';
 
 const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
@@ -15,7 +16,8 @@ const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Se
 const EMPTY_FORM = {
   judul: '', tanggal: '', jamKegiatan: '09:00 - 12:00 WIB', lokasi: '', urlZoom: '',
   narasumber: [''], penjelasan: '', status: 'Akan Datang',
-  peserta: 0, certificateToken: '', isClaimOpen: null, claimOpensAt: null
+  peserta: 0, certificateToken: '', isClaimOpen: null, claimOpensAt: null,
+  bannerUrl: ''
 };
 
 const Toast = ({ msg, onClose }) => (
@@ -47,8 +49,8 @@ const AdminKegiatan = () => {
   const [loadingPeserta, setLoadingPeserta] = useState(false);
   const [togglingId, setTogglingId]   = useState(null);
   const [toast, setToast]             = useState('');
-
-  const fileRef = useRef(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const bannerFileRef = useRef(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -91,6 +93,37 @@ const AdminKegiatan = () => {
     }
     const year = new Date().getFullYear();
     return `SIPENA-${rand}-${year}`;
+  };
+
+  const handleBannerUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('File banner harus berupa format gambar (JPG, PNG, atau WEBP).');
+      if (bannerFileRef.current) bannerFileRef.current.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Ukuran gambar banner maksimal 5 MB.');
+      if (bannerFileRef.current) bannerFileRef.current.value = '';
+      return;
+    }
+    try {
+      setUploadingBanner(true);
+      const res = await SipenaAPI.uploadCover(file);
+      if (res?.url) {
+        setModal(p => ({ ...p, data: { ...p.data, bannerUrl: res.url } }));
+        showToast('Banner kegiatan berhasil diunggah!');
+      } else {
+        throw new Error('Gagal mengunggah banner kegiatan.');
+      }
+    } catch (err) {
+      console.error('Upload banner failed:', err);
+      showToast(err.response?.data?.error || err.message || 'Gagal mengunggah banner.');
+    } finally {
+      setUploadingBanner(false);
+      if (bannerFileRef.current) bannerFileRef.current.value = '';
+    }
   };
 
   const handleSave = async (form) => {
@@ -480,17 +513,139 @@ const AdminKegiatan = () => {
                 <textarea style={{ ...inputStyle, resize: 'vertical' }} rows="3" required value={modal.data.penjelasan || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, penjelasan: e.target.value } }))} placeholder="Deskripsi mengenai kegiatan ini..."></textarea>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={labelStyle}>URL Banner Kegiatan (Opsional)</label>
-                  <input style={inputStyle} type="url" value={modal.data.bannerUrl || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, bannerUrl: e.target.value } }))} placeholder="https://..." />
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  <label style={{ ...labelStyle, marginBottom: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Image size={16} color="var(--primary-color)" /> Banner / Poster Kegiatan
+                  </label>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', background: '#e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                    Rekomendasi: 1920 × 1080 px (16:9), maks 5 MB
+                  </span>
                 </div>
-                <div>
-                  <label style={labelStyle}>Status Kegiatan *</label>
-                  <select style={inputStyle} required value={modal.data.status} onChange={e => setModal(p => ({ ...p, data: { ...p.data, status: e.target.value } }))}>
-                    {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+
+                {modal.data.bannerUrl && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    padding: '0.6rem 0.75rem',
+                    background: '#ffffff',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                      <img
+                        src={modal.data.bannerUrl}
+                        alt="Banner Preview"
+                        style={{
+                          width: '88px',
+                          height: '50px',
+                          objectFit: 'cover',
+                          borderRadius: '4px',
+                          border: '1px solid #cbd5e1',
+                          flexShrink: 0
+                        }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                      <div style={{ minWidth: 0, fontSize: '0.78rem' }}>
+                        <div style={{ fontWeight: 600, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <CheckCircle size={14} /> Banner Siap Digunakan
+                        </div>
+                        <a
+                          href={modal.data.bannerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#2563eb', textDecoration: 'underline', fontSize: '0.72rem', wordBreak: 'break-all' }}
+                        >
+                          Buka Gambar Penuh ↗
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModal(p => ({ ...p, data: { ...p.data, bannerUrl: '' } }));
+                        if (bannerFileRef.current) bannerFileRef.current.value = '';
+                      }}
+                      className="btn btn-outline"
+                      style={{
+                        padding: '0.3rem 0.6rem',
+                        fontSize: '0.75rem',
+                        color: 'var(--danger)',
+                        borderColor: '#fca5a5',
+                        background: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Trash2 size={13} /> Hapus
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 2fr', gap: '0.75rem', alignItems: 'center' }}>
+                  <div>
+                    <input
+                      ref={bannerFileRef}
+                      type="file"
+                      id="bannerFileInput"
+                      style={{ display: 'none' }}
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleBannerUpload}
+                      disabled={uploadingBanner}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => bannerFileRef.current?.click()}
+                      disabled={uploadingBanner}
+                      className="btn btn-outline"
+                      style={{
+                        width: '100%',
+                        padding: '0.55rem 0.75rem',
+                        fontSize: '0.8rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        background: '#ffffff',
+                        borderColor: '#cbd5e1',
+                        color: 'var(--text-primary)',
+                        cursor: uploadingBanner ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {uploadingBanner ? (
+                        <>
+                          <Loader2 size={15} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                          Mengunggah...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={15} color="var(--primary-color)" />
+                          Pilih File Banner
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div>
+                    <input
+                      style={{ ...inputStyle, fontSize: '0.8rem', padding: '0.55rem 0.75rem' }}
+                      type="url"
+                      value={modal.data.bannerUrl || ''}
+                      onChange={e => setModal(p => ({ ...p, data: { ...p.data, bannerUrl: e.target.value } }))}
+                      placeholder="Atau tempel URL gambar (https://...)"
+                    />
+                  </div>
                 </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Status Kegiatan *</label>
+                <select style={inputStyle} required value={modal.data.status} onChange={e => setModal(p => ({ ...p, data: { ...p.data, status: e.target.value } }))}>
+                  {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
