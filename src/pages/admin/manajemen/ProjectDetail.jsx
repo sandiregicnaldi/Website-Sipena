@@ -5,6 +5,7 @@ import { CATEGORIES, STATUS_LABELS } from '../../../data/categories'
 import { api } from '../../../services/api'
 import { useDialog } from '../../../context/DialogContext'
 import Toast from '../../../components/Toast'
+import ImageCropModal from '../../../components/ImageCropModal'
 
 export default function ProjectDetail() {
     const { id } = useParams()
@@ -20,6 +21,13 @@ export default function ProjectDetail() {
     const [draggedStageIdx, setDraggedStageIdx] = useState(null)
     const [dragOverStageIdx, setDragOverStageIdx] = useState(null)
     const [isReordering, setIsReordering] = useState(false)
+    const [cropModal, setCropModal] = useState({
+        isOpen: false,
+        imageSrc: null,
+        title: 'Sesuaikan & Potong Sampul Depan',
+        aspectRatio: 3 / 4,
+        fileName: 'cover.webp',
+    })
 
     const getStageDynamicScore = (proj, stg, catsMap = categoriesMap) => {
         if (!proj || !stg) return 0
@@ -505,7 +513,7 @@ export default function ProjectDetail() {
         }
     }
 
-    const handleCoverUpload = async (e) => {
+    const handleCoverUpload = (e) => {
         const file = e.target.files?.[0]
         if (!file) return
         if (!canEditStageAsset) {
@@ -513,34 +521,49 @@ export default function ProjectDetail() {
             e.target.value = ''
             return
         }
-        if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
-            showToast('File sampul harus berformat PNG (.png)', 'error')
+        if (!file.type.startsWith('image/')) {
+            showToast('File sampul harus berformat gambar (.png, .jpg, .webp)', 'error')
             e.target.value = ''
             return
         }
-        if (file.size > 2 * 1024 * 1024) {
-            showToast('Ukuran file sampul maksimal 2 MB', 'error')
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Ukuran file sampul maksimal 5 MB', 'error')
             e.target.value = ''
             return
         }
 
+        const reader = new FileReader()
+        reader.onload = () => {
+            setCropModal({
+                isOpen: true,
+                imageSrc: reader.result,
+                title: 'Sesuaikan & Potong Sampul Buku (3:4)',
+                aspectRatio: 3 / 4,
+                fileName: (file.name || 'cover').replace(/\.[^/.]+$/, "") + '-cropped.webp'
+            })
+        }
+        reader.readAsDataURL(file)
+        e.target.value = ''
+    }
+
+    const handleCropCoverConfirm = async (croppedFile) => {
         setIsUploadingAsset(true)
         try {
-            const res = await api.uploads.uploadCover(file)
-            if (res.url) {
+            const res = await api.uploads.uploadCover(croppedFile)
+            if (res?.url) {
                 await handleSaveMetadata({
                     coverUrl: res.url,
-                    coverFileName: file.name
-                }, 'File sampul depan asli berhasil diunggah!')
+                    coverFileName: croppedFile.name || 'cover.webp'
+                }, 'File sampul depan asli berhasil dipotong dan diunggah!')
             } else {
-                throw new Error(res.error || 'Gagal mengunggah gambar sampul')
+                throw new Error(res?.error || 'Gagal mengunggah gambar sampul')
             }
         } catch (err) {
             console.error('Upload cover failed:', err)
             showToast(err.message || 'Gagal mengunggah file sampul', 'error')
         } finally {
             setIsUploadingAsset(false)
-            e.target.value = ''
+            setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }))
         }
     }
 
@@ -2078,7 +2101,7 @@ export default function ProjectDetail() {
                                                     onClick={() => coverFileRef.current?.click()}
                                                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}
                                                 >
-                                                    {isUploadingAsset ? 'Mengunggah...' : '📤 Unggah Sampul Depan (.PNG)'}
+                                                    {isUploadingAsset ? 'Mengunggah...' : '📤 Unggah Sampul Depan'}
                                                 </button>
                                             ) : (
                                                 <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
@@ -2092,7 +2115,7 @@ export default function ProjectDetail() {
                                         type="file"
                                         ref={coverFileRef}
                                         onChange={handleCoverUpload}
-                                        accept=".png,image/png"
+                                        accept="image/png,image/jpeg,image/webp"
                                         style={{ display: 'none' }}
                                     />
                                 </div>
@@ -3534,6 +3557,18 @@ export default function ProjectDetail() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {cropModal.isOpen && (
+                <ImageCropModal
+                    isOpen={cropModal.isOpen}
+                    imageSrc={cropModal.imageSrc}
+                    title={cropModal.title}
+                    aspectRatio={cropModal.aspectRatio}
+                    fileName={cropModal.fileName}
+                    onConfirm={handleCropCoverConfirm}
+                    onCancel={() => setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }))}
+                />
             )}
 
             <Toast message={toast.message} type={toast.type} open={toast.open} onClose={closeToast} />

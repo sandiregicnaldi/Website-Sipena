@@ -9,6 +9,7 @@ import { useEvent, checkIfClaimOpen } from '../../context/EventContext';
 import { useDialog } from '../../context/DialogContext';
 import { SipenaAPI } from '../../lib/api';
 import AdminPagination from '../../components/AdminPagination';
+import ImageCropModal from '../../components/ImageCropModal';
 
 const STATUS_LIST  = ['Akan Datang', 'Segera', 'Selesai'];
 const STATUS_BADGE = { 'Akan Datang': 'badge-blue', 'Segera': 'badge-amber', 'Selesai': 'badge-green' };
@@ -50,6 +51,11 @@ const AdminKegiatan = () => {
   const [togglingId, setTogglingId]   = useState(null);
   const [toast, setToast]             = useState('');
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [cropModal, setCropModal] = useState({
+    isOpen: false,
+    imageSrc: null,
+    fileName: 'banner-kegiatan.jpg',
+  });
   const bannerFileRef = useRef(null);
 
   useEffect(() => {
@@ -95,7 +101,7 @@ const AdminKegiatan = () => {
     return `SIPENA-${rand}-${year}`;
   };
 
-  const handleBannerUpload = async (e) => {
+  const handleBannerUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -108,12 +114,27 @@ const AdminKegiatan = () => {
       if (bannerFileRef.current) bannerFileRef.current.value = '';
       return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCropModal({
+        isOpen: true,
+        imageSrc: ev.target.result,
+        fileName: file.name,
+      });
+    };
+    reader.readAsDataURL(file);
+    if (bannerFileRef.current) bannerFileRef.current.value = '';
+  };
+
+  const handleCropBannerConfirm = async (croppedFile) => {
     try {
+      setCropModal(prev => ({ ...prev, isOpen: false }));
       setUploadingBanner(true);
-      const res = await SipenaAPI.uploadCover(file);
+      const res = await SipenaAPI.uploadCover(croppedFile);
       if (res?.url) {
         setModal(p => ({ ...p, data: { ...p.data, bannerUrl: res.url } }));
-        showToast('Banner kegiatan berhasil diunggah!');
+        showToast('Banner kegiatan berhasil dipotong & diunggah!');
       } else {
         throw new Error('Gagal mengunggah banner kegiatan.');
       }
@@ -122,7 +143,6 @@ const AdminKegiatan = () => {
       showToast(err.response?.data?.error || err.message || 'Gagal mengunggah banner.');
     } finally {
       setUploadingBanner(false);
-      if (bannerFileRef.current) bannerFileRef.current.value = '';
     }
   };
 
@@ -742,6 +762,17 @@ const AdminKegiatan = () => {
       )}
 
       {toast && <Toast msg={toast} onClose={() => setToast('')} />}
+
+      <ImageCropModal
+        isOpen={cropModal.isOpen}
+        imageSrc={cropModal.imageSrc}
+        aspectRatio={16 / 9}
+        cropShape="rect"
+        title="Sesuaikan & Potong Banner Kegiatan"
+        fileName={cropModal.fileName}
+        onConfirm={handleCropBannerConfirm}
+        onCancel={() => setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }))}
+      />
     </div>
   );
 };

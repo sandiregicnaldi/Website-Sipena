@@ -1,13 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { SipenaAPI } from '../lib/api';
 import {
   User, Mail, MapPin, Calendar, Building2, Briefcase,
-  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download, PenTool, ExternalLink, Key, Sparkles, Clock, AlertCircle, BookOpen
+  Globe, FileText, Plus, Trash2, Save, Camera, ArrowLeft, Link as LinkIcon, Type, Hash, AlignLeft, Link2, CheckCircle, Download, PenTool, ExternalLink, Key, Sparkles, Clock, AlertCircle, BookOpen, Loader2, Award, Check
 } from 'lucide-react';
 import jsPDF from 'jspdf';
+import ImageCropModal from '../components/ImageCropModal';
 import './AuthorDashboard.css';
 
 const AuthorDashboard = () => {
@@ -77,9 +78,58 @@ const AuthorDashboard = () => {
   const [kegiatanList, setKegiatanList] = useState([]);
   const [loadingKegiatan, setLoadingKegiatan] = useState(false);
 
+  const location = useLocation();
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState('biodata');
+  const [activeTab, setActiveTab] = useState(location.state?.tab || 'biodata');
   const [submittingNaskah, setSubmittingNaskah] = useState(false);
+
+  // Responsif jika ada perpindahan tab melalui navigation state
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state?.tab]);
+
+  // Fungsi muat sertifikat kegiatan
+  const fetchUserCertificates = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoadingKegiatan(true);
+      const data = await SipenaAPI.getMyCertificates();
+      if (Array.isArray(data)) {
+        setKegiatanList(data.map(item => ({
+          id: item.id,
+          eventId: item.eventId,
+          judul: item.event?.title || 'Kegiatan SiPena',
+          tanggal: item.event?.date || item.claimedAt,
+          jamKegiatan: item.event?.time || '',
+          certificateNumber: item.certificateNumber,
+          tokenUsed: item.tokenUsed,
+          statusPresensi: item.status || 'Hadir',
+          claimedAt: item.claimedAt,
+          nama: item.name,
+          instansi: item.institution,
+        })));
+      }
+    } catch (err) {
+      console.warn('Failed to load user certificates:', err);
+    } finally {
+      setLoadingKegiatan(false);
+    }
+  }, [user]);
+
+  // Muat sertifikat saat user siap atau saat tab kegiatan dibuka
+  useEffect(() => {
+    if (user) {
+      fetchUserCertificates();
+    }
+  }, [user, fetchUserCertificates]);
+
+  useEffect(() => {
+    if (activeTab === 'kegiatan' && user) {
+      fetchUserCertificates();
+    }
+  }, [activeTab, user, fetchUserCertificates]);
 
   // Muat riwayat pengajuan naskah asli dari database
   useEffect(() => {
@@ -105,9 +155,9 @@ const AuthorDashboard = () => {
           }));
           setNaskahList(mapped);
 
-          // Jika ada naskah yang sudah terbit, otomatis tab Profil Penulis Publik terbuka
+          // Jika ada naskah yang sudah terbit dan belum ada tab spesifik yang dipilih via state, otomatis tab Profil Penulis Publik terbuka
           const hasPublished = mapped.some(n => n.rawStatus === 'published' || n.status === 'Sudah Terbit');
-          if (hasPublished) {
+          if (hasPublished && !location.state?.tab && activeTab === 'biodata') {
             setActiveTab('karya');
           }
         }
@@ -116,35 +166,8 @@ const AuthorDashboard = () => {
       }
     };
 
-    const fetchUserCertificates = async () => {
-      try {
-        setLoadingKegiatan(true);
-        const data = await SipenaAPI.getMyCertificates();
-        if (Array.isArray(data)) {
-          setKegiatanList(data.map(item => ({
-            id: item.id,
-            eventId: item.eventId,
-            judul: item.event?.title || 'Kegiatan SiPena',
-            tanggal: item.event?.date || item.claimedAt,
-            jamKegiatan: item.event?.time || '',
-            certificateNumber: item.certificateNumber,
-            tokenUsed: item.tokenUsed,
-            statusPresensi: item.status || 'Hadir',
-            claimedAt: item.claimedAt,
-            nama: item.name,
-            instansi: item.institution,
-          })));
-        }
-      } catch (err) {
-        console.warn('Failed to load user certificates:', err);
-      } finally {
-        setLoadingKegiatan(false);
-      }
-    };
-
     fetchUserManuscripts();
-    fetchUserCertificates();
-  }, [user]);
+  }, [user, location.state?.tab]);
 
   const hasPublishedManuscript = naskahList.some(n => n.status === 'Sudah Terbit' || n.rawStatus === 'published');
   const hasAuthorAccess = isAuthor || user?.role === 'penulis' || hasPublishedManuscript;
@@ -174,18 +197,42 @@ const AuthorDashboard = () => {
 
 
 
+  const [cropModal, setCropModal] = useState({
+    isOpen: false,
+    imageSrc: null,
+    fileName: 'foto-profil.jpg',
+  });
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast({ message: 'Ukuran foto maksimal 5 MB', type: 'error' });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
       const reader = new FileReader();
-      reader.onload = (ev) => setForm(prev => ({ ...prev, fotoProfil: ev.target.result }));
+      reader.onload = (ev) => {
+        setCropModal({
+          isOpen: true,
+          imageSrc: ev.target.result,
+          fileName: file.name,
+        });
+      };
       reader.readAsDataURL(file);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleCropConfirm = (croppedFile, croppedDataUrl) => {
+    setForm(prev => ({ ...prev, fotoProfil: croppedDataUrl }));
+    setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }));
+    showToast({ message: 'Foto profil berhasil dipotong. Jangan lupa klik "Simpan Perubahan"!', type: 'success' });
   };
 
   const handleAddKarya = () => {
@@ -330,105 +377,121 @@ const AuthorDashboard = () => {
     }
   };
 
+  // Helper format tanggal Indonesia aman
+  const formatTanggal = (d) => {
+    if (!d) return '-';
+    const parsed = new Date(d);
+    if (isNaN(parsed.getTime())) return '-';
+    return parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
   const downloadSertifikat = (kegiatan) => {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const width = 297;
-    const height = 210;
+    if (!kegiatan) return;
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const width = 297;
+      const height = 210;
 
-    // Background
-    doc.setFillColor(250, 250, 252);
-    doc.rect(0, 0, width, height, 'F');
+      // Background
+      doc.setFillColor(250, 250, 252);
+      doc.rect(0, 0, width, height, 'F');
 
-    // Bingkai ganda elegan (Biru Perpusnas & Emas)
-    doc.setDrawColor(30, 58, 138); // Blue 900
-    doc.setLineWidth(2.5);
-    doc.rect(10, 10, width - 20, height - 20);
+      // Bingkai ganda elegan (Biru Perpusnas & Emas)
+      doc.setDrawColor(30, 58, 138); // Blue 900
+      doc.setLineWidth(2.5);
+      doc.rect(10, 10, width - 20, height - 20);
 
-    doc.setDrawColor(202, 138, 4); // Amber 600
-    doc.setLineWidth(0.8);
-    doc.rect(14, 14, width - 28, height - 28);
+      doc.setDrawColor(202, 138, 4); // Amber 600
+      doc.setLineWidth(0.8);
+      doc.rect(14, 14, width - 28, height - 28);
 
-    // Header Lembaga
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 58, 138);
-    doc.text('PERPUSNAS PRESS • PERPUSTAKAAN NASIONAL REPUBLIK INDONESIA', 148.5, 30, { align: 'center' });
-
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text('Sistem Informasi & Pengelolaan Penerbitan Buku SiPena', 148.5, 36, { align: 'center' });
-
-    // Judul Sertifikat
-    doc.setFontSize(26);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text('SERTIFIKAT KEHADIRAN', 148.5, 54, { align: 'center' });
-
-    // Nomor Registrasi Sertifikat Resmi
-    const certNumber = kegiatan.certificateNumber || `SIPENA/CERT/${new Date().getFullYear()}/XI/0001`;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
-
-    // Diberikan kepada
-    doc.setFontSize(12);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Diberikan dengan hormat kepada:', 148.5, 80, { align: 'center' });
-
-    // Nama Peserta
-    const recipientName = kegiatan.nama || user.namaLengkap || user.name || user.username || 'Peserta Terdaftar';
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 58, 138);
-    doc.text(recipientName, 148.5, 96, { align: 'center' });
-
-    // Instansi jika ada
-    if (kegiatan.instansi) {
+      // Header Lembaga
       doc.setFontSize(11);
-      doc.setFont('helvetica', 'italic');
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text('PERPUSNAS PRESS • PERPUSTAKAAN NASIONAL REPUBLIK INDONESIA', 148.5, 30, { align: 'center' });
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Sistem Informasi & Pengelolaan Penerbitan Buku SiPena', 148.5, 36, { align: 'center' });
+
+      // Judul Sertifikat
+      doc.setFontSize(26);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('SERTIFIKAT KEHADIRAN', 148.5, 54, { align: 'center' });
+
+      // Nomor Registrasi Sertifikat Resmi
+      const certNumber = kegiatan.certificateNumber || `SIPENA/CERT/${new Date().getFullYear()}/XI/0001`;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(71, 85, 105);
-      doc.text(kegiatan.instansi, 148.5, 104, { align: 'center' });
+      doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
+
+      // Diberikan kepada
+      doc.setFontSize(12);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Diberikan dengan hormat kepada:', 148.5, 80, { align: 'center' });
+
+      // Nama Peserta
+      const recipientName = kegiatan.nama || user?.namaLengkap || user?.name || user?.username || 'Peserta Terdaftar';
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text(recipientName, 148.5, 96, { align: 'center' });
+
+      // Instansi jika ada
+      if (kegiatan.instansi) {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(71, 85, 105);
+        doc.text(kegiatan.instansi, 148.5, 104, { align: 'center' });
+      }
+
+      // Keterangan Partisipasi
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('Atas partisipasi aktif dan kehadirannya dalam kegiatan:', 148.5, 120, { align: 'center' });
+
+      // Judul Kegiatan
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(kegiatan.judul || 'Kegiatan SiPena', 148.5, 134, { align: 'center' });
+
+      // Tanggal
+      const eventDateStr = formatTanggal(kegiatan.tanggal);
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Diselenggarakan pada ${eventDateStr} ${kegiatan.jamKegiatan ? `• ${kegiatan.jamKegiatan}` : ''}`, 148.5, 144, { align: 'center' });
+
+      // Tanda Tangan
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(40, 168, 100, 168);
+      doc.line(197, 168, 257, 168);
+
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text('Panitia Pelaksana', 70, 175, { align: 'center' });
+      doc.text('Perpusnas Press', 227, 175, { align: 'center' });
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text('Dokumen ini resmi diterbitkan secara elektronik melalui Portal SiPena Perpusnas Press.', 148.5, 194, { align: 'center' });
+
+      const certTitle = (kegiatan.judul || 'Kegiatan').replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Sertifikat_${certTitle}.pdf`);
+      showToast({ message: 'Sertifikat berhasil diunduh dalam format PDF!', type: 'success' });
+    } catch (err) {
+      console.error('Gagal mengunduh sertifikat:', err);
+      showToast({ message: 'Gagal mengunduh file sertifikat.', type: 'danger' });
     }
-
-    // Keterangan Partisipasi
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text('Atas partisipasi aktif dan kehadirannya dalam kegiatan:', 148.5, 120, { align: 'center' });
-
-    // Judul Kegiatan
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(kegiatan.judul, 148.5, 134, { align: 'center' });
-
-    // Tanggal
-    const eventDateStr = new Date(kegiatan.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    doc.setFontSize(10.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Diselenggarakan pada ${eventDateStr} ${kegiatan.jamKegiatan ? `• ${kegiatan.jamKegiatan}` : ''}`, 148.5, 144, { align: 'center' });
-
-    // Tanda Tangan
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(40, 168, 100, 168);
-    doc.line(197, 168, 257, 168);
-
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 58, 138);
-    doc.text('Panitia Pelaksana', 70, 175, { align: 'center' });
-    doc.text('Perpusnas Press', 227, 175, { align: 'center' });
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    doc.text('Dokumen ini resmi diterbitkan secara elektronik melalui Portal SiPena Perpusnas Press.', 148.5, 194, { align: 'center' });
-
-    doc.save(`Sertifikat_${kegiatan.judul.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   const infoItems = [
@@ -523,6 +586,11 @@ const AuthorDashboard = () => {
               </button>
               <button className={`dash-tab ${activeTab === 'kegiatan' ? 'active' : ''}`} onClick={() => setActiveTab('kegiatan')}>
                 <Calendar size={16} /> Kegiatan Saya
+                {kegiatanList.length > 0 && (
+                  <span style={{ fontSize: '0.72rem', padding: '0.1rem 0.45rem', borderRadius: '10px', background: '#dbeafe', color: '#1e40af', marginLeft: '0.35rem', fontWeight: 700 }}>
+                    {kegiatanList.length}
+                  </span>
+                )}
               </button>
               {hasAuthorAccess ? (
                 <button className={`dash-tab ${activeTab === 'karya' ? 'active' : ''}`} onClick={() => setActiveTab('karya')}>
@@ -970,7 +1038,7 @@ const AuthorDashboard = () => {
                               </div>
                             </td>
                             <td style={{ fontSize: '0.85rem' }}>
-                              <div>{new Date(k.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                              <div>{formatTanggal(k.tanggal)}</div>
                               {k.jamKegiatan && <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{k.jamKegiatan} WIB</div>}
                             </td>
                             <td>
@@ -1170,6 +1238,17 @@ const AuthorDashboard = () => {
           </div>
         </div>
       </div>
+
+      <ImageCropModal
+        isOpen={cropModal.isOpen}
+        imageSrc={cropModal.imageSrc}
+        aspectRatio={1}
+        cropShape="round"
+        title="Sesuaikan & Potong Foto Profil"
+        fileName={cropModal.fileName}
+        onConfirm={handleCropConfirm}
+        onCancel={() => setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }))}
+      />
     </main>
   );
 };

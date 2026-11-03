@@ -17,6 +17,7 @@ import PanduanPenerbitan from './pages/PanduanPenerbitan';
 import AdminLayout from './pages/admin/AdminLayout';
 import ManagementLayout from './pages/admin/manajemen/ManagementLayout';
 import ScrollToTop from './components/ScrollToTop';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { EventProvider } from './context/EventContext';
@@ -28,7 +29,9 @@ import { DialogProvider } from './context/DialogContext';
 const PublicLayout = () => (
   <div className="app-container">
     <Header />
-    <Outlet />
+    <ErrorBoundary>
+      <Outlet />
+    </ErrorBoundary>
     <Footer />
   </div>
 );
@@ -62,6 +65,8 @@ function App() {
                     <Route path="/event"       element={<EventsPage />} />
                     <Route path="/event/:id"   element={<EventDetail />} />
                     <Route path="/profil-saya" element={<AuthorDashboard />} />
+                    <Route path="/dashboard"   element={<Navigate to="/profil-saya" replace />} />
+                    <Route path="/penulis/dashboard" element={<Navigate to="/profil-saya" replace />} />
                     <Route path="/tentang"            element={<TentangKami />} />
                     <Route path="/faq"                element={<FAQPage />} />
                     <Route path="/panduan-penerbitan" element={<PanduanPenerbitan />} />

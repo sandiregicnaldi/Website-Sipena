@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import './AdminLayout.css';
 import { ExternalLink, Image as ImageIcon, FileText, Edit, Trash2, Eye, CheckCircle, BookOpen } from 'lucide-react';
 import AdminPagination from '../../components/AdminPagination';
+import ImageCropModal from '../../components/ImageCropModal';
 
 const KATEGORI_BUKU_OPTIONS = [
   'Anak-anak',
@@ -72,10 +73,15 @@ const ModalBuku = ({ data, onSave, onClose }) => {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [cropModal, setCropModal] = useState({
+    isOpen: false,
+    imageSrc: null,
+    fileName: 'sampul-buku.jpg',
+  });
   const coverInputRef = useRef(null);
   const pdfInputRef = useRef(null);
 
-  const handleCoverUpload = async (e) => {
+  const handleCoverUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadError('');
@@ -91,9 +97,24 @@ const ModalBuku = ({ data, onSave, onClose }) => {
       if (coverInputRef.current) coverInputRef.current.value = '';
       return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCropModal({
+        isOpen: true,
+        imageSrc: ev.target.result,
+        fileName: file.name,
+      });
+    };
+    reader.readAsDataURL(file);
+    if (coverInputRef.current) coverInputRef.current.value = '';
+  };
+
+  const handleCropCoverConfirm = async (croppedFile) => {
     try {
+      setCropModal(prev => ({ ...prev, isOpen: false }));
       setUploadingCover(true);
-      const res = await SipenaAPI.uploadCover(file);
+      const res = await SipenaAPI.uploadCover(croppedFile);
       if (res?.url) {
         setForm(p => ({ ...p, sampul: res.url }));
       } else {
@@ -358,6 +379,17 @@ const ModalBuku = ({ data, onSave, onClose }) => {
             </div>
           </form>
         </div>
+
+        <ImageCropModal
+          isOpen={cropModal.isOpen}
+          imageSrc={cropModal.imageSrc}
+          aspectRatio={3 / 4}
+          cropShape="rect"
+          title="Sesuaikan & Potong Sampul Buku"
+          fileName={cropModal.fileName}
+          onConfirm={handleCropCoverConfirm}
+          onCancel={() => setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }))}
+        />
       </div>
     </div>
   );

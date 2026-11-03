@@ -3,19 +3,24 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, BookOpen, Download, X, Star, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
+import { SipenaAPI } from '../lib/api';
 import './HeroCarousel.css';
 
-const slides = [
+const DEFAULT_SLIDES = [
   {
     id: 1,
     title: 'ILPN SUMATRA BARAT',
     subtitle: 'Yang Tak Lekang Digerus Zaman',
     genre: 'Sastra · Budaya',
     desc: 'Eksplorasi literatur dan kekayaan budaya Sumatera Barat melalui koleksi buku dan naskah kuno yang berharga.',
-    bookLink: '/buku/1',
+    bookLink: '/katalog',
+    btn1Label: 'Baca Sekarang',
+    btn2Label: 'Unduh PDF',
+    btn2Url: '/sample.pdf',
     bgColor: '#0f172a',
     accentColor: '#2563eb',
-    image: null,
+    bgImage: null,
+    coverImage: null,
   },
   {
     id: 2,
@@ -23,10 +28,14 @@ const slides = [
     subtitle: 'Menelusuri Jejak Sejarah Nusantara',
     genre: 'Sejarah · Islam',
     desc: 'Kronik sejarah yang menggambarkan awal mula masuknya Islam ke Nusantara dengan nilai historis dan sastra sangat tinggi.',
-    bookLink: '/buku/2',
+    bookLink: '/katalog',
+    btn1Label: 'Baca Sekarang',
+    btn2Label: 'Unduh PDF',
+    btn2Url: '/sample.pdf',
     bgColor: '#064e3b',
     accentColor: '#10b981',
-    image: null,
+    bgImage: null,
+    coverImage: null,
   },
   {
     id: 3,
@@ -34,10 +43,14 @@ const slides = [
     subtitle: 'Warisan Budaya Leluhur',
     genre: 'Sastra · Filosofi',
     desc: 'Kumpulan serat dan babad yang menceritakan kearifan lokal, filosofi hidup, serta perjalanan sejarah masyarakat Jawa.',
-    bookLink: '/buku/3',
+    bookLink: '/katalog',
+    btn1Label: 'Baca Sekarang',
+    btn2Label: 'Unduh PDF',
+    btn2Url: '/sample.pdf',
     bgColor: '#450a0a',
     accentColor: '#ef4444',
-    image: null,
+    bgImage: null,
+    coverImage: null,
   },
   {
     id: 4,
@@ -45,10 +58,14 @@ const slides = [
     subtitle: 'Epos Perjuangan Sang Pangeran',
     genre: 'Sejarah · Perjuangan',
     desc: 'Naskah agung yang merekam perjuangan Pangeran Diponegoro melawan kolonialisme Belanda dalam Perang Jawa.',
-    bookLink: '/buku/4',
+    bookLink: '/katalog',
+    btn1Label: 'Baca Sekarang',
+    btn2Label: 'Unduh PDF',
+    btn2Url: '/sample.pdf',
     bgColor: '#1a0533',
     accentColor: '#8b5cf6',
-    image: null,
+    bgImage: null,
+    coverImage: null,
   },
   {
     id: 5,
@@ -56,10 +73,14 @@ const slides = [
     subtitle: 'Ensiklopedia Budaya Jawa',
     genre: 'Budaya · Ensiklopedia',
     desc: 'Mahakarya sastra Jawa yang merangkum pengetahuan, kepercayaan, dan adat istiadat masyarakat Jawa secara lengkap.',
-    bookLink: '/buku/5',
+    bookLink: '/katalog',
+    btn1Label: 'Baca Sekarang',
+    btn2Label: 'Unduh PDF',
+    btn2Url: '/sample.pdf',
     bgColor: '#0c1a10',
     accentColor: '#22c55e',
-    image: null,
+    bgImage: null,
+    coverImage: null,
   },
 ];
 
@@ -67,6 +88,7 @@ const AUTO_PLAY_INTERVAL = 5000;
 
 const HeroCarousel = () => {
   const { showToast } = useDialog();
+  const [slides, setSlides] = useState(DEFAULT_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
   const timerRef = useRef(null);
 
@@ -78,6 +100,40 @@ const HeroCarousel = () => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
   const [downloadPopupRating, setDownloadPopupRating] = useState(0);
+
+  // Ambil banner aktif langsung dari database server
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBanners = async () => {
+      try {
+        const data = await SipenaAPI.getContent('hero_banners');
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          const active = data.filter(b => b.aktif !== false);
+          if (active.length > 0) {
+            setSlides(active.map((b, idx) => ({
+              id: b.id || idx + 1,
+              title: b.judul || '',
+              subtitle: b.subjudul || '',
+              genre: b.kategori || '',
+              desc: b.deskripsi || '',
+              bookLink: b.btn1Url || '/katalog',
+              btn1Label: b.btn1Label || 'Baca Sekarang',
+              btn2Label: b.btn2Label || 'Unduh PDF',
+              btn2Url: b.btn2Url || '#',
+              bgColor: b.bgColor || '#0f172a',
+              accentColor: b.accentColor || '#2563eb',
+              bgImage: b.bgImage || null,
+              coverImage: b.coverImage || null,
+            })));
+          }
+        }
+      } catch (err) {
+        console.error("Gagal memuat banner hero dari server:", err);
+      }
+    };
+    fetchBanners();
+    return () => { isMounted = false; };
+  }, []);
 
   const handleDownload = () => {
     if (!isLoggedIn) {
@@ -91,25 +147,29 @@ const HeroCarousel = () => {
   const resetTimer = () => {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      setCurrentSlide(prev => (prev === slides.length - 1 ? 0 : prev + 1));
+      setCurrentSlide(prev => (prev >= slides.length - 1 ? 0 : prev + 1));
     }, AUTO_PLAY_INTERVAL);
   };
 
   useEffect(() => {
     resetTimer();
     return () => clearInterval(timerRef.current);
-  }, []);
+  }, [slides]);
 
   const goTo = (idx) => { setCurrentSlide(idx); resetTimer(); };
-  const nextSlide = () => goTo(currentSlide === slides.length - 1 ? 0 : currentSlide + 1);
+  const nextSlide = () => goTo(currentSlide >= slides.length - 1 ? 0 : currentSlide + 1);
   const prevSlide = () => goTo(currentSlide === 0 ? slides.length - 1 : currentSlide - 1);
 
-  const slide = slides[currentSlide];
+  const slide = slides[currentSlide] || slides[0] || DEFAULT_SLIDES[0];
 
   return (
     <section
       className="hero-section"
-      style={{ background: `linear-gradient(135deg, ${slide.bgColor} 0%, ${slide.bgColor}cc 60%, #000 100%)` }}
+      style={{
+        background: slide.bgImage
+          ? `linear-gradient(rgba(15,23,42,0.82), rgba(15,23,42,0.92)), url("${slide.bgImage}") center/cover no-repeat`
+          : `linear-gradient(135deg, ${slide.bgColor} 0%, ${slide.bgColor}cc 60%, #000 100%)`
+      }}
     >
       {/* Background decorative gradient blob */}
       <div className="hero-bg-blob" style={{ backgroundColor: slide.accentColor }}></div>
@@ -131,24 +191,36 @@ const HeroCarousel = () => {
             <p className="hero-subtitle">{slide.subtitle}</p>
             <p className="hero-desc">{slide.desc}</p>
             <div className="hero-actions">
-              <Link to={slide.bookLink} className="hero-btn-primary">
-                <BookOpen size={18} /> Baca Sekarang
+              <Link to={slide.bookLink || '/katalog'} className="hero-btn-primary">
+                <BookOpen size={18} /> {slide.btn1Label || 'Baca Sekarang'}
               </Link>
-              <button onClick={handleDownload} className="hero-btn-secondary" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                <Download size={18} /> Unduh PDF
-              </button>
+              {slide.btn2Label && (
+                <button onClick={handleDownload} className="hero-btn-secondary" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Download size={18} /> {slide.btn2Label}
+                </button>
+              )}
             </div>
           </div>
 
           <div className="hero-image-area">
             <div className="hero-book-showcase">
-              <div className="book-cover-large" style={{ '--book-color': slide.accentColor }}>
-                <div className="book-spine" style={{ backgroundColor: slide.accentColor }}></div>
-                <div className="book-front" style={{ background: `linear-gradient(145deg, ${slide.accentColor}99, ${slide.bgColor})` }}>
-                  <div className="book-title-mock">{slide.title}</div>
-                  <div className="book-deco"></div>
+              {slide.coverImage ? (
+                <div className="book-cover-large" style={{ '--book-color': slide.accentColor, overflow: 'hidden', padding: 0 }}>
+                  <img
+                    src={slide.coverImage}
+                    alt={slide.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
+                  />
                 </div>
-              </div>
+              ) : (
+                <div className="book-cover-large" style={{ '--book-color': slide.accentColor }}>
+                  <div className="book-spine" style={{ backgroundColor: slide.accentColor }}></div>
+                  <div className="book-front" style={{ background: `linear-gradient(145deg, ${slide.accentColor}99, ${slide.bgColor})` }}>
+                    <div className="book-title-mock">{slide.title}</div>
+                    <div className="book-deco"></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

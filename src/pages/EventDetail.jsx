@@ -268,7 +268,7 @@ const EventDetail = () => {
   return (
     <main className="event-detail-page">
       {/* ── HERO BANNER ── */}
-      <div className="event-hero" style={{ backgroundImage: (event.bannerUrl || event.imageUrl) ? `url(${event.bannerUrl || event.imageUrl})` : 'linear-gradient(135deg, #1e3a8a 0%, #0c4a6e 100%)' }}>
+      <div className="event-hero" style={{ backgroundImage: (event.bannerUrl || event.imageUrl) ? `url("${event.bannerUrl || event.imageUrl}")` : 'linear-gradient(135deg, #1e3a8a 0%, #0c4a6e 100%)' }}>
         <div className="event-hero-overlay"></div>
         <div className="container event-hero-content">
           <Link to="/event" className="back-link">

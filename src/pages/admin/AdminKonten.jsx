@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
-import { CheckCircle, Image, Layout, Edit, Trash2, Plus, Save, Compass, Target, BarChart2, History, Users, MapPin, HelpCircle, BookMarked, FileText, Upload, ClipboardCheck, MessageSquare, BookOpen, Package, Award, Globe, DollarSign, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  CheckCircle, Image, Layout, Edit, Trash2, Plus, Save, 
+  Compass, Target, BarChart2, History, Users, MapPin, 
+  HelpCircle, BookMarked, FileText, Upload, ClipboardCheck, 
+  MessageSquare, BookOpen, Package, Award, Globe, DollarSign, 
+  Shield, ChevronDown, ChevronUp, Loader2, X 
+} from 'lucide-react';
 import { usePanduan } from '../../context/PanduanContext';
 import { useDialog } from '../../context/DialogContext';
+import { SipenaAPI } from '../../lib/api';
 import AdminPagination from '../../components/AdminPagination';
+import ImageCropModal from '../../components/ImageCropModal';
 import './AdminLayout.css';
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -21,49 +29,242 @@ const Toast = ({ msg, onClose }) => (
 );
 
 // ── Banner / Hero ───────────────────────────────────────────────────────────
-const EMPTY_BANNER = { kategori: '', judul: '', subjudul: '', deskripsi: '', btn1Label: 'Baca Sekarang', btn1Url: '', btn2Label: 'Unduh PDF', btn2Url: '' };
+const DEFAULT_BANNERS = [
+  { 
+    id: 1, 
+    kategori: 'BUDAYA · ENSIKLOPEDIA', 
+    judul: 'SERAT CENTHINI', 
+    subjudul: 'Ensiklopedia Budaya Jawa', 
+    deskripsi: 'Mahakarya sastra Jawa yang merangkum pengetahuan, kepercayaan, dan adat istiadat masyarakat Jawa secara lengkap.', 
+    btn1Label: 'Baca Sekarang', 
+    btn1Url: '/katalog', 
+    btn2Label: 'Unduh PDF', 
+    btn2Url: '/sample.pdf', 
+    bgImage: '',
+    coverImage: '',
+    bgColor: '#0c1a10',
+    accentColor: '#22c55e',
+    aktif: true 
+  },
+  { 
+    id: 2, 
+    kategori: 'TEKNOLOGI', 
+    judul: 'Literasi Digital 2026', 
+    subjudul: 'Membangun Masyarakat Cerdas Informasi', 
+    deskripsi: 'Panduan dan wawasan terbaru seputar dunia literasi digital di era transformasi kecerdasan buatan.', 
+    btn1Label: 'Selengkapnya', 
+    btn1Url: '/katalog', 
+    btn2Label: '', 
+    btn2Url: '', 
+    bgImage: '',
+    coverImage: '',
+    bgColor: '#0f172a',
+    accentColor: '#2563eb',
+    aktif: true 
+  },
+];
+
+const EMPTY_BANNER = { 
+  kategori: '', 
+  judul: '', 
+  subjudul: '', 
+  deskripsi: '', 
+  btn1Label: 'Baca Sekarang', 
+  btn1Url: '/katalog', 
+  btn2Label: 'Unduh PDF', 
+  btn2Url: '', 
+  bgImage: '',
+  coverImage: '',
+  bgColor: '#0f172a',
+  accentColor: '#2563eb' 
+};
 
 const BannerEditor = () => {
   const { showConfirm } = useDialog();
-  const [banners, setBanners] = useState([
-    { id: 1, kategori: 'BUDAYA · ENSIKLOPEDIA', judul: 'SERAT CENTHINI', subjudul: 'Ensiklopedia Budaya Jawa', deskripsi: 'Mahakarya sastra Jawa yang merangkum pengetahuan, kepercayaan, dan adat istiadat masyarakat Jawa secara lengkap.', btn1Label: 'Baca Sekarang', btn1Url: '#', btn2Label: 'Unduh PDF', btn2Url: '#', aktif: true },
-    { id: 2, kategori: 'TEKNOLOGI', judul: 'Literasi Digital 2026', subjudul: 'Membangun Masyarakat Cerdas Informasi', deskripsi: 'Panduan dan wawasan terbaru seputar dunia literasi digital di era transformasi kecerdasan buatan.', btn1Label: 'Selengkapnya', btn1Url: '#', btn2Label: '', btn2Url: '', aktif: true },
-  ]);
+  const [banners, setBanners] = useState(DEFAULT_BANNERS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [cropModal, setCropModal] = useState({
+    isOpen: false,
+    imageSrc: null,
+    targetField: 'bgImage', // 'bgImage' | 'coverImage'
+    aspectRatio: 16 / 9,
+    title: 'Potong Background Hero',
+    fileName: 'hero-banner.jpg',
+  });
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState(null); // { mode: 'edit' | 'tambah', data: {} }
-  const [nextId, setNextId] = useState(3);
+
+  const bgInputRef = useRef(null);
+  const coverInputRef = useRef(null);
   
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  const handleToggle = (id) => {
-    setBanners(prev => prev.map(b => b.id === id ? { ...b, aktif: !b.aktif } : b));
-    const b = banners.find(x => x.id === id);
-    showToast(`Banner "${b.judul}" berhasil ${b.aktif ? 'dinonaktifkan' : 'diaktifkan'}.`);
-  };
-  const handleSaveEdit = (form) => {
-    if (modal.mode === 'edit') {
-      setBanners(prev => prev.map(b => b.id === form.id ? { ...form } : b));
-      showToast(`Banner "${form.judul}" berhasil disimpan.`);
-    } else {
-      setBanners(prev => [...prev, { ...form, id: nextId, aktif: true }]);
-      setNextId(n => n + 1);
-      showToast(`Banner "${form.judul}" berhasil ditambahkan.`);
+  // Muat data banner hero dari database server
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBanners = async () => {
+      try {
+        setLoading(true);
+        const data = await SipenaAPI.getContent('hero_banners');
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setBanners(data);
+        }
+      } catch (err) {
+        console.error("Gagal mengambil hero banners dari server:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchBanners();
+    return () => { isMounted = false; };
+  }, []);
+
+  const persistBanners = async (newList) => {
+    try {
+      setSaving(true);
+      await SipenaAPI.saveContent('hero_banners', newList);
+    } catch (err) {
+      console.error("Gagal menyimpan banner ke server:", err);
+      showToast(err.response?.data?.error || err.message || 'Gagal menyimpan perubahan ke server.');
+      throw err;
+    } finally {
+      setSaving(false);
     }
-    setModal(null);
   };
+
+  const handleToggle = async (id) => {
+    const b = banners.find(x => x.id === id);
+    if (!b) return;
+    const newStatus = !b.aktif;
+    const updated = banners.map(x => x.id === id ? { ...x, aktif: newStatus } : x);
+    setBanners(updated);
+    try {
+      await persistBanners(updated);
+      showToast(`Banner "${b.judul}" berhasil ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}.`);
+    } catch (err) {
+      setBanners(banners);
+    }
+  };
+
+  const handleSaveEdit = async (form) => {
+    try {
+      let updated;
+      if (modal.mode === 'edit') {
+        updated = banners.map(b => b.id === form.id ? { ...form } : b);
+        setBanners(updated);
+        await persistBanners(updated);
+        showToast(`Banner "${form.judul}" berhasil disimpan ke server.`);
+      } else {
+        const newId = Date.now();
+        updated = [...banners, { ...form, id: newId, aktif: true }];
+        setBanners(updated);
+        await persistBanners(updated);
+        showToast(`Banner "${form.judul}" berhasil ditambahkan.`);
+      }
+      setModal(null);
+    } catch (err) {
+      // Toast already handled in persistBanners
+    }
+  };
+
   const handleHapus = async (id) => {
     const b = banners.find(x => x.id === id);
     const ok = await showConfirm({
       title: 'Hapus Banner',
-      message: `Hapus banner "${b?.judul || 'ini'}" dari tampilan beranda?`,
+      message: `Hapus banner "${b?.judul || 'ini'}" dari database?`,
       type: 'danger',
       confirmText: 'Ya, Hapus'
     });
     if (ok) {
-      setBanners(prev => prev.filter(b => b.id !== id));
-      showToast('Banner berhasil dihapus.');
+      const updated = banners.filter(x => x.id !== id);
+      setBanners(updated);
+      try {
+        await persistBanners(updated);
+        showToast('Banner berhasil dihapus dari database.');
+      } catch (err) {
+        setBanners(banners);
+      }
+    }
+  };
+
+  const handleUploadBg = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('File background harus berupa format gambar (JPG, PNG, atau WEBP).');
+      if (bgInputRef.current) bgInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Ukuran gambar background maksimal 5 MB.');
+      if (bgInputRef.current) bgInputRef.current.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropModal({
+        isOpen: true,
+        imageSrc: reader.result,
+        targetField: 'bgImage',
+        aspectRatio: 16 / 9,
+        title: 'Sesuaikan & Potong Background Hero Banner (16:9)',
+        fileName: (file.name || 'hero-banner').replace(/\.[^/.]+$/, "") + '-cropped.webp'
+      });
+    };
+    reader.readAsDataURL(file);
+    if (bgInputRef.current) bgInputRef.current.value = '';
+  };
+
+  const handleUploadCover = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('File sampul buku harus berupa format gambar (JPG, PNG, atau WEBP).');
+      if (coverInputRef.current) coverInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Ukuran gambar sampul buku maksimal 5 MB.');
+      if (coverInputRef.current) coverInputRef.current.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropModal({
+        isOpen: true,
+        imageSrc: reader.result,
+        targetField: 'coverImage',
+        aspectRatio: 3 / 4,
+        title: 'Sesuaikan & Potong Sampul Buku Hero (3:4)',
+        fileName: (file.name || 'hero-cover').replace(/\.[^/.]+$/, "") + '-cropped.webp'
+      });
+    };
+    reader.readAsDataURL(file);
+    if (coverInputRef.current) coverInputRef.current.value = '';
+  };
+
+  const handleCropConfirm = async (croppedFile) => {
+    const isBg = cropModal.targetField === 'bgImage';
+    try {
+      if (isBg) setUploadingBg(true);
+      else setUploadingCover(true);
+      const res = await SipenaAPI.uploadCover(croppedFile);
+      if (res?.url) {
+        setModal(p => ({ ...p, data: { ...p.data, [cropModal.targetField]: res.url } }));
+        showToast(`${isBg ? 'Gambar background banner' : 'Gambar sampul buku'} berhasil dipotong dan diunggah!`);
+      }
+    } catch (err) {
+      showToast(err.response?.data?.error || err.message || 'Gagal mengunggah gambar.');
+    } finally {
+      if (isBg) setUploadingBg(false);
+      else setUploadingCover(false);
+      setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }));
     }
   };
 
@@ -76,26 +277,47 @@ const BannerEditor = () => {
 
   return (
     <div>
+      {toast && <Toast msg={toast} onClose={() => setToast('')} />}
       <div className="admin-page-header">
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Image size={24} color="var(--accent-color)" /> Banner / Hero
         </h1>
-        <p>Kelola gambar dan teks banner utama halaman beranda SiPena.</p>
+        <p>Kelola gambar dan teks banner utama halaman beranda SiPena (tersimpan langsung ke database server).</p>
       </div>
       <div className="admin-card">
         <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="admin-card-title">Daftar Banner Aktif ({banners.length} banner)</span>
+          <span className="admin-card-title">
+            Daftar Banner Aktif ({banners.length} banner) {saving && <span style={{ fontSize: '0.8rem', color: '#2563eb', marginLeft: '0.5rem' }}>(Menyimpan ke server...)</span>}
+          </span>
           <button className="btn btn-primary" onClick={() => setModal({ mode: 'tambah', data: EMPTY_BANNER })}>+ Tambah Banner</button>
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
-            <thead><tr><th>#</th><th>Info Banner</th><th>Deskripsi</th><th>Tombol Aksi</th><th>Status</th><th>Aksi</th></tr></thead>
+            <thead><tr><th>#</th><th>Sampul / Pratinjau</th><th>Info Banner</th><th>Deskripsi</th><th>Tombol Aksi</th><th>Status</th><th>Aksi</th></tr></thead>
             <tbody>
-              {banners.length === 0 ? (
-                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Belum ada banner.</td></tr>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>
+                    <Loader2 size={24} className="spin" style={{ margin: '0 auto 0.5rem', display: 'block', animation: 'spin 1s linear infinite' }} />
+                    Memuat data banner hero dari server...
+                  </td>
+                </tr>
+              ) : banners.length === 0 ? (
+                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Belum ada banner.</td></tr>
               ) : paginatedBanners.map((b, i) => (
                 <tr key={b.id}>
                   <td style={{ color: 'var(--text-tertiary)' }}>{(safePage - 1) * pageSize + i + 1}</td>
+                  <td style={{ width: '80px' }}>
+                    {b.coverImage ? (
+                      <img src={b.coverImage} alt={b.judul} style={{ width: '48px', height: '64px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                    ) : b.bgImage ? (
+                      <img src={b.bgImage} alt={b.judul} style={{ width: '64px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                    ) : (
+                      <div style={{ width: '48px', height: '64px', borderRadius: '4px', background: b.accentColor || '#1e3a8a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.65rem', textAlign: 'center', padding: '2px' }}>
+                        {b.judul ? b.judul.slice(0, 8) : 'Cover'}
+                      </div>
+                    )}
+                  </td>
                   <td>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{b.kategori}</div>
                     <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem', marginTop: '0.2rem' }}>{b.judul}</div>
@@ -133,58 +355,158 @@ const BannerEditor = () => {
       </div>
       {modal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
-          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '700px', margin: 'auto', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
+          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '720px', margin: 'auto', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                {modal.mode === 'edit' ? <Edit size={16} /> : <Plus size={16} />} {modal.mode === 'edit' ? 'Edit Banner' : 'Tambah Banner'}
+                {modal.mode === 'edit' ? <Edit size={16} /> : <Plus size={16} />} {modal.mode === 'edit' ? 'Edit Banner Hero' : 'Tambah Banner Hero'}
               </h3>
               <button onClick={() => setModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
             </div>
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={e => { e.preventDefault(); handleSaveEdit(modal.data); }} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '80vh', overflowY: 'auto' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
-                <div><label style={labelStyle}>Kategori</label><input style={inputStyle} value={modal.data.kategori} onChange={e => setModal(p => ({ ...p, data: { ...p.data, kategori: e.target.value } }))} placeholder="Misal: BUDAYA • ENSIKLOPEDIA" /></div>
-                <div><label style={labelStyle}>Judul Besar</label><input style={inputStyle} value={modal.data.judul} onChange={e => setModal(p => ({ ...p, data: { ...p.data, judul: e.target.value } }))} placeholder="Misal: SERAT CENTHINI" /></div>
+                <div>
+                  <label style={labelStyle}>Kategori *</label>
+                  <input style={inputStyle} required value={modal.data.kategori || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, kategori: e.target.value } }))} placeholder="Misal: BUDAYA • ENSIKLOPEDIA" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Judul Besar *</label>
+                  <input style={inputStyle} required value={modal.data.judul || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, judul: e.target.value } }))} placeholder="Misal: SERAT CENTHINI" />
+                </div>
               </div>
               
-              <div><label style={labelStyle}>Subjudul / Nama Penulis</label><input style={inputStyle} value={modal.data.subjudul} onChange={e => setModal(p => ({ ...p, data: { ...p.data, subjudul: e.target.value } }))} placeholder="Misal: Ensiklopedia Budaya Jawa" /></div>
+              <div>
+                <label style={labelStyle}>Subjudul / Tagline</label>
+                <input style={inputStyle} value={modal.data.subjudul || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, subjudul: e.target.value } }))} placeholder="Misal: Ensiklopedia Budaya Jawa" />
+              </div>
               
-              <div><label style={labelStyle}>Deskripsi Singkat</label><textarea rows="3" style={{ ...inputStyle, resize: 'vertical' }} value={modal.data.deskripsi} onChange={e => setModal(p => ({ ...p, data: { ...p.data, deskripsi: e.target.value } }))} placeholder="Mahakarya sastra Jawa yang merangkum..." /></div>
+              <div>
+                <label style={labelStyle}>Deskripsi Singkat *</label>
+                <textarea rows="3" required style={{ ...inputStyle, resize: 'vertical' }} value={modal.data.deskripsi || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, deskripsi: e.target.value } }))} placeholder="Mahakarya sastra Jawa yang merangkum..." />
+              </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                 <div>
                   <label style={labelStyle}>Tombol 1 (Label & URL)</label>
-                  <input style={{ ...inputStyle, marginBottom: '0.5rem' }} value={modal.data.btn1Label} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn1Label: e.target.value } }))} placeholder="Teks Tombol (Mis: Baca Sekarang)" />
-                  <input style={inputStyle} value={modal.data.btn1Url} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn1Url: e.target.value } }))} placeholder="URL Tautan" />
+                  <input style={{ ...inputStyle, marginBottom: '0.5rem' }} value={modal.data.btn1Label || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn1Label: e.target.value } }))} placeholder="Teks Tombol (Mis: Baca Sekarang)" />
+                  <input style={inputStyle} value={modal.data.btn1Url || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn1Url: e.target.value } }))} placeholder="URL Tautan (Mis: /buku/1 atau /katalog)" />
                 </div>
                 <div>
                   <label style={labelStyle}>Tombol 2 (Label & URL)</label>
-                  <input style={{ ...inputStyle, marginBottom: '0.5rem' }} value={modal.data.btn2Label} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn2Label: e.target.value } }))} placeholder="Teks Tombol (Mis: Unduh PDF)" />
-                  <input style={inputStyle} value={modal.data.btn2Url} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn2Url: e.target.value } }))} placeholder="URL Tautan" />
+                  <input style={{ ...inputStyle, marginBottom: '0.5rem' }} value={modal.data.btn2Label || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn2Label: e.target.value } }))} placeholder="Teks Tombol (Mis: Unduh PDF)" />
+                  <input style={inputStyle} value={modal.data.btn2Url || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, btn2Url: e.target.value } }))} placeholder="URL Tautan (Mis: /sample.pdf)" />
                 </div>
               </div>
 
+              {/* Upload Gambar Background & Sampul Buku */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <label style={labelStyle}>Gambar Background Hero</label>
+                  <input
+                    ref={bgInputRef}
+                    type="file"
+                    style={{ display: 'none' }}
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleUploadBg}
+                    disabled={uploadingBg}
+                  />
+                  {modal.data.bgImage ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.6rem', background: 'white', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.4rem' }}>
+                      <img src={modal.data.bgImage} alt="Bg" style={{ width: '60px', height: '34px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <button
+                        type="button"
+                        onClick={() => setModal(p => ({ ...p, data: { ...p.data, bgImage: '' } }))}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => bgInputRef.current?.click()}
+                    disabled={uploadingBg}
+                    className="btn btn-outline"
+                    style={{ width: '100%', fontSize: '0.8rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'white' }}
+                  >
+                    {uploadingBg ? <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
+                    {modal.data.bgImage ? 'Ganti Background' : 'Upload Background (16:9)'}
+                  </button>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Gambar Sampul Buku</label>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    style={{ display: 'none' }}
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleUploadCover}
+                    disabled={uploadingCover}
+                  />
+                  {modal.data.coverImage ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.6rem', background: 'white', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.4rem' }}>
+                      <img src={modal.data.coverImage} alt="Cover" style={{ width: '32px', height: '45px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <button
+                        type="button"
+                        onClick={() => setModal(p => ({ ...p, data: { ...p.data, coverImage: '' } }))}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => coverInputRef.current?.click()}
+                    disabled={uploadingCover}
+                    className="btn btn-outline"
+                    style={{ width: '100%', fontSize: '0.8rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'white' }}
+                  >
+                    {uploadingCover ? <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
+                    {modal.data.coverImage ? 'Ganti Sampul Buku' : 'Upload Sampul Buku'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Warna Tema Slide */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Upload Gambar Background</label>
-                  <input type="file" accept="image/*" style={inputStyle} />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Rasio 16:9 atau lebar penuh.</span>
+                  <label style={labelStyle}>Warna Background Slide</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input type="color" value={modal.data.bgColor || '#0f172a'} onChange={e => setModal(p => ({ ...p, data: { ...p.data, bgColor: e.target.value } }))} style={{ width: '36px', height: '36px', border: 'none', borderRadius: '4px', cursor: 'pointer' }} />
+                    <input style={inputStyle} value={modal.data.bgColor || '#0f172a'} onChange={e => setModal(p => ({ ...p, data: { ...p.data, bgColor: e.target.value } }))} placeholder="#0f172a" />
+                  </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Upload Gambar Sampul Buku (Kanan)</label>
-                  <input type="file" accept="image/*" style={inputStyle} />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Gambar proporsi buku portrait.</span>
+                  <label style={labelStyle}>Warna Aksen Slide</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input type="color" value={modal.data.accentColor || '#2563eb'} onChange={e => setModal(p => ({ ...p, data: { ...p.data, accentColor: e.target.value } }))} style={{ width: '36px', height: '36px', border: 'none', borderRadius: '4px', cursor: 'pointer' }} />
+                    <input style={inputStyle} value={modal.data.accentColor || '#2563eb'} onChange={e => setModal(p => ({ ...p, data: { ...p.data, accentColor: e.target.value } }))} placeholder="#2563eb" />
+                  </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button className="btn btn-outline" onClick={() => setModal(null)}>Batal</button>
-                <button className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => handleSaveEdit(modal.data)}>
-                  <Save size={16} /> Simpan Banner
+                <button type="button" className="btn btn-outline" onClick={() => setModal(null)}>Batal</button>
+                <button type="submit" disabled={saving} className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {saving ? <Loader2 size={16} className="spin" style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
+                  {saving ? 'Menyimpan...' : 'Simpan Banner'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
+      )}
+      {cropModal.isOpen && (
+        <ImageCropModal
+          isOpen={cropModal.isOpen}
+          imageSrc={cropModal.imageSrc}
+          title={cropModal.title}
+          aspectRatio={cropModal.aspectRatio}
+          fileName={cropModal.fileName}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }))}
+        />
       )}
       {toast && <Toast msg={toast} onClose={() => setToast('')} />}
     </div>
