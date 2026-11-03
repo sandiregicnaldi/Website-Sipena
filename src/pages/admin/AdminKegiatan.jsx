@@ -5,6 +5,7 @@ import {
   CheckCircle, Plus, Save, KeyRound, Sparkles, RefreshCw, 
   ToggleLeft, ToggleRight, Loader2, Award, Clock, Upload, Image, X
 } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { useEvent, checkIfClaimOpen } from '../../context/EventContext';
 import { useDialog } from '../../context/DialogContext';
 import { SipenaAPI } from '../../lib/api';
@@ -18,7 +19,7 @@ const EMPTY_FORM = {
   judul: '', tanggal: '', jamKegiatan: '09:00 - 12:00 WIB', lokasi: '', urlZoom: '',
   narasumber: [''], penjelasan: '', status: 'Akan Datang',
   peserta: 0, certificateToken: '', isClaimOpen: null, claimOpensAt: null,
-  bannerUrl: ''
+  bannerUrl: '', certificateTemplateUrl: '', certNamePosY: 96
 };
 
 const Toast = ({ msg, onClose }) => (
@@ -217,6 +218,117 @@ const AdminKegiatan = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  // Unduh Template Resmi Sertifikat A4 Landscape SiPena
+  const handleDownloadCertificateTemplate = () => {
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const width = 297;
+      const height = 210;
+
+      // Background
+      doc.setFillColor(252, 252, 254);
+      doc.rect(0, 0, width, height, 'F');
+
+      // Bingkai ganda elegan (Biru Perpusnas & Emas)
+      doc.setDrawColor(30, 58, 138); // Blue 900
+      doc.setLineWidth(2.5);
+      doc.rect(10, 10, width - 20, height - 20);
+
+      doc.setDrawColor(202, 138, 4); // Amber 600
+      doc.setLineWidth(0.8);
+      doc.rect(14, 14, width - 28, height - 28);
+
+      // Header Lembaga
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text('PERPUSNAS PRESS • PERPUSTAKAAN NASIONAL REPUBLIK INDONESIA', 148.5, 30, { align: 'center' });
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Sistem Informasi & Pengelolaan Penerbitan Buku SiPena', 148.5, 36, { align: 'center' });
+
+      // Judul Sertifikat
+      doc.setFontSize(26);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('SERTIFIKAT KEHADIRAN', 148.5, 54, { align: 'center' });
+
+      // Kode Nomor Sertifikat
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('Nomor Registrasi: {{NOMOR_SERTIFIKAT}}', 148.5, 62, { align: 'center' });
+
+      // Diberikan kepada
+      doc.setFontSize(12);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Diberikan dengan hormat kepada:', 148.5, 80, { align: 'center' });
+
+      // Guideline box untuk Nama Peserta
+      const targetPosY = Number(modal?.data?.certNamePosY) || 96;
+      doc.setDrawColor(37, 99, 235);
+      doc.setLineWidth(0.4);
+      doc.setLineDashPattern([3, 2], 0);
+      doc.roundedRect(48.5, targetPosY - 9, 200, 14, 2, 2, 'S');
+      doc.setLineDashPattern([], 0);
+
+      // Nama Peserta Placeholder
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(37, 99, 235);
+      doc.text(`{{NAMA_PESERTA}} (Posisi Vertikal Y: ${targetPosY} mm)`, 148.5, targetPosY, { align: 'center' });
+
+      // Instansi Placeholder
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 116, 139);
+      doc.text(`{{INSTANSI}} (Posisi Y: ${targetPosY + 8} mm)`, 148.5, targetPosY + 8, { align: 'center' });
+
+      // Keterangan Partisipasi
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('Atas partisipasi aktif dan kehadirannya dalam kegiatan:', 148.5, 120, { align: 'center' });
+
+      // Judul Kegiatan
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('{{JUDUL_KEGIATAN}} (Posisi Y: 134 mm)', 148.5, 134, { align: 'center' });
+
+      // Tanggal & Waktu
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Diselenggarakan pada {{TANGGAL}} • {{JAM_KEGIATAN}} (Posisi Y: 144 mm)', 148.5, 144, { align: 'center' });
+
+      // Tanda Tangan
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.5);
+      doc.line(40, 168, 100, 168);
+      doc.line(197, 168, 257, 168);
+
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text('Panitia Pelaksana', 70, 175, { align: 'center' });
+      doc.text('Perpusnas Press', 227, 175, { align: 'center' });
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text('Dokumen ini adalah template resmi SiPena Perpusnas Press dengan guideline penempatan kode koordinat.', 148.5, 194, { align: 'center' });
+
+      doc.save('Template_Sertifikat_SiPena_A4.pdf');
+      showToast('Template sertifikat resmi (A4 Landscape) berhasil diunduh!');
+    } catch (err) {
+      console.error('Gagal generate template sertifikat:', err);
+      showToast('Gagal mengunduh template sertifikat.');
+    }
   };
 
   const inputStyle = {
@@ -659,6 +771,75 @@ const AdminKegiatan = () => {
                     )}
                   </button>
                 )}
+              </div>
+
+              {/* PENGATURAN TEMPLATE & TATA LETAK SERTIFIKAT */}
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <label style={{ ...labelStyle, marginBottom: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Award size={16} color="var(--primary-color)" /> Template &amp; Pengaturan Sertifikat
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleDownloadCertificateTemplate}
+                    className="btn btn-outline"
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fff', borderColor: '#bfdbfe', color: '#1d4ed8' }}
+                  >
+                    <FileDown size={14} /> Unduh Template Sertifikat (A4 PDF)
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem', display: 'block' }}>
+                      Posisi Vertikal Nama Peserta (Y dalam mm) *
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        style={{ ...inputStyle, width: '100px', fontWeight: 700, background: '#fff' }}
+                        type="number"
+                        min="50"
+                        max="160"
+                        step="1"
+                        required
+                        value={modal.data.certNamePosY ?? 96}
+                        onChange={e => setModal(p => ({ ...p, data: { ...p.data, certNamePosY: Number(e.target.value) || 96 } }))}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                        Standar: <strong>96 mm</strong> (tengah vertikal A4 Landscape)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '0.65rem 0.85rem',
+                  fontSize: '0.75rem',
+                  color: '#475569',
+                  lineHeight: 1.5
+                }}>
+                  <div style={{ fontWeight: 700, color: '#1e293b', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Sparkles size={13} color="#ca8a04" /> Panduan Format Kode Placeholder &amp; Koordinat
+                  </div>
+                  Sistem SiPena otomatis mencetak identitas peserta ke dokumen resmi PDF saat klaim. Anda dapat mencocokkan desain piagam Anda dengan tag kode berikut:
+                  <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div>
+                      <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA}}'}</code> atau <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA_PESERTA}}'}</code> : Nama lengkap peserta (Posisi Y: <strong>{modal.data.certNamePosY ?? 96} mm</strong>)
+                    </div>
+                    <div>
+                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NOMOR_SERTIFIKAT}}'}</code> : Nomor unik registrasi (Posisi Y: 62 mm)
+                    </div>
+                    <div>
+                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{JUDUL_KEGIATAN}}'}</code> : Judul acara (Posisi Y: 134 mm)
+                    </div>
+                    <div>
+                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{TANGGAL}}'}</code> : Tanggal kegiatan (Posisi Y: 144 mm)
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div>

@@ -1,8 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
 import { db } from "./db";
 import * as schema from "./db/schema";
-import { sendPasswordResetEmail } from "./lib/resend";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./lib/resend";
+import { SecurityLogger } from "./services/securityLogger";
+import { recordFailedAttempt, recordSuccessfulAttempt } from "./middlewares/authSecurity";
 
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5000",
@@ -15,13 +18,38 @@ export const auth = betterAuth({
             verification: schema.verifications,
         },
     }),
+    emailVerification: {
+        sendOnSignUp: true,
+        autoSignInAfterVerification: false,
+        sendVerificationEmail: async ({ user, url, token }) => {
+            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+            const verifyLink = `${frontendUrl}/verify-email?token=${token}`;
+            await sendVerificationEmail(user.email, verifyLink, user.name);
+        },
+    },
     emailAndPassword: {
         enabled: true,
+        requireEmailVerification: true,
         sendResetPassword: async ({ user, url, token }) => {
             const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
             const resetLink = `${frontendUrl}/reset-password?token=${token}`;
             await sendPasswordResetEmail(user.email, resetLink);
         },
+    },
+    hooks: {
+        after: createAuthMiddleware(async (ctx) => {
+            if (ctx.path === "/sign-in/email") {
+                const ip = ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+                const email = (ctx.body as any)?.email || "";
+                const userAgent = ctx.headers?.get("user-agent") || "Unknown";
+                recordSuccessfulAttempt(ip, email);
+                await SecurityLogger.logSuccessfulLogin({
+                    email,
+                    ip,
+                    userAgent,
+                });
+            }
+        }),
     },
     socialProviders: {
         google: {
@@ -114,10 +142,22 @@ export const auth = betterAuth({
     },
     onAPIError: {
         throw: false,
-        onError: (error: any, ctx: any) => {
+        onError: async (error: any, ctx: any) => {
             // Log error tetapi jangan redirect — biarkan frontend yang menangani
             console.error("[BetterAuth API Error]:", error?.message || error);
+            if (ctx?.path === "/sign-in/email") {
+                const ip = ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+                const email = (ctx.body as any)?.email || "";
+                const userAgent = ctx.headers?.get("user-agent") || "Unknown";
+                const failureCount = recordFailedAttempt(ip, email);
+                await SecurityLogger.logFailedLogin({
+                    email,
+                    ip,
+                    userAgent,
+                    reason: error?.message || "Email atau kata sandi tidak sesuai",
+                    consecutiveFailures: failureCount,
+                });
+            }
         },
     },
 });
-

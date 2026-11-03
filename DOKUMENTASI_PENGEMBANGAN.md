@@ -1375,4 +1375,84 @@ Untuk mengatasi kendala tersebut, dibangun integrasi menyeluruh berbasis tabel `
 3. **Frontend Production Build**:
    - `npm run build` berhasil tanpa error sintaks maupun modul hilang (`built in 1.96s`).
 
+---
+
+## BAB 35: TEMPLATE SERTIFIKAT KUSTOMISASI KOORDINAT NAMA, ATURAN KERAS PEMOTONGAN GAMBAR (LOCKED ASPECT RATIO), DAN PENYERASIAN BANNER KEGIATAN 16:9 (HOME & MENU KEGIATAN)
+
+### A. Latar Belakang & Permintaan Pengguna
+Pada iterasi pengembangan ini, pengguna mengajukan beberapa kebutuhan perbaikan spesifik terkait kualitas antarmuka dan fleksibilitas pengelolaan sertifikat kegiatan:
+1. **Unduh Template Sertifikat & Kustomisasi Posisi Nama**:
+   - Pada formulir isian kegiatan di dasbor admin, belum tersedia tombol untuk mengunduh template sertifikat.
+   - Pengguna menanyakan format kode/tag penempatan nama pada sertifikat agar letak posisi nama peserta dapat disesuaikan (custom) mengikuti desain piagam yang digunakan.
+2. **Aturan Keras pada Unggahan Gambar (`ImageCropModal`)**:
+   - Pengguna meminta aturan tegas: jangan berikan opsi rasio bebas/preset saat preview pemotongan gambar.
+   - Aspek rasio harus terkunci secara mutlak sesuai peruntukan fitur (Foto Profil 1:1, Sampul Buku 3:4, Banner Kegiatan 16:9, Hero Banner 16:9) tanpa kemungkinan deviasi.
+3. **Penyerasian Banner Kegiatan (Home vs Menu Kegiatan)**:
+   - Tampilan banner kegiatan di halaman publik katalog (`/event`) sebelumnya menggunakan tata letak split-horizontal (lebar gambar 35%) yang memotong dan mendistorsi banner 16:9.
+   - Diperlukan penyerasian agar banner kegiatan di menu Home (`EventSection.jsx`) dan menu Kegiatan (`EventsPage.jsx`) sama-sama mengusung aspek rasio presisi 16:9 dengan kartu grid modern.
+
+---
+
+### B. Implementasi & Detail Arsitektur
+
+#### 1. Sistem Kode Placeholder & Kustomisasi Koordinat Nama Sertifikat
+- **Standar Format Kode Placeholder SiPena:**
+  - `{{NAMA}}` atau `{{NAMA_PESERTA}}`: Nama lengkap peserta terdaftar (beserta gelar) yang diinjeksi secara otomatis saat klaim token Zoom.
+  - `{{NOMOR_SERTIFIKAT}}`: Nomor unik registrasi resmi SiPena (misal: `SIPENA/CERT/2026/XI/0001`).
+  - `{{JUDUL_KEGIATAN}}`: Judul lengkap webinar/workshop/acara.
+  - `{{TANGGAL}}`: Tanggal pelaksanaan kegiatan dalam format resmi Bahasa Indonesia.
+  - `{{INSTANSI}}`: Lembaga/instansi asal peserta.
+- **Sistem Koordinat PDF A4 Landscape ($297 \times 210\text{ mm}$):**
+  - **Sumbu Horisontal ($X$):** Selalu otomatis diatur tepat di tengah bidang horisontal ($X = 148.5\text{ mm}$, `{ align: 'center' }`).
+  - **Sumbu Vertikal ($Y$):** Standar bawaan adalah $Y = 96\text{ mm}$.
+  - **Kustomisasi Kolom Database:** Kolom `cert_name_pos_y` (integer default 96) dan `certificate_template_url` (text) ditambahkan ke tabel `events` di PostgreSQL dan schema Drizzle (`server/src/db/schema.ts`).
+  - **Dinamika Generator PDF (`EventDetail.jsx` & `AuthorDashboard.jsx`):** Pembacaan koordinat $Y$ nama kini bersifat dinamis:
+    ```javascript
+    const namePosY = Number(event.certNamePosY || event.cert_name_pos_y) || 96;
+    doc.text(recipientName, 148.5, namePosY, { align: 'center' });
+    ```
+- **Fitur Unduh Template Sertifikat Resmi di Admin (`AdminKegiatan.jsx`):**
+  - Ditambahkan tombol *"Unduh Template Sertifikat (A4 PDF)"* pada formulir modal kegiatan.
+  - Generator fungsi `handleDownloadCertificateTemplate()` secara otomatis membuat dan mengunduh file `Template_Sertifikat_SiPena_A4.pdf` lengkap dengan bingkai ganda Perpusnas Press (biru & emas), kop resmi lembaga, serta kotak garis bantu putus-putus (*dashed guideline*) yang menandai posisi koordinat $Y$ aktual.
+  - Disediakan input *"Posisi Vertikal Nama Peserta (Y dalam mm)"* serta kotak panduan format tag placeholder.
+
+#### 2. Aturan Keras Pemotongan Gambar (`src/components/ImageCropModal.jsx` & `.css`)
+- **Penghapusan Selector Rasio:**
+  - Menghapus konstanta `PRESET_RATIOS` dan tombol-tombol pemilihan rasio bebas (`ratio-chips`).
+  - Nilai rasio (`effectiveRatio`) dikunci mutlak dari properti `aspectRatio` atau bentuk `cropShape` yang dikirim komponen pemanggil:
+    - Foto Profil / Avatar: Strictly 1:1 (`cropShape="round"`, `aspectRatio={1}`)
+    - Sampul Buku: Strictly 3:4 (`cropShape="rect"`, `aspectRatio={3 / 4}`)
+    - Banner Kegiatan: Strictly 16:9 (`aspectRatio={16 / 9}`)
+    - Hero Banner: Strictly 16:9 (`aspectRatio={16 / 9}`)
+- **Resize Presisi Sudut Diagonal:**
+  - Hanya 4 sudut handle diagonal yang dirender (`nw`, `ne`, `se`, `sw`), menghilangkan handle sisi (`n`, `e`, `s`, `w`) yang rawan mendistorsi gambar.
+  - Perhitungan matematika resize mengunci proporsi secara mutlak:
+    $$\text{height} = \frac{\text{width}}{\text{effectiveRatio}}$$
+    sehingga crop box tidak pernah dapat dipaksa berubah rasio.
+- **Kartu Indikator Rasio Terkunci (`.crop-ratio-locked-card`):**
+  - Menggantikan pilihan rasio dengan kartu informatif elegan berikon `Lock` yang menampilkan label rasio dan penjelasan bahwa proporsi terkunci otomatis demi menjaga presisi antarmuka.
+
+#### 3. Penyeragaman Tampilan Banner Kegiatan (Home vs Menu Kegiatan)
+- **Menu Home (`src/components/EventSection.css`):**
+  - Kontainer `.event-image` dan skeleton loader diubah dari tinggi tetap piksel (`height: 195px`) menjadi rasio presisi `aspect-ratio: 16 / 9; width: 100%; object-fit: cover;`.
+- **Menu Kegiatan (`src/pages/EventsPage.jsx` & `.css`):**
+  - Mengganti tata letak split card horizontal 35% yang memotong gambar menjadi kartu grid modern responsif (`grid-template-columns: repeat(auto-fill, minmax(330px, 1fr))`).
+  - Mengadopsi kontainer banner `.event-catalog-image-wrap` strictly 16:9 yang identik dengan Home, lengkap dengan:
+    - Badge kalender (hari dan bulan) di kiri atas.
+    - Overlay badges di kanan atas: status kegiatan, pill "Zoom", dan pill hijau berkedip *"Klaim Buka"* jika sesi klaim sertifikat aktif.
+  - Menambahkan bar navigasi kontrol: Filter tabs (*Semua, Akan Datang, Segera, Selesai*) beserta penghitung jumlah acara (`tab-count`), serta bilah pencarian (*search bar*) kegiatan realtime.
+
+---
+
+### C. Hasil Verifikasi & Pengujian
+1. **Pengujian Build Produksi:**
+   - Eksekusi `npm run build` sukses 100% tanpa error (`built in 2.08s`).
+   - Eksekusi backend `npm run build` di folder server sukses (`tsc || true`).
+2. **Pengujian Fungsionalitas:**
+   - Template sertifikat PDF A4 Landscape berhasil di-generate dan diunduh langsung dari formulir admin.
+   - Posisi vertikal nama peserta bergerak presisi sesuai nilai Y yang dimasukkan admin.
+   - ImageCropModal terkunci penuh pada rasio 16:9 (kegiatan), 3:4 (buku), dan 1:1 (avatar).
+   - Tampilan banner kegiatan di menu Home dan Menu Kegiatan kini serasi, simetris, dan responsif di berbagai resolusi layar.
+
+
 

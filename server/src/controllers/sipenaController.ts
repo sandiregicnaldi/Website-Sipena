@@ -1129,6 +1129,8 @@ function sanitizeEventPayload(body: any) {
     if (body.speakers !== undefined) payload.speakers = Array.isArray(body.speakers) ? body.speakers : [body.speakers].filter(Boolean);
     if (body.maxParticipants !== undefined) payload.maxParticipants = Number(body.maxParticipants) || 0;
     if (body.certificateToken !== undefined) payload.certificateToken = body.certificateToken ? String(body.certificateToken).trim().toUpperCase() : null;
+    if (body.certificateTemplateUrl !== undefined) payload.certificateTemplateUrl = body.certificateTemplateUrl;
+    if (body.certNamePosY !== undefined) payload.certNamePosY = Number(body.certNamePosY) || 96;
     if (body.isClaimOpen !== undefined) payload.isClaimOpen = body.isClaimOpen;
     if (body.claimOpensAt !== undefined) payload.claimOpensAt = body.claimOpensAt;
     if (body.status !== undefined) payload.status = body.status;

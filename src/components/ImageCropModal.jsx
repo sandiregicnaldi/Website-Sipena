@@ -1,21 +1,64 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   X, Check, RotateCw, ZoomIn, ZoomOut, Maximize2, 
-  FlipHorizontal, RefreshCw, Crop as CropIcon 
+  FlipHorizontal, RefreshCw, Crop as CropIcon, Lock, ShieldCheck
 } from 'lucide-react';
 import './ImageCropModal.css';
 
-const PRESET_RATIOS = [
-  { label: 'Bebas', value: null },
-  { label: '1:1 (Avatar)', value: 1 / 1 },
-  { label: '3:4 (Buku)', value: 3 / 4 },
-  { label: '16:9 (Banner)', value: 16 / 9 },
-  { label: '21:9 (Hero)', value: 21 / 9 },
-];
+/**
+ * Mendapatkan informasi metadata rasio yang terkunci ketat
+ */
+const getRatioInfo = (ratio, cropShape) => {
+  if (cropShape === 'round' || (ratio && Math.abs(ratio - 1) < 0.05)) {
+    return {
+      ratio: 1,
+      tag: '1:1',
+      label: '1:1 (Persegi / Avatar)',
+      sub: 'Foto Profil / Penulis',
+      desc: 'Proporsi 1:1 terkunci permanen agar lingkaran avatar profil selalu simetris dan rapi.'
+    };
+  }
+  if (ratio && Math.abs(ratio - (3 / 4)) < 0.05) {
+    return {
+      ratio: 3 / 4,
+      tag: '3:4',
+      label: '3:4 (Standar Sampul Buku)',
+      sub: 'Sampul Buku & Katalog',
+      desc: 'Proporsi 3:4 terkunci sesuai standar industri penerbitan buku fisik maupun katalog digital.'
+    };
+  }
+  if (ratio && Math.abs(ratio - (16 / 9)) < 0.05) {
+    return {
+      ratio: 16 / 9,
+      tag: '16:9',
+      label: '16:9 (Widescreen Banner)',
+      sub: 'Banner Kegiatan & Hero',
+      desc: 'Proporsi 16:9 terkunci agar banner kegiatan serasi dan presisi di layar desktop maupun mobile.'
+    };
+  }
+  if (ratio && Math.abs(ratio - (21 / 9)) < 0.05) {
+    return {
+      ratio: 21 / 9,
+      tag: '21:9',
+      label: '21:9 (Ultrawide Banner)',
+      sub: 'Hero Banner',
+      desc: 'Proporsi 21:9 terkunci untuk tampilan panorama hero.'
+    };
+  }
+  const r = ratio || 1;
+  return {
+    ratio: r,
+    tag: `${Math.round(r * 100) / 100}:1`,
+    label: `Proporsi Khusus (${Math.round(r * 100) / 100}:1)`,
+    sub: 'Format Khusus',
+    desc: 'Proporsi gambar dikunci sesuai standar tata letak antarmuka SiPena.'
+  };
+};
 
 /**
  * Universal Image Crop & Preview Modal
  * Pure HTML5 Canvas implementation - zero external dependencies, React 19 ready.
+ * Aturan Keras: Aspek rasio terkunci secara mutlak sesuai peruntukan gambar tanpa opsi perubahan.
  */
 const ImageCropModal = ({
   isOpen,
@@ -27,7 +70,10 @@ const ImageCropModal = ({
   onConfirm,
   onCancel,
 }) => {
-  const [selectedRatio, setSelectedRatio] = useState(initialAspect);
+  // Hitung rasio efektif yang terkunci secara mutlak
+  const effectiveRatio = cropShape === 'round' ? 1 : (initialAspect || 1);
+  const ratioInfo = getRatioInfo(effectiveRatio, cropShape);
+
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0); // 0, 90, 180, 270
   const [flipH, setFlipH] = useState(false);
@@ -45,17 +91,16 @@ const ImageCropModal = ({
   const imageRef = useRef(null);
   const previewCanvasRef = useRef(null);
 
-  // Sync initial aspect ratio when modal opens or initialAspect changes
+  // Sync initial state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedRatio(initialAspect);
       setZoom(1);
       setRotation(0);
       setFlipH(false);
     }
-  }, [isOpen, initialAspect]);
+  }, [isOpen]);
 
-  // Adjust crop box dimensions based on selected aspect ratio
+  // Adjust crop box dimensions strictly based on locked aspect ratio
   const applyAspectRatio = useCallback((ratio, containerWidth, containerHeight) => {
     const pad = 30;
     const maxW = Math.max(100, containerWidth - pad * 2);
@@ -111,15 +156,7 @@ const ImageCropModal = ({
       y: (cHeight - dispH) / 2,
     });
 
-    applyAspectRatio(selectedRatio, cWidth, cHeight);
-  };
-
-  // Change ratio button handler
-  const handleSelectRatio = (ratio) => {
-    setSelectedRatio(ratio);
-    if (containerRef.current) {
-      applyAspectRatio(ratio, containerRef.current.clientWidth, containerRef.current.clientHeight);
-    }
+    applyAspectRatio(effectiveRatio, cWidth, cHeight);
   };
 
   // Zoom controls
@@ -141,7 +178,7 @@ const ImageCropModal = ({
     setRotation(0);
     setFlipH(false);
     if (containerRef.current) {
-      applyAspectRatio(selectedRatio, containerRef.current.clientWidth, containerRef.current.clientHeight);
+      applyAspectRatio(effectiveRatio, containerRef.current.clientWidth, containerRef.current.clientHeight);
     }
   };
 
@@ -178,33 +215,55 @@ const ImageCropModal = ({
     } else if (isResizing && resizeHandle) {
       setCropBox(prev => {
         let { x, y, width, height } = prev;
+        const ratio = effectiveRatio;
 
-        if (resizeHandle.includes('e')) width = Math.max(50, Math.min(maxW - x, width + dx));
-        if (resizeHandle.includes('s')) height = Math.max(50, Math.min(maxH - y, height + dy));
-        if (resizeHandle.includes('w')) {
-          const newW = Math.max(50, width - dx);
-          x += width - newW;
-          width = newW;
-        }
-        if (resizeHandle.includes('n')) {
-          const newH = Math.max(50, height - dy);
-          y += height - newH;
-          height = newH;
-        }
-
-        // Maintain aspect ratio if set
-        if (selectedRatio) {
-          if (resizeHandle.includes('e') || resizeHandle.includes('w')) {
-            height = width / selectedRatio;
-          } else {
-            width = height * selectedRatio;
+        // Diagonal proportional resizing strictly preserving aspect ratio
+        if (resizeHandle === 'se') {
+          let newW = Math.max(60, Math.min(maxW - x, width + dx));
+          let newH = newW / ratio;
+          if (y + newH > maxH) {
+            newH = maxH - y;
+            newW = newH * ratio;
           }
+          width = newW;
+          height = newH;
+        } else if (resizeHandle === 'sw') {
+          let newW = Math.max(60, Math.min(x + width, width - dx));
+          let newH = newW / ratio;
+          if (y + newH > maxH) {
+            newH = maxH - y;
+            newW = newH * ratio;
+          }
+          x = x + (width - newW);
+          width = newW;
+          height = newH;
+        } else if (resizeHandle === 'ne') {
+          let newW = Math.max(60, Math.min(maxW - x, width + dx));
+          let newH = newW / ratio;
+          if (y - (newH - height) < 0) {
+            newH = height + y;
+            newW = newH * ratio;
+          }
+          y = y - (newH - height);
+          width = newW;
+          height = newH;
+        } else if (resizeHandle === 'nw') {
+          let newW = Math.max(60, Math.min(x + width, width - dx));
+          let newH = newW / ratio;
+          if (y - (newH - height) < 0) {
+            newH = height + y;
+            newW = newH * ratio;
+          }
+          x = x + (width - newW);
+          y = y - (newH - height);
+          width = newW;
+          height = newH;
         }
 
         return { x: Math.max(0, x), y: Math.max(0, y), width, height };
       });
     }
-  }, [isDragging, isResizing, dragStart, resizeHandle, selectedRatio]);
+  }, [isDragging, isResizing, dragStart, resizeHandle, effectiveRatio]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -238,7 +297,7 @@ const ImageCropModal = ({
     const img = imageRef.current;
 
     const outW = 200;
-    const outH = selectedRatio ? Math.round(outW / selectedRatio) : Math.round(outW * (cropBox.height / cropBox.width));
+    const outH = Math.max(40, Math.round(outW / effectiveRatio));
     canvas.width = outW;
     canvas.height = outH;
 
@@ -271,7 +330,7 @@ const ImageCropModal = ({
       // Ignore initial render frame error
     }
     ctx.restore();
-  }, [cropBox, imagePos, imageSize, zoom, selectedRatio, cropShape]);
+  }, [cropBox, imagePos, imageSize, zoom, effectiveRatio, cropShape]);
 
   useEffect(() => {
     if (isOpen && imageSize.width > 0) {
@@ -400,8 +459,8 @@ const ImageCropModal = ({
               <div className="crop-grid-v line-1" />
               <div className="crop-grid-v line-2" />
 
-              {/* Resize handles */}
-              {['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'].map((h) => (
+              {/* Resize handles: hanya 4 sudut diagonal agar rasio terkunci matematis 100% tanpa distorsi */}
+              {['nw', 'ne', 'se', 'sw'].map((h) => (
                 <div
                   key={h}
                   className={`crop-handle handle-${h}`}
@@ -424,21 +483,18 @@ const ImageCropModal = ({
               </span>
             </div>
 
-            {/* Aspect Ratio Selector */}
-            <div className="crop-control-group">
-              <label>Pilihan Aspek Rasio</label>
-              <div className="ratio-chips">
-                {PRESET_RATIOS.map((r, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className={`ratio-chip ${selectedRatio === r.value ? 'active' : ''}`}
-                    onClick={() => handleSelectRatio(r.value)}
-                  >
-                    {r.label}
-                  </button>
-                ))}
+            {/* Locked Aspect Ratio Card (Aturan Keras Rasio Terkunci) */}
+            <div className="crop-ratio-locked-card">
+              <div className="ratio-locked-header">
+                <Lock size={15} className="ratio-lock-icon" />
+                <span className="ratio-locked-badge-text">Aspek Rasio Terkunci</span>
               </div>
+              <div className="ratio-locked-value">
+                {ratioInfo.label}
+              </div>
+              <p className="ratio-locked-desc">
+                {ratioInfo.desc}
+              </p>
             </div>
 
             {/* Zoom Slider */}

@@ -10,6 +10,14 @@ import { toNodeHandler } from "better-auth/node";
 import { authMiddleware } from "./middlewares/auth";
 import { startPolling } from "./services/telegramService";
 import { startAutoArchiveJob } from "./services/projectService";
+import {
+    loginRateLimiter,
+    AuthSecurityController,
+    getClientIp,
+    getFailedAttempts,
+    verifyCaptchaSolution,
+} from "./middlewares/authSecurity";
+import { SecurityLogger } from "./services/securityLogger";
 
 dotenv.config();
 
@@ -54,7 +62,108 @@ app.use(cors(corsOptions));
 // because better-auth's toNodeHandler intercepts OPTIONS before Express responds.
 app.options("*", cors(corsOptions));
 
-// Auth Routes MUST be before express.json() to avoid body consumption issues
+// ── Anti-Brute Force, Rate Limiting & CAPTCHA Endpoints ────────────────────
+app.get("/api/auth/security-status", AuthSecurityController.getStatus);
+app.get("/api/auth/captcha-new", AuthSecurityController.getNewCaptcha);
+app.post("/api/auth/verify-captcha", express.json(), AuthSecurityController.verifyCaptcha);
+
+// Rate Limiting (5x / 15m), Response Uniformity & CAPTCHA Enforcement on sign-in
+app.post(
+    "/api/auth/sign-in/email",
+    express.json(),
+    loginRateLimiter,
+    (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        const ip = getClientIp(req);
+        const email = (req.body?.email || "").trim().toLowerCase();
+        const failures = getFailedAttempts(ip, email);
+
+        // Jika kegagalan berturut-turut >= 3, verifikasi CAPTCHA wajib valid
+        if (failures >= 3) {
+            const { captchaToken, captchaAnswer } = req.body || {};
+            if (!captchaToken || !captchaAnswer || !verifyCaptchaSolution(captchaToken, captchaAnswer)) {
+                SecurityLogger.logFailedLogin({
+                    email,
+                    ip,
+                    userAgent: req.headers["user-agent"] as string,
+                    reason: "Tantangan CAPTCHA diperlukan atau jawaban verifikasi salah",
+                    consecutiveFailures: failures,
+                });
+                return res.status(400).json({
+                    error: "Verifikasi keamanan (CAPTCHA) diperlukan atau jawaban salah. Silakan coba lagi.",
+                    message: "Verifikasi keamanan (CAPTCHA) diperlukan atau jawaban salah. Silakan coba lagi.",
+                    requiresCaptcha: true,
+                    consecutiveFailures: failures,
+                });
+            }
+        }
+
+        // Intercept response Better Auth untuk Response Uniformity (mencegah User Enumeration)
+        const originalEnd = res.end.bind(res);
+        const originalWriteHead = res.writeHead.bind(res);
+        let chunks: Buffer[] = [];
+        let interceptedStatus = 200;
+        let interceptedHeaders: Record<string, any> = {};
+
+        res.writeHead = function (status: any, headers?: any) {
+            interceptedStatus = typeof status === "number" ? status : 200;
+            if (headers) Object.assign(interceptedHeaders, headers);
+            return res;
+        };
+
+        res.write = function (chunk: any) {
+            if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            return true;
+        };
+
+        res.end = function (chunk?: any) {
+            if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+
+            if (interceptedStatus >= 400 && interceptedStatus < 500) {
+                const rawBody = Buffer.concat(chunks).toString("utf-8");
+                let parsed: any = {};
+                try {
+                    parsed = JSON.parse(rawBody);
+                } catch {
+                    parsed = {};
+                }
+
+                const errMsg = String(parsed.message || parsed.error || "").toLowerCase();
+                let newBody: any;
+
+                if (errMsg.includes("verify") || errMsg.includes("verification") || parsed.code === "EMAIL_NOT_VERIFIED") {
+                    newBody = {
+                        error: "Email Anda belum diverifikasi. Silakan periksa kotak masuk email Anda untuk melakukan verifikasi akun sebelum login.",
+                        message: "Email Anda belum diverifikasi. Silakan periksa kotak masuk email Anda untuk melakukan verifikasi akun sebelum login.",
+                        code: "EMAIL_NOT_VERIFIED",
+                        requiresVerification: true,
+                    };
+                } else {
+                    const currentFailures = getFailedAttempts(ip, email);
+                    newBody = {
+                        error: "Email atau kata sandi tidak sesuai.",
+                        message: "Email atau kata sandi tidak sesuai.",
+                        requiresCaptcha: currentFailures >= 3,
+                        consecutiveFailures: currentFailures,
+                    };
+                }
+
+                const buf = Buffer.from(JSON.stringify(newBody));
+                interceptedHeaders["content-type"] = "application/json";
+                interceptedHeaders["content-length"] = buf.length;
+                originalWriteHead(interceptedStatus, interceptedHeaders);
+                return originalEnd(buf);
+            }
+
+            const combined = Buffer.concat(chunks);
+            originalWriteHead(interceptedStatus, interceptedHeaders);
+            return originalEnd(combined);
+        };
+
+        next();
+    }
+);
+
+// Auth Routes — delegated to Better Auth
 app.all("/api/auth/*", toNodeHandler(auth));
 
 // Parse JSON for all other routes

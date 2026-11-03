@@ -265,6 +265,8 @@ export const events = pgTable("events", {
     speakers: jsonb("speakers").$type<string[]>().default([]),
     maxParticipants: integer("max_participants").default(0),
     certificateToken: text("certificate_token"),
+    certificateTemplateUrl: text("certificate_template_url"),
+    certNamePosY: integer("cert_name_pos_y").default(96),
     isClaimOpen: boolean("is_claim_open").default(false),
     claimOpensAt: text("claim_opens_at"),
     status: text("status").default("Akan Datang"), // 'Akan Datang' | 'Segera' | 'Selesai'

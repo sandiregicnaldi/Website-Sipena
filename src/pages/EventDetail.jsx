@@ -161,19 +161,20 @@ const EventDetail = () => {
       doc.setTextColor(100, 116, 139);
       doc.text('Diberikan dengan hormat kepada:', 148.5, 80, { align: 'center' });
 
-      // Nama Peserta
+      // Nama Peserta (Menggunakan posisi vertikal kustom certNamePosY jika ditentukan)
       const recipientName = certData?.name || user?.namaLengkap || user?.name || 'Peserta Terdaftar';
+      const namePosY = Number(event.certNamePosY) || 96;
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 138);
-      doc.text(recipientName, 148.5, 96, { align: 'center' });
+      doc.text(recipientName, 148.5, namePosY, { align: 'center' });
 
       // Instansi jika ada
       if (certData?.institution) {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(71, 85, 105);
-        doc.text(certData.institution, 148.5, 104, { align: 'center' });
+        doc.text(certData.institution, 148.5, namePosY + 8, { align: 'center' });
       }
 
       // Keterangan Partisipasi

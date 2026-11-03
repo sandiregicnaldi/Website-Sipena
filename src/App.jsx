@@ -14,6 +14,7 @@ import AuthorDashboard from './pages/AuthorDashboard';
 import TentangKami from './pages/TentangKami';
 import FAQPage from './pages/FAQPage';
 import PanduanPenerbitan from './pages/PanduanPenerbitan';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import ManagementLayout from './pages/admin/manajemen/ManagementLayout';
 import ScrollToTop from './components/ScrollToTop';
@@ -60,6 +61,7 @@ function App() {
                     <Route element={<PublicLayout />}>
                       <Route path="/"            element={<Home />} />
                       <Route path="/login"       element={<LoginPage />} />
+                      <Route path="/verify-email" element={<VerifyEmailPage />} />
                       <Route path="/buku"        element={<BooksPage />} />
                       <Route path="/buku/:id"    element={<BookDetail />} />
                       <Route path="/penulis"     element={<AuthorsPage />} />

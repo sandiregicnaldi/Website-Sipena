@@ -278,34 +278,46 @@
   color: #2563eb;
 }
 
-/* Ratio Chips */
-.ratio-chips {
+/* Locked Aspect Ratio Card */
+.crop-ratio-locked-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.35rem;
 }
 
-.ratio-chip {
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  padding: 0.3rem 0.6rem;
-  border-radius: 6px;
+.ratio-locked-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ratio-lock-icon {
+  color: #2563eb;
+}
+
+.ratio-locked-badge-text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #1d4ed8;
+}
+
+.ratio-locked-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ratio-locked-desc {
+  margin: 0;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.ratio-chip:hover {
-  background-color: #e2e8f0;
-  color: #1e293b;
-}
-
-.ratio-chip.active {
-  background-color: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 /* Zoom Slider */
