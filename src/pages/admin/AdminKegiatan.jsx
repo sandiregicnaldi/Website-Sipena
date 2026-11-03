@@ -3,7 +3,7 @@ import './AdminLayout.css';
 import { 
   Users, FileDown, Calendar, Globe, Edit, Trash2, 
   CheckCircle, Plus, Save, KeyRound, Sparkles, RefreshCw, 
-  ToggleLeft, ToggleRight, Loader2, Award, Clock, Upload, Image, X
+  ToggleLeft, ToggleRight, Loader2, Award, Clock, Upload, Image, X, Eye
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useEvent, checkIfClaimOpen } from '../../context/EventContext';
@@ -586,14 +586,14 @@ const AdminKegiatan = () => {
       {/* MODAL TAMBAH/EDIT KEGIATAN */}
       {modal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
-          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '620px', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', margin: 'auto' }}>
-            <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '680px', maxHeight: '92vh', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', margin: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {modal.mode === 'edit' ? <Edit size={16} /> : <Plus size={16} />} {modal.mode === 'edit' ? 'Edit Kegiatan & Sertifikat' : 'Tambah Kegiatan Baru'}
               </h3>
               <button onClick={() => setModal(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); handleSave(modal.data); }} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={e => { e.preventDefault(); handleSave(modal.data); }} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
               <div>
                 <label style={labelStyle}>Judul Kegiatan *</label>
                 <input style={inputStyle} required value={modal.data.judul} onChange={e => setModal(p => ({ ...p, data: { ...p.data, judul: e.target.value } }))} placeholder="Nama kegiatan/webinar/workshop" />
@@ -691,13 +691,19 @@ const AdminKegiatan = () => {
                 <textarea style={{ ...inputStyle, resize: 'vertical' }} rows="3" required value={modal.data.penjelasan || ''} onChange={e => setModal(p => ({ ...p, data: { ...p.data, penjelasan: e.target.value } }))} placeholder="Deskripsi mengenai kegiatan ini..."></textarea>
               </div>
 
+              {/* ── 1. BANNER / POSTER KEGIATAN (TAMPILAN WEBSITE) ── */}
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-                  <label style={{ ...labelStyle, marginBottom: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Image size={16} color="var(--primary-color)" /> Banner / Poster Kegiatan
-                  </label>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', background: '#e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-                    Rekomendasi: 1920 × 1080 px (16:9), maks 5 MB
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  <div>
+                    <label style={{ ...labelStyle, marginBottom: '0.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Image size={16} color="#0284c7" /> 1. Poster / Banner Kegiatan (Tampilan Website &amp; Katalog)
+                    </label>
+                    <div style={{ fontSize: '0.73rem', color: '#64748b' }}>
+                      Gambar rasio 16:9 yang tampil pada halaman Beranda dan Katalog Kegiatan publik SiPena.
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#0369a1', background: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
+                    Rekomendasi 16:9 (1920×1080 px, maks 5 MB)
                   </span>
                 </div>
 
@@ -738,7 +744,7 @@ const AdminKegiatan = () => {
                       />
                       <div style={{ minWidth: 0, fontSize: '0.82rem' }}>
                         <div style={{ fontWeight: 600, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <CheckCircle size={15} /> Banner Siap Digunakan
+                          <CheckCircle size={15} /> Banner Acara Siap Digunakan
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.2rem' }}>
                           <a
@@ -756,7 +762,7 @@ const AdminKegiatan = () => {
                             disabled={uploadingBanner}
                             style={{ background: 'none', border: 'none', color: '#475569', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
                           >
-                            {uploadingBanner ? 'Mengunggah...' : 'Ganti Gambar'}
+                            {uploadingBanner ? 'Mengunggah...' : 'Ganti Banner'}
                           </button>
                         </div>
                       </div>
@@ -812,15 +818,15 @@ const AdminKegiatan = () => {
                     ) : (
                       <>
                         <Upload size={16} color="var(--primary-color)" />
-                        <span>Pilih & Unggah File Banner (JPG, PNG, WEBP)</span>
+                        <span>Pilih &amp; Unggah File Banner Acara (JPG, PNG, WEBP)</span>
                       </>
                     )}
                   </button>
                 )}
               </div>
 
-              {/* PENGATURAN TEMPLATE & TATA LETAK SERTIFIKAT */}
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* ── 2. TEMPLATE PIAGAM & POSISI NAMA PESERTA (SERTIFIKAT KLAIM) ── */}
+              <div style={{ background: '#f8fafc', padding: '1.1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                 <input
                   type="file"
                   ref={certTemplateFileRef}
@@ -830,39 +836,21 @@ const AdminKegiatan = () => {
                   disabled={uploadingCertTemplate}
                 />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <label style={{ ...labelStyle, marginBottom: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Award size={16} color="var(--primary-color)" /> Template &amp; Pengaturan Sertifikat
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => certTemplateFileRef.current?.click()}
-                    className="btn btn-primary"
-                    disabled={uploadingCertTemplate}
-                    style={{
-                      padding: '0.35rem 0.85rem',
-                      fontSize: '0.75rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      fontWeight: 600
-                    }}
-                  >
-                    {uploadingCertTemplate ? (
-                      <>
-                        <Loader2 size={13} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
-                        <span>Mengunggah...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={13} />
-                        <span>{modal.data.certificateTemplateUrl ? 'Ganti Template' : 'Unggah Template Sertifikat'}</span>
-                      </>
-                    )}
-                  </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  <div>
+                    <label style={{ ...labelStyle, marginBottom: '0.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Award size={16} color="#d97706" /> 2. Desain Template Piagam &amp; Posisi Nama (Khusus Sertifikat Peserta)
+                    </label>
+                    <div style={{ fontSize: '0.73rem', color: '#64748b' }}>
+                      Template sertifikat yang diunduh peserta saat klaim kehadiran. Nama peserta akan dicetak otomatis di atas template ini.
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#92400e', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
+                    A4 Landscape (297×210 mm)
+                  </span>
                 </div>
 
-                {/* Status Berkas Template */}
+                {/* SINGLE UNIFIED UPLOAD CONTROL */}
                 {modal.data.certificateTemplateUrl ? (
                   <div style={{
                     display: 'flex',
@@ -879,7 +867,7 @@ const AdminKegiatan = () => {
                       <CheckCircle size={16} color="#16a34a" style={{ flexShrink: 0 }} />
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#166534' }}>
-                          Template Sertifikat Kustom Terpasang
+                          Template Piagam Kustom Aktif
                         </div>
                         <a
                           href={modal.data.certificateTemplateUrl}
@@ -900,93 +888,354 @@ const AdminKegiatan = () => {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                      <a
-                        href={modal.data.certificateTemplateUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => certTemplateFileRef.current?.click()}
+                        disabled={uploadingCertTemplate}
                         className="btn btn-outline"
-                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem', background: '#fff' }}
+                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', background: '#fff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
                       >
-                        Buka File
-                      </a>
+                        {uploadingCertTemplate ? 'Mengunggah...' : 'Ganti Template'}
+                      </button>
                       <button
                         type="button"
                         onClick={() => setModal(p => ({ ...p, data: { ...p.data, certificateTemplateUrl: '' } }))}
                         className="btn btn-outline"
-                        title="Hapus template kustom dan gunakan standar"
-                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem', color: '#dc2626', borderColor: '#fca5a5', background: '#fff' }}
+                        title="Hapus template dan gunakan standar"
+                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', color: '#dc2626', borderColor: '#fca5a5', background: '#fff' }}
                       >
                         <Trash2 size={12} /> Hapus
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '0.55rem 0.75rem',
-                    background: '#ffffff',
-                    border: '1px dashed #cbd5e1',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    color: '#64748b',
-                    gap: '0.4rem'
-                  }}>
-                    <Sparkles size={14} color="#3b82f6" style={{ flexShrink: 0 }} />
-                    <span>
-                      Belum ada template kustom diunggah. Sertifikat peserta akan otomatis menggunakan <strong>desain resmi standar Perpusnas Press</strong>. Unggah template piagam (PNG, JPG, atau PDF) jika memiliki desain sendiri.
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => certTemplateFileRef.current?.click()}
+                    disabled={uploadingCertTemplate}
+                    className="btn btn-outline"
+                    style={{
+                      width: '100%',
+                      padding: '0.85rem 1rem',
+                      fontSize: '0.82rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      background: '#ffffff',
+                      border: '1.5px dashed #3b82f6',
+                      borderRadius: '6px',
+                      color: '#1d4ed8',
+                      cursor: uploadingCertTemplate ? 'not-allowed' : 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    {uploadingCertTemplate ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Loader2 size={16} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>Mengunggah file template sertifikat...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Upload size={16} />
+                          <span>Klik untuk Unggah Desain Template Piagam (PNG, JPG, WEBP, PDF)</span>
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 'normal' }}>
+                          Jika tidak diunggah, sertifikat peserta otomatis menggunakan format resmi standar Perpusnas Press.
+                        </span>
+                      </>
+                    )}
+                  </button>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem', display: 'block' }}>
-                      Posisi Vertikal Nama Peserta (Y dalam mm) *
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {/* ── LIVE INTERACTIVE PREVIEW SERTIFIKAT ── */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '0.85rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <Eye size={15} color="#2563eb" /> Live Preview Penempatan Nama (A4 Landscape)
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      Pergeseran vertikal realtime: <strong>{modal.data.certNamePosY ?? 96} mm</strong> dari atas
+                    </span>
+                  </div>
+
+                  {/* KANVAS PREVIEW A4 (297 x 210 mm) */}
+                  <div style={{
+                    position: 'relative',
+                    width: '100%',
+                    aspectRatio: '297 / 210',
+                    backgroundColor: '#ffffff',
+                    border: '1.5px solid #94a3b8',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
+                    userSelect: 'none'
+                  }}>
+                    {/* Background: Custom Image atau Standar Perpusnas */}
+                    {modal.data.certificateTemplateUrl && !modal.data.certificateTemplateUrl.toLowerCase().endsWith('.pdf') ? (
+                      <img
+                        src={modal.data.certificateTemplateUrl}
+                        alt="Template Sertifikat"
+                        style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(180deg, #fafafc 0%, #f1f5f9 100%)',
+                        padding: '3%',
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        position: 'relative'
+                      }}>
+                        {/* Bingkai Ganda Standar */}
+                        <div style={{ position: 'absolute', inset: '3%', border: '2px solid #1e3a8a', borderRadius: '3px', pointerEvents: 'none' }} />
+                        <div style={{ position: 'absolute', inset: '4.5%', border: '1px solid #ca8a04', borderRadius: '2px', pointerEvents: 'none' }} />
+
+                        <div style={{ fontSize: 'clamp(6px, 1.4vw, 9px)', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.5px', marginTop: '1.5%', textAlign: 'center' }}>
+                          PERPUSNAS PRESS • PERPUSTAKAAN NASIONAL RI
+                        </div>
+                        <div style={{ fontSize: 'clamp(10px, 2.5vw, 16px)', fontWeight: 900, color: '#0f172a', marginTop: '1.5%', letterSpacing: '0.5px' }}>
+                          SERTIFIKAT KEHADIRAN
+                        </div>
+                        <div style={{ fontSize: 'clamp(5px, 1.1vw, 8px)', color: '#64748b', marginTop: '0.5%' }}>
+                          Nomor Registrasi: SIPENA/CERT/2026/XI/0001
+                        </div>
+                        <div style={{ fontSize: 'clamp(5.5px, 1.2vw, 8.5px)', color: '#64748b', marginTop: '1.5%' }}>
+                          Diberikan dengan hormat kepada:
+                        </div>
+
+                        {/* Footer / Tanda Tangan */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '6%',
+                          left: '8%',
+                          right: '8%',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: 'clamp(5px, 1.1vw, 8px)',
+                          color: '#1e3a8a',
+                          fontWeight: 700
+                        }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: '40px', borderBottom: '1px solid #cbd5e1', marginBottom: '2px' }} />
+                            Panitia Pelaksana
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: '40px', borderBottom: '1px solid #cbd5e1', marginBottom: '2px' }} />
+                            Perpusnas Press
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* OVERLAY NAMA PESERTA DENGAN GARIS GUIDELINE DINAMIS */}
+                    {(() => {
+                      const posNumber = Number(modal.data.certNamePosY ?? 96);
+                      const safePosY = isNaN(posNumber) ? 96 : posNumber;
+                      // Persentase top dihitung dari tinggi A4 Landscape (210 mm)
+                      const topPercent = Math.min(100, Math.max(0, (safePosY / 210) * 100));
+
+                      return (
+                        <div style={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          top: `${topPercent}%`,
+                          transform: 'translateY(-50%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          pointerEvents: 'none',
+                          zIndex: 10,
+                          transition: 'top 0.1s ease-out'
+                        }}>
+                          {/* Garis Horizontal Putus-putus Penanda Y */}
+                          <div style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            height: '1px',
+                            borderTop: '1.5px dashed #2563eb',
+                            opacity: 0.6
+                          }} />
+
+                          {/* Badge Nama Peserta */}
+                          <div style={{
+                            position: 'relative',
+                            background: 'rgba(30, 58, 138, 0.95)',
+                            color: '#ffffff',
+                            padding: '3px 10px',
+                            borderRadius: '4px',
+                            fontSize: 'clamp(8px, 1.8vw, 12px)',
+                            fontWeight: 800,
+                            letterSpacing: '0.3px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            <span>Nama Lengkap Peserta, S.Kom., M.T.</span>
+                            <span style={{
+                              fontSize: 'clamp(6px, 1.2vw, 9px)',
+                              background: '#3b82f6',
+                              color: '#fff',
+                              padding: '1px 5px',
+                              borderRadius: '3px',
+                              fontWeight: 700
+                            }}>
+                              Y: {safePosY} mm
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* KONTROL PENGATUR POSISI Y (SLIDER & NUMERIC INPUT) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.3rem', margin: 0 }}>
+                        Atur Posisi Vertikal Nama (Sumbu Y)
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <input
+                          style={{
+                            ...inputStyle,
+                            width: '75px',
+                            padding: '0.3rem 0.5rem',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            textAlign: 'center',
+                            background: '#fff'
+                          }}
+                          type="number"
+                          min="30"
+                          max="190"
+                          step="1"
+                          required
+                          value={modal.data.certNamePosY ?? 96}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            setModal(p => ({ ...p, data: { ...p.data, certNamePosY: isNaN(val) ? 96 : val } }));
+                          }}
+                        />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b' }}>mm</span>
+                      </div>
+                    </div>
+
+                    {/* RANGE SLIDER REALTIME */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', width: '36px' }}>30 mm</span>
                       <input
-                        style={{ ...inputStyle, width: '100px', fontWeight: 700, background: '#fff' }}
-                        type="number"
+                        type="range"
                         min="30"
                         max="180"
                         step="1"
-                        required
                         value={modal.data.certNamePosY ?? 96}
-                        onChange={e => setModal(p => ({ ...p, data: { ...p.data, certNamePosY: Number(e.target.value) || 96 } }))}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          setModal(p => ({ ...p, data: { ...p.data, certNamePosY: val } }));
+                        }}
+                        style={{
+                          flex: 1,
+                          cursor: 'pointer',
+                          accentColor: '#2563eb'
+                        }}
                       />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                        Standar: <strong>96 mm</strong> (tengah vertikal A4 Landscape)
-                      </span>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', width: '42px', textAlign: 'right' }}>180 mm</span>
+                    </div>
+
+                    {/* TOMBOL PINTAS PRESET & INDIKATOR KEAMANAN */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.2rem' }}>
+                      <div style={{ display: 'flex', gap: '0.3rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setModal(p => ({ ...p, data: { ...p.data, certNamePosY: 80 } }))}
+                          className="btn btn-outline"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', background: '#fff' }}
+                        >
+                          Atas (80 mm)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setModal(p => ({ ...p, data: { ...p.data, certNamePosY: 96 } }))}
+                          className="btn btn-outline"
+                          style={{
+                            padding: '0.2rem 0.5rem',
+                            fontSize: '0.7rem',
+                            background: modal.data.certNamePosY === 96 ? '#eff6ff' : '#fff',
+                            borderColor: modal.data.certNamePosY === 96 ? '#3b82f6' : '#cbd5e1',
+                            color: modal.data.certNamePosY === 96 ? '#1d4ed8' : '#334155',
+                            fontWeight: modal.data.certNamePosY === 96 ? 700 : 500
+                          }}
+                        >
+                          Standar (96 mm)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setModal(p => ({ ...p, data: { ...p.data, certNamePosY: 115 } }))}
+                          className="btn btn-outline"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', background: '#fff' }}
+                        >
+                          Bawah (115 mm)
+                        </button>
+                      </div>
+
+                      {/* Evaluasi Keamanan Posisi Y */}
+                      {(() => {
+                        const y = Number(modal.data.certNamePosY ?? 96);
+                        if (y < 50) {
+                          return <span style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 600 }}>⚠️ Terlalu tinggi (mendekati header/kop)</span>;
+                        }
+                        if (y > 165) {
+                          return <span style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 600 }}>⚠️ Terlalu rendah (mendekati tanda tangan)</span>;
+                        }
+                        return <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600 }}>✓ Posisi nama aman di bidang piagam</span>;
+                      })()}
                     </div>
                   </div>
                 </div>
 
+                {/* KOTAK PANDUAN REFERENSI KODE */}
                 <div style={{
                   background: '#ffffff',
                   border: '1px dashed #cbd5e1',
                   borderRadius: '6px',
                   padding: '0.65rem 0.85rem',
-                  fontSize: '0.75rem',
+                  fontSize: '0.73rem',
                   color: '#475569',
                   lineHeight: 1.5
                 }}>
                   <div style={{ fontWeight: 700, color: '#1e293b', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <Sparkles size={13} color="#ca8a04" /> Panduan Penempatan Identitas &amp; Kode Koordinat
+                    <Sparkles size={13} color="#ca8a04" /> Format Kode Placeholder Tag Sertifikat
                   </div>
-                  Sistem SiPena otomatis mencetak identitas peserta ke dokumen resmi PDF saat klaim. Sesuaikan template kustom Anda dengan posisi cetak berikut:
-                  <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  Jika template sertifikat Anda dibuat di Canva / Photoshop, sesuaikan ruang kosong piagam Anda dengan posisi cetak otomatis berikut:
+                  <div style={{ marginTop: '0.35rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.25rem' }}>
                     <div>
-                      <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA}}'}</code> atau <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA_PESERTA}}'}</code> : Nama lengkap peserta (Posisi Y: <strong>{modal.data.certNamePosY ?? 96} mm</strong>)
+                      <code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NAMA}}'}</code> : Posisi Y <strong>{modal.data.certNamePosY ?? 96} mm</strong>
                     </div>
                     <div>
-                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NOMOR_SERTIFIKAT}}'}</code> : Nomor unik registrasi (Posisi Y: 62 mm)
+                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{NOMOR_SERTIFIKAT}}'}</code> : Posisi Y <strong>62 mm</strong>
                     </div>
                     <div>
-                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{JUDUL_KEGIATAN}}'}</code> : Judul acara (Posisi Y: 134 mm)
+                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{JUDUL_KEGIATAN}}'}</code> : Posisi Y <strong>134 mm</strong>
                     </div>
                     <div>
-                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{TANGGAL}}'}</code> : Tanggal kegiatan (Posisi Y: 144 mm)
+                      <code style={{ background: '#f1f5f9', color: '#334155', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{'{{TANGGAL}}'}</code> : Posisi Y <strong>144 mm</strong>
                     </div>
                   </div>
                   <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end' }}>

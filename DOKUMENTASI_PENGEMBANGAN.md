@@ -1624,6 +1624,75 @@ Sebelumnya, tombol di panel admin bertuliskan *"Unduh Template Sertifikat (A4 PD
 3. **UX Feedback:**
    - Unggah template, pratinjau tautan berkas, penggantian berkas, dan penghapusan template kustom berjalan lancar dan reaktif.
 
+---
+
+## BAB 38: SEPARASI KOLOM BANNER KEGIATAN VS TEMPLATE SERTIFIKAT & LIVE INTERACTIVE CANVAS PREVIEW POSISI NAMA PESERTA
+
+**Tanggal:** 3 November 2026  
+**Status:** Teruji & Terselesaikan (*Production Ready*)
+
+---
+
+### A. Latar Belakang & Identifikasi Masalah Pengguna
+Setelah fitur upload template sertifikat diimplementasikan pada BAB 37, pengguna menyampaikan masukan terkait kenyamanan antarmuka (UI/UX) pada formulir modal tambah/edit kegiatan di panel Admin SiPena:
+> *"disini agak membingungkan ya, kolom upload template sertifikat ada dua dan tidak ada preview penempatan nama setelah diubah posisi Y nya"*
+
+Berdasarkan audit dan tangkapan layar antarmuka:
+1. **Ambiguitas Dua Kolom Unggah Berkas:**
+   - Kolom pertama adalah unggahan **Poster / Banner Kegiatan** (digunakan untuk katalog website & halaman beranda/kegiatan dengan rasio 16:9).
+   - Kolom kedua adalah unggahan **Desain Template Piagam Sertifikat** (digunakan khusus untuk dokumen sertifikat peserta format A4 Landscape).
+   - Karena kedua kolom berdekatan tanpa penomoran dan pemisah hierarki yang kuat, ditambah adanya tombol "Ganti Template" di header kartu, pengguna menganggap ada duplikasi kolom unggah template piagam.
+2. **Ketiadaan Pratinjau Visual Titik Koordinat $Y$ Nama Peserta:**
+   - Pengguna memasukkan nilai manual $Y = 200\text{ mm}$. Mengingat standar tinggi lembar kertas A4 Landscape adalah $210\text{ mm}$, nilai $200\text{ mm}$ berada di tepi paling bawah ($10\text{ mm}$ dari dasar kertas), yang menabrak area tanda tangan atau bahkan keluar dari batas cetak.
+   - Tanpa adanya simulasi kanvas visual, admin tidak dapat memperkirakan letak teks nama peserta relatif terhadap ruang kosong pada lembar sertifikat mereka.
+
+---
+
+### B. Solusi Desain UI/UX & Pemisahan Konteks
+1. **Pemisahan Konteks & Hierarki Bernomor yang Jelas:**
+   - **Bagian 1:** Diberi judul kontras `1. Poster / Banner Kegiatan (Tampilan Website & Katalog)` dilengkapi badge rasio `Rasio 16:9` dan penjelasan peruntukan untuk etalase publik.
+   - **Bagian 2:** Diberi judul kontras `2. Desain Template Piagam & Posisi Nama (Khusus Sertifikat Peserta)` dengan latar panel tersendiri (`#f8fafc` berbingkai `#e2e8f0`), dilengkapi badge spesifikasi `Format Kertas A4 Landscape (297 x 210 mm)`.
+2. **Konsolidasi Area Unggah Menjadi Single Unified Control:**
+   - Menghapus tombol ganda di sudut kanan header section.
+   - Menyediakan satu kotak area unggah (*dropzone*) terintegrasi yang menampilkan status template kustom aktif atau panduan template standar resmi Perpusnas Press.
+
+---
+
+### C. Implementasi Live Interactive Certificate Visualizer Canvas
+Pada `src/pages/admin/AdminKegiatan.jsx`:
+1. **Simulator Kanvas Kertas A4 Landscape Realtime:**
+   - Menghadirkan kontainer kanvas berskala dengan rasio aspek $297 : 210$ (`aspectRatio: '297 / 210'`, ratio $\approx 1.414$).
+   - Kanvas merender gambar latar belakang secara dinamis:
+     - Jika admin telah mengunggah template kustom (`certificateTemplateUrl`), gambar tersebut langsung ditampilkan penuh di dalam kanvas.
+     - Jika belum ada template kustom, kanvas merender mock-up desain resmi standar Perpusnas Press (bingkai ganda biru-emas, logo, nomor sertifikat, dan judul kegiatan).
+2. **Garis Panduan & Titik Nama Mengambang Dinamis (*Dynamic Name Overlay Marker*):**
+   - Menampilkan contoh nama: `Nama Lengkap Peserta, S.Kom., M.T.`.
+   - Posisi vertikal nama dihitung secara presisi berbasis persentase:
+     $$\text{top} = \frac{\text{certNamePosY}}{210} \times 100\%$$
+   - Dilengkapi garis putus-putus (*dashed line*) horizontal biru dan badge indikator koordinat ($Y = \dots\text{ mm}$) yang ikut bergeser secara halus saat nilai diubah.
+3. **Kendali Slider Realtime & Tombol Pintas Preset:**
+   - **Slider Rentang:** Input `range` berskala $30\text{ mm}$ hingga $180\text{ mm}$ dengan langkah $1\text{ mm}$.
+   - **Tombol Cepat Preset:**
+     - *Atas (80 mm):* Untuk template dengan ornamen tengah yang tinggi.
+     - *Standar (96 mm):* Titik tengah ideal rekomendasi Perpusnas Press.
+     - *Bawah (115 mm):* Untuk template dengan teks pengantar yang panjang.
+   - **Indikator Keamanan Posisi $Y$ Otomatis:**
+     - $Y < 50\text{ mm}$: Indikator peringatan merah `⚠️ Terlalu tinggi (mendekati header/kop)`.
+     - $Y > 165\text{ mm}$: Indikator peringatan merah `⚠️ Terlalu rendah (mendekati tanda tangan)`.
+     - $50 \le Y \le 165\text{ mm}$: Indikator centang hijau `✓ Posisi nama aman di bidang piagam`.
+4. **Ergonomi Jendela Modal:**
+   - Ukuran modal disesuaikan menjadi `maxWidth: '680px'`, `maxHeight: '92vh'`, dan form body menggunakan `overflowY: 'auto'` untuk menjamin kenyamanan pengeditan di berbagai resolusi layar.
+
+---
+
+### D. Hasil Pengujian & Verifikasi
+1. **Kompilasi Frontend (`npm run build`):**
+   - Berhasil 100% tanpa galat (`built in 1.86s`).
+2. **Responsivitas Interaksi:**
+   - Pergeseran slider dan pengetikan angka langsung menggerakkan garis panduan nama di kanvas secara instan tanpa lag.
+   - Pemilihan template kustom langsung mengganti background kanvas visualizer secara realtime.
+
+
 
 
 
