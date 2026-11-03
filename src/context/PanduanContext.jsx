@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { SipenaAPI } from '../lib/api';
 
 const PanduanContext = createContext(null);
 
-const DEFAULT_DATA = {
+export const DEFAULT_PANDUAN_DATA = {
   heroJudul: 'Terbitkan Karya Anda Bersama Perpusnas Press',
   heroDeskripsi:
     'Perpusnas Press adalah penerbit resmi di bawah Perpustakaan Nasional RI yang telah menerbitkan ribuan judul buku berkualitas. Kami membuka kesempatan bagi penulis terbaik Indonesia untuk menerbitkan karyanya secara profesional dan terpercaya.',
@@ -105,10 +106,60 @@ const DEFAULT_DATA = {
 };
 
 export const PanduanProvider = ({ children }) => {
-  const [data, setData] = useState(DEFAULT_DATA);
+  const [data, setData] = useState(DEFAULT_PANDUAN_DATA);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    SipenaAPI.getContent('panduan_penerbitan')
+      .then((remoteData) => {
+        if (isMounted && remoteData && typeof remoteData === 'object') {
+          setData((prev) => ({
+            ...prev,
+            ...remoteData,
+            langkah: Array.isArray(remoteData.langkah) && remoteData.langkah.length > 0 ? remoteData.langkah : prev.langkah,
+            keuntungan: Array.isArray(remoteData.keuntungan) && remoteData.keuntungan.length > 0 ? remoteData.keuntungan : prev.keuntungan,
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Gagal memuat konten Panduan Penerbitan dari API:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
+
   const updateData = (partial) => setData((prev) => ({ ...prev, ...partial }));
+
+  const saveData = async (customData) => {
+    setSaving(true);
+    try {
+      const payload = customData || data;
+      await SipenaAPI.saveContent('panduan_penerbitan', payload);
+      if (customData) setData(customData);
+      return { success: true };
+    } catch (err) {
+      console.error('Gagal menyimpan Panduan Penerbitan ke server:', err);
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <PanduanContext.Provider value={{ data, setData, updateData }}>
+    <PanduanContext.Provider value={{
+      data,
+      setData,
+      updateData,
+      saveData,
+      loading,
+      saving,
+      DEFAULT_PANDUAN_DATA
+    }}>
       {children}
     </PanduanContext.Provider>
   );

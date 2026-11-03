@@ -29,6 +29,7 @@ export const SipenaAPI = {
     updateBook: (id, data) => api.patch(`/sipena/books/${id}`, data).then(res => res.data),
     deleteBook: (id) => api.delete(`/sipena/books/${id}`).then(res => res.data),
     getDashboardStats: (params) => api.get('/sipena/stats', { params }).then(res => res.data),
+    getComprehensiveReports: (params) => api.get('/sipena/reports/overview', { params }).then(res => res.data),
 
     // Uploads
     uploadCover: (file) => {

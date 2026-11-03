@@ -1319,3 +1319,60 @@ Berdasarkan layout UI SiPena (kartu grid `EventsPage` dan hero header `EventDeta
 3. **Dual Input Mode:**
    - Admin dapat memilih file lokal dari komputer lewat tombol *"Pilih File Banner"*, atau tetap dapat menempelkan URL gambar eksternal (misal: Unsplash atau cloud storage).
 
+---
+
+## BAB 34: INTEGRASI TOTAL KONTEN WEB ADMIN (TENTANG KAMI, PANDUAN PENERBITAN, FAQ) DENGAN DATABASE BACKEND & HALAMAN PUBLIK
+
+### A. Latar Belakang & Identifikasi Masalah
+Sebelum perbaikan ini, menu manajemen konten pada dasbor admin SiPena (`/admin/konten`) memiliki kendala arsitektur:
+1. **Tentang Kami (`/admin/konten/tentang`)**: Editor `TentangEditor` hanya memodifikasi state lokal React (in-memory) tanpa memanggil API backend. Saat tombol "Simpan" diklik, sistem hanya memunculkan toast notifikasi tanpa mengirim payload ke database PostgreSQL. Akibatnya, halaman publik `/tentang` (`TentangKami.jsx`) tidak terpengaruh sama sekali oleh perubahan admin.
+2. **Panduan Penerbitan (`/admin/konten/panduan`)**: `PanduanEditor` mengalami kendala serupa, tidak memiliki mekanisme persistensi ke database server. Halaman publik `/panduan-penerbitan` (`PanduanPenerbitan.jsx`) tidak tersinkronisasi.
+3. **FAQ (`/admin/konten/faq`)**: `FAQEditor` di admin menggunakan data lokal terpisah (hanya 4 pertanyaan contoh), sedangkan halaman publik `/faq` (`FAQPage.jsx`) menggunakan data hardcoded terpisah (12 pertanyaan lengkap). Keduanya tidak saling terhubung ke database.
+
+### B. Solusi & Arsitektur Sinkronisasi Live
+Untuk mengatasi kendala tersebut, dibangun integrasi menyeluruh berbasis tabel `app_settings` di PostgreSQL backend:
+
+1. **Backend Persistence Engine (`server/src/controllers/sipenaController.ts` & `routes.ts`)**:
+   - Endpoint Publik: `GET /api/sipena/content/:key` mengambil nilai setting berformat JSON langsung dari tabel `app_settings`.
+   - Endpoint Terproteksi: `PUT /api/sipena/content/:key` dilindungi middleware `requirePJOrAdmin`, menjalankan operasi upsert (`onConflictDoUpdate`) otomatis menyimpan perubahan dari admin.
+   - Kunci Konfigurasi Database:
+     - `tentang_kami`: Data hero pembuka, visi & misi, statistik capaian, riwayat timeline sejarah, data tim lembaga, dan informasi kontak resmi.
+     - `panduan_penerbitan`: Data hero intro, tahapan tata cara menerbitkan buku, serta daftar keuntungan penulis lengkap dengan warna dan ikon.
+     - `faq_data`: Array seluruh daftar pertanyaan dan jawaban FAQ yang tersimpan dinamis.
+
+2. **Frontend State & Context Architecture**:
+   - **`TentangContext.jsx`**:
+     - Ditambahkan `useEffect` on-mount yang memanggil `SipenaAPI.getContent('tentang_kami')` saat aplikasi dibuka.
+     - Disediakan metode `saveData(customData)` yang memicu `SipenaAPI.saveContent('tentang_kami', ...)` beserta flag reaktif `saving`.
+     - *Graceful Fallback*: Jika database belum memiliki data kustom, otomatis menggunakan `DEFAULT_TENTANG_DATA` sehingga halaman publik tidak kosong.
+   - **`PanduanContext.jsx`**:
+     - Ditambahkan pemanggilan data live dari server via `SipenaAPI.getContent('panduan_penerbitan')`.
+     - Disediakan metode `saveData(customData)` dengan status `saving` untuk indikator visual saat menyimpan.
+   - **`FAQContext.jsx` (Baru)**:
+     - Dibuat context terdedikasi yang menampung 12 FAQ lengkap standar Perpusnas Press.
+     - Menyediakan fungsi manipulasi CRUD: `addFaq`, `updateFaq`, `deleteFaq`, dan `saveFaqs` yang otomatis tersinkronisasi langsung ke database server.
+   - **`App.jsx`**:
+     - Membungkus seluruh hierarki rute aplikasi dengan `<TentangProvider>`, `<PanduanProvider>`, dan `<FAQProvider>` sehingga perubahan yang disimpan di panel admin langsung memutakhirkan memori aplikasi secara realtime.
+
+3. **Panel Admin Konten Web (`src/pages/admin/AdminKonten.jsx`)**:
+   - Pembersihan import: Menghilangkan inline import di tengah file dan menyatukan seluruh dependensi di baris atas.
+   - **`TentangEditor`**: Menghubungkan semua tombol "Simpan" pada setiap tab (Hero, Visi & Misi, Statistik, Sejarah, Tim, dan Kontak) ke `handleSaveTentang()`. Menampilkan animasi spinner `Loader2` dan menonaktifkan tombol saat request simpan berlangsung.
+   - **`PanduanEditor`**: Menghubungkan tombol simpan pada tab Hero, Tata Cara, dan Keuntungan ke `handleSavePanduan()`.
+   - **`FAQEditor`**: Terhubung langsung ke context `useFAQ()`. Modal Tambah/Edit dan aksi Hapus dengan konfirmasi dialog kini secara otomatis mengeksekusi persistensi database secara permanen.
+
+4. **Halaman Pengunjung Publik (`src/pages/TentangKami.jsx`, `PanduanPenerbitan.jsx`, `FAQPage.jsx`)**:
+   - `TentangKami.jsx` dan `PanduanPenerbitan.jsx` membaca data live dari context yang terhubung ke server.
+   - `FAQPage.jsx` membaca dari `useFAQ()`, mengelompokkan kategori pertanyaan secara dinamis (`allCategories`), mendukung pencarian instan, dan mempertahankan tab filter kategori dengan ikon yang adaptif.
+
+### C. Hasil Pengujian & Verifikasi
+1. **Automated API Test (`test_content_api.ts`)**:
+   - Otentikasi sesi admin berhasil (`Login status: 200 OK`).
+   - Eksekusi `PUT /api/sipena/content/tentang_kami` berstatus 200 `{ success: true }` dan diverifikasi via GET.
+   - Eksekusi `PUT /api/sipena/content/panduan_penerbitan` berstatus 200 `{ success: true }` dan diverifikasi via GET.
+   - Eksekusi `PUT /api/sipena/content/faq_data` berstatus 200 `{ success: true }` dan diverifikasi via GET.
+2. **Database Seeding (`server/src/scripts/seed_content.ts`)**:
+   - Berhasil menginjeksi 12 item FAQ dan data default Tentang Kami serta Panduan Penerbitan ke tabel `app_settings` PostgreSQL.
+3. **Frontend Production Build**:
+   - `npm run build` berhasil tanpa error sintaks maupun modul hilang (`built in 1.96s`).
+
+

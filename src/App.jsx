@@ -23,6 +23,7 @@ import { AppProvider } from './context/AppContext';
 import { EventProvider } from './context/EventContext';
 import { TentangProvider } from './context/TentangContext';
 import { PanduanProvider } from './context/PanduanContext';
+import { FAQProvider } from './context/FAQContext';
 import { DialogProvider } from './context/DialogContext';
 
 // Wrapper: public pages use Header + Footer
@@ -43,37 +44,39 @@ function App() {
         <EventProvider>
           <TentangProvider>
             <PanduanProvider>
-              <DialogProvider>
-                <Router>
-                <ScrollToTop />
-                <Routes>
-                  {/* ── Dedicated Workspace: Manajemen Penerbitan ── */}
-                  <Route path="/admin/manajemen/*" element={<ManagementLayout />} />
-                  <Route path="/manajemen/*" element={<Navigate to="/admin/manajemen" replace />} />
+              <FAQProvider>
+                <DialogProvider>
+                  <Router>
+                  <ScrollToTop />
+                  <Routes>
+                    {/* ── Dedicated Workspace: Manajemen Penerbitan ── */}
+                    <Route path="/admin/manajemen/*" element={<ManagementLayout />} />
+                    <Route path="/manajemen/*" element={<Navigate to="/admin/manajemen" replace />} />
 
-                  {/* ── Admin SiPena Portal ── */}
-                  <Route path="/admin/*" element={<AdminLayout />} />
+                    {/* ── Admin SiPena Portal ── */}
+                    <Route path="/admin/*" element={<AdminLayout />} />
 
-                  {/* ── Public routes (Header + Footer via PublicLayout) ── */}
-                  <Route element={<PublicLayout />}>
-                    <Route path="/"            element={<Home />} />
-                    <Route path="/login"       element={<LoginPage />} />
-                    <Route path="/buku"        element={<BooksPage />} />
-                    <Route path="/buku/:id"    element={<BookDetail />} />
-                    <Route path="/penulis"     element={<AuthorsPage />} />
-                    <Route path="/penulis/:id" element={<AuthorProfile />} />
-                    <Route path="/event"       element={<EventsPage />} />
-                    <Route path="/event/:id"   element={<EventDetail />} />
-                    <Route path="/profil-saya" element={<AuthorDashboard />} />
-                    <Route path="/dashboard"   element={<Navigate to="/profil-saya" replace />} />
-                    <Route path="/penulis/dashboard" element={<Navigate to="/profil-saya" replace />} />
-                    <Route path="/tentang"            element={<TentangKami />} />
-                    <Route path="/faq"                element={<FAQPage />} />
-                    <Route path="/panduan-penerbitan" element={<PanduanPenerbitan />} />
-                  </Route>
-                </Routes>
-              </Router>
-            </DialogProvider>
+                    {/* ── Public routes (Header + Footer via PublicLayout) ── */}
+                    <Route element={<PublicLayout />}>
+                      <Route path="/"            element={<Home />} />
+                      <Route path="/login"       element={<LoginPage />} />
+                      <Route path="/buku"        element={<BooksPage />} />
+                      <Route path="/buku/:id"    element={<BookDetail />} />
+                      <Route path="/penulis"     element={<AuthorsPage />} />
+                      <Route path="/penulis/:id" element={<AuthorProfile />} />
+                      <Route path="/event"       element={<EventsPage />} />
+                      <Route path="/event/:id"   element={<EventDetail />} />
+                      <Route path="/profil-saya" element={<AuthorDashboard />} />
+                      <Route path="/dashboard"   element={<Navigate to="/profil-saya" replace />} />
+                      <Route path="/penulis/dashboard" element={<Navigate to="/profil-saya" replace />} />
+                      <Route path="/tentang"            element={<TentangKami />} />
+                      <Route path="/faq"                element={<FAQPage />} />
+                      <Route path="/panduan-penerbitan" element={<PanduanPenerbitan />} />
+                    </Route>
+                  </Routes>
+                </Router>
+              </DialogProvider>
+            </FAQProvider>
           </PanduanProvider>
         </TentangProvider>
       </EventProvider>

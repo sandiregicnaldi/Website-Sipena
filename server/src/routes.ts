@@ -108,7 +108,8 @@ import {
     SipenaBooksController, 
     SipenaManuscriptsController, 
     SipenaEventsController,
-    SipenaAuthorsController 
+    SipenaAuthorsController,
+    SipenaReportsController
 } from "./controllers/sipenaController";
 
 // Chat & Messaging
@@ -132,6 +133,7 @@ router.put("/sipena/content/:key", requirePJOrAdmin, SipenaContentController.sav
 
 // Katalog Buku & Dashboard Statistik
 router.get("/sipena/stats", SipenaBooksController.getStats);
+router.get("/sipena/reports/overview", requirePJOrAdmin, SipenaReportsController.getComprehensiveReport);
 router.get("/sipena/books", SipenaBooksController.getAll); // Public access
 router.get("/sipena/books/:id", SipenaBooksController.getOne); // Public access
 router.get("/sipena/books/:id/related", SipenaBooksController.getRelated); // Public access

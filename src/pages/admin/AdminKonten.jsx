@@ -7,7 +7,9 @@ import {
   MessageSquare, BookOpen, Package, Award, Globe, DollarSign, 
   Shield, ChevronDown, ChevronUp, Loader2, X 
 } from 'lucide-react';
+import { useTentang } from '../../context/TentangContext';
 import { usePanduan } from '../../context/PanduanContext';
+import { useFAQ } from '../../context/FAQContext';
 import { useDialog } from '../../context/DialogContext';
 import { SipenaAPI } from '../../lib/api';
 import AdminPagination from '../../components/AdminPagination';
@@ -514,13 +516,20 @@ const BannerEditor = () => {
 };
 
 // ── Tentang Kami ────────────────────────────────────────────────────────────
-import { useTentang } from '../../context/TentangContext';
-
 const TentangEditor = () => {
-  const { data, updateData, updateListItem, addListItem, removeListItem } = useTentang();
-  const [toast, setToast]     = useState('');
+  const { data, updateData, updateListItem, addListItem, removeListItem, saveData, saving } = useTentang();
+  const [toast, setToast]         = useState('');
   const [activeTab, setActiveTab] = useState('hero');
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const handleSaveTentang = async (msg = 'Perubahan Tentang Kami berhasil disimpan!') => {
+    try {
+      await saveData();
+      showToast(msg);
+    } catch (err) {
+      showToast('Gagal menyimpan: ' + (err.message || 'Terjadi kesalahan'));
+    }
+  };
 
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' };
@@ -571,7 +580,9 @@ const TentangEditor = () => {
               <label style={labelStyle}>Deskripsi Pembuka</label>
               <textarea rows="3" style={{ ...inputStyle, resize: 'vertical' }} value={data.heroDeskripsi} onChange={e => updateData({ heroDeskripsi: e.target.value })} />
             </div>
-            <button className="btn btn-primary" style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => showToast('Konten Hero berhasil disimpan!')}><Save size={14} /> Simpan</button>
+            <button className="btn btn-primary" disabled={saving} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleSaveTentang('Konten Hero berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
           </div>
         </div>
       )}
@@ -598,7 +609,9 @@ const TentangEditor = () => {
                 <button className="btn btn-outline" style={{ alignSelf: 'flex-start', padding: '0.3rem 0.8rem', fontSize: '0.8rem' }} onClick={() => addListItem('misi', '')}>+ Tambah Poin Misi</button>
               </div>
             </div>
-            <button className="btn btn-primary" style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => showToast('Visi & Misi berhasil disimpan!')}><Save size={14} /> Simpan</button>
+            <button className="btn btn-primary" disabled={saving} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleSaveTentang('Visi & Misi berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
           </div>
         </div>
       )}
@@ -625,7 +638,9 @@ const TentangEditor = () => {
                 <button type="button" onClick={() => removeListItem('statistik', i)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.3rem', marginTop: '1.2rem' }}>×</button>
               </div>
             ))}
-            <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => showToast('Statistik berhasil disimpan!')}><Save size={14} /> Simpan</button>
+            <button className="btn btn-primary" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleSaveTentang('Statistik berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
           </div>
         </div>
       )}
@@ -658,7 +673,9 @@ const TentangEditor = () => {
                 </div>
               </div>
             ))}
-            <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => showToast('Timeline sejarah berhasil disimpan!')}><Save size={14} /> Simpan</button>
+            <button className="btn btn-primary" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleSaveTentang('Timeline sejarah berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
           </div>
         </div>
       )}
@@ -694,7 +711,9 @@ const TentangEditor = () => {
             ))}
           </div>
           <div style={{ padding: '0 1rem 1rem' }}>
-            <button className="btn btn-primary" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => showToast('Data tim berhasil disimpan!')}><Save size={14} /> Simpan</button>
+            <button className="btn btn-primary" disabled={saving} style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleSaveTentang('Data tim berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
           </div>
         </div>
       )}
@@ -730,7 +749,9 @@ const TentangEditor = () => {
               <label style={labelStyle}>Jam Layanan</label>
               <textarea rows="2" style={{ ...inputStyle, resize: 'vertical' }} value={data.jamLayanan} onChange={e => updateData({ jamLayanan: e.target.value })} placeholder="Senin – Jumat: 08.00 – 16.00 WIB&#10;Sabtu – Minggu: Tutup" />
             </div>
-            <button className="btn btn-primary" style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => showToast('Informasi kontak berhasil disimpan!')}><Save size={14} /> Simpan</button>
+            <button className="btn btn-primary" disabled={saving} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleSaveTentang('Informasi kontak berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
           </div>
         </div>
       )}
@@ -741,23 +762,13 @@ const TentangEditor = () => {
 };
 
 // ── FAQ Editor ──────────────────────────────────────────────────────────────
-const FAQ_KATEGORI = ['Pendaftaran & Akun', 'Penerbitan Buku', 'Koleksi & Unduhan', 'Teknis & Sistem'];
-
-const INITIAL_FAQS = [
-  { id: 1, kategori: 'Koleksi & Unduhan', pertanyaan: 'Apakah semua buku bisa diunduh secara gratis?', jawaban: 'Ya, sebagian besar buku di SiPena dapat diunduh secara gratis. Namun beberapa konten premium mungkin memerlukan pendaftaran akun.' },
-  { id: 2, kategori: 'Pendaftaran & Akun', pertanyaan: 'Bagaimana cara mendaftar sebagai penulis?', jawaban: 'Anda dapat mendaftar melalui menu "Daftar" dan memilih peran "Calon Penulis". Setelah itu, tim kami akan melakukan verifikasi.' },
-  { id: 3, kategori: 'Koleksi & Unduhan', pertanyaan: 'Format file apa saja yang tersedia?', jawaban: 'Kami menyediakan format PDF, E-Pub, dan beberapa buku dalam format audiobook berbasis video YouTube.' },
-  { id: 4, kategori: 'Penerbitan Buku', pertanyaan: 'Bagaimana cara mengajukan naskah buku?', jawaban: 'Login ke akun Anda, buka menu "Profil Saya", pilih tab "Naskah Saya", lalu isi formulir pengajuan naskah beserta tautan Google Drive.' },
-];
-
 const FAQEditor = () => {
   const { showConfirm } = useDialog();
-  const [faqs, setFaqs] = useState(INITIAL_FAQS);
+  const { faqs, addFaq, updateFaq, deleteFaq, saving, FAQ_KATEGORI } = useFAQ();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
-  const [nextId, setNextId] = useState(INITIAL_FAQS.length + 1);
   const [activeTab, setActiveTab] = useState('Semua');
 
   useEffect(() => {
@@ -769,16 +780,19 @@ const FAQEditor = () => {
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' };
 
-  const handleSave = (form) => {
-    if (modal.mode === 'edit') {
-      setFaqs(prev => prev.map(f => f.id === form.id ? form : f));
-      showToast('FAQ berhasil diperbarui.');
-    } else {
-      setFaqs(prev => [...prev, { ...form, id: nextId }]);
-      setNextId(n => n + 1);
-      showToast('FAQ baru berhasil ditambahkan.');
+  const handleSave = async (form) => {
+    try {
+      if (modal.mode === 'edit') {
+        await updateFaq(form.id, form);
+        showToast('FAQ berhasil diperbarui.');
+      } else {
+        await addFaq(form);
+        showToast('FAQ baru berhasil ditambahkan.');
+      }
+      setModal(null);
+    } catch (err) {
+      showToast('Gagal menyimpan FAQ: ' + (err.message || 'Terjadi kesalahan'));
     }
-    setModal(null);
   };
 
   const handleHapus = async (id) => {
@@ -791,8 +805,12 @@ const FAQEditor = () => {
       confirmText: 'Ya, Hapus FAQ'
     });
     if (ok) {
-      setFaqs(prev => prev.filter(f => f.id !== id));
-      showToast('FAQ berhasil dihapus.');
+      try {
+        await deleteFaq(id);
+        showToast('FAQ berhasil dihapus.');
+      } catch (err) {
+        showToast('Gagal menghapus FAQ: ' + (err.message || 'Terjadi kesalahan'));
+      }
     }
   };
 
@@ -875,8 +893,8 @@ const FAQEditor = () => {
               <div><label style={labelStyle}>Jawaban *</label><textarea style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }} required value={modal.data.jawaban} onChange={e => setModal(p => ({ ...p, data: { ...p.data, jawaban: e.target.value } }))} placeholder="Tulis jawaban lengkap..." /></div>
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <button className="btn btn-outline" onClick={() => setModal(null)}>Batal</button>
-                <button className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => { if (modal.data.pertanyaan && modal.data.jawaban) handleSave(modal.data); }}>
-                  <Save size={16} /> Simpan
+                <button className="btn btn-primary" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => { if (modal.data.pertanyaan && modal.data.jawaban) handleSave(modal.data); }}>
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {saving ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
             </div>
@@ -912,10 +930,19 @@ const WARNA_OPTIONS = [
 ];
 
 const PanduanEditor = () => {
-  const { data, updateData } = usePanduan();
+  const { data, updateData, saveData, saving } = usePanduan();
   const [activeTab, setActiveTab] = useState('hero');
   const [toast, setToast] = useState('');
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const handleSavePanduan = async (msg = 'Panduan berhasil disimpan!') => {
+    try {
+      await saveData();
+      showToast(msg);
+    } catch (err) {
+      showToast('Gagal menyimpan ke server: ' + (err.message || 'Terjadi kesalahan'));
+    }
+  };
 
   const inputStyle = { width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' };
@@ -989,9 +1016,10 @@ const PanduanEditor = () => {
                 placeholder="Deskripsi singkat tentang Perpusnas Press dan ajakan bagi penulis..." />
             </div>
             <button className="btn btn-primary"
+              disabled={saving}
               style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-              onClick={() => showToast('Konten Hero Panduan berhasil disimpan!')}>
-              <Save size={14} /> Simpan
+              onClick={() => handleSavePanduan('Konten Hero Panduan berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>
         </div>
@@ -1042,9 +1070,10 @@ const PanduanEditor = () => {
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>Belum ada langkah. Klik &quot;Tambah Langkah&quot; untuk menambahkan.</div>
             )}
             <button className="btn btn-primary"
+              disabled={saving}
               style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-              onClick={() => showToast('Data Tata Cara berhasil disimpan!')}>
-              <Save size={14} /> Simpan Semua Langkah
+              onClick={() => handleSavePanduan('Data Tata Cara berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan Semua Langkah'}
             </button>
           </div>
         </div>
@@ -1101,9 +1130,10 @@ const PanduanEditor = () => {
           </div>
           <div style={{ padding: '0 1rem 1rem' }}>
             <button className="btn btn-primary"
+              disabled={saving}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-              onClick={() => showToast('Data Keuntungan berhasil disimpan!')}>
-              <Save size={14} /> Simpan Semua Keuntungan
+              onClick={() => handleSavePanduan('Data Keuntungan berhasil disimpan!')}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Menyimpan...' : 'Simpan Semua Keuntungan'}
             </button>
           </div>
         </div>
