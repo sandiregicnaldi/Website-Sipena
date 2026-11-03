@@ -386,10 +386,10 @@ export const SipenaBooksController = {
                     email: users.email,
                     role: users.role,
                     image: users.image,
-                    loginCount: sql<number>`(SELECT COUNT(*)::int FROM "session" s WHERE s.user_id = ${users.id})`,
-                    readCount: sql<number>`(SELECT COUNT(*)::int FROM book_reads br WHERE br.user_id = ${users.id})`,
-                    downloadCount: sql<number>`(SELECT COUNT(*)::int FROM book_downloads bd WHERE bd.user_id = ${users.id})`,
-                    lastActive: sql<Date | null>`(SELECT MAX(s.created_at) FROM "session" s WHERE s.user_id = ${users.id})`
+                    loginCount: sql<number>`(SELECT COUNT(*)::int FROM "session" s WHERE s.user_id = "user"."id")`,
+                    readCount: sql<number>`(SELECT COUNT(*)::int FROM book_reads br WHERE br.user_id = "user"."id")`,
+                    downloadCount: sql<number>`(SELECT COUNT(*)::int FROM book_downloads bd WHERE bd.user_id = "user"."id")`,
+                    lastActive: sql<Date | null>`(SELECT MAX(s.created_at) FROM "session" s WHERE s.user_id = "user"."id")`
                 })
                 .from(users);
 
