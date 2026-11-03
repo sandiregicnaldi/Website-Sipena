@@ -36,6 +36,15 @@
 29. [Deduplikasi Komprehensif Interaksi Pembaca (Ulasan Rating, Baca, & Unduh)](#29-deduplikasi-komprehensif-interaksi-pembaca-ulasan-rating-baca--unduh)
 30. [Dasbor Admin Live Action & Dropdown Kategori Terbitan Khusus](#30-dasbor-admin-live-action--dropdown-kategori-terbitan-khusus)
 31. [Standarisasi Fitur Pagination & Pemilihan Jumlah Baris di Seluruh Menu Admin SiPena](#31-standarisasi-fitur-pagination--pemilihan-jumlah-baris-di-seluruh-menu-admin-sipena)
+32. [Alur Baru Kegiatan & Klaim Sertifikat Berbasis Token SiPena](#bab-32-alur-baru-kegiatan--klaim-sertifikat-berbasis-token-sipena)
+33. [Fitur Upload Banner Kegiatan & Standar Spesifikasi Banner](#bab-33-fitur-upload-banner-kegiatan--standar-spesifikasi-banner)
+34. [Integrasi Total Konten Web Admin dengan Database Backend & Halaman Publik](#bab-34-integrasi-total-konten-web-admin-tentang-kami-panduan-penerbitan-faq-dengan-database-backend--halaman-publik)
+35. [Template Sertifikat Kustomisasi Koordinat Nama, Aturan Keras Pemotongan Gambar, dan Penyerasian Banner Kegiatan 16:9](#bab-35-template-sertifikat-kustomisasi-koordinat-nama-aturan-keras-pemotongan-gambar-locked-aspect-ratio-dan-penyerasian-banner-kegiatan-169-home--menu-kegiatan)
+36. [Audit & Perbaikan Persistensi Sampul Buku dari Reset Otomatis Migrasi Backend](#bab-36-audit--perbaikan-persistensi-sampul-buku-dari-reset-otomatis-migrasi-backend-serta-sinkronisasi-tahapan-proyek)
+37. [Fitur Unggah Template Sertifikat di Formulir Admin SiPena & Rendering Dinamis Piagam Kustom](#bab-37-fitur-unggah-template-sertifikat-di-formulir-admin-sipena--rendering-dinamis-piagam-kustom)
+38. [Separasi Kolom Banner Kegiatan vs Template Sertifikat & Live Interactive Canvas Preview Posisi Nama Peserta](#bab-38-separasi-kolom-banner-kegiatan-vs-template-sertifikat--live-interactive-canvas-preview-posisi-nama-peserta)
+39. [Kustomisasi Ukuran Font & Jenis Font pada Preview Template Sertifikat dan Generasi PDF](#bab-39-kustomisasi-ukuran-font--jenis-font-pada-preview-template-sertifikat-dan-generasi-pdf)
+40. [Sistem Pertahanan Anti-Brute Force, Smart Role-Based Auth, dan Registrasi Tertutup Pegawai (Closed Provisioning Model)](#bab-40-sistem-pertahanan-anti-brute-force-smart-role-based-auth-dan-registrasi-tertutup-pegawai-closed-provisioning-model)
 
 ---
 
@@ -1771,6 +1780,84 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
 1. **Kompilasi Frontend (`npm run build`):** Sukses dalam 1.80s (0 error).
 2. **Kompilasi Backend (`npm run build`):** Sukses (0 error).
 3. **Pengujian Database:** Kolom `cert_font_size` dan `cert_font_family` terverifikasi aktif pada tabel PostgreSQL `events`.
+
+---
+
+## BAB 40: SISTEM PERTAHANAN ANTI-BRUTE FORCE, SMART ROLE-BASED AUTH, DAN REGISTRASI TERTUTUP PEGAWAI (CLOSED PROVISIONING MODEL)
+
+**Tanggal:** 3 November 2026  
+**Status:** Teruji & Terselesaikan (*Production Ready*)
+
+---
+
+### A. Latar Belakang & Kebutuhan Pengguna
+1. **Proteksi Keamanan Anti-Brute Force Halaman Login:**
+   - Mencegah serangan tebakan kata sandi berulang (*brute force* / kamus kredensial) pada endpoint otentikasi.
+   - Mengimplementasikan 6 pilar keamanan siber:
+     1. **Rate Limiting**: Membatasi maksimal 5 percobaan gagal per 15 menit untuk setiap kombinasi IP address dan email pengguna (`express-rate-limit`).
+     2. **Account Lockout & Visual Math CAPTCHA**: Muncul tantangan verifikasi matematika visual dinamis setelah 3 kali kegagalan login berturut-turut.
+     3. **Password Hashing Lambat & Kuat**: Memastikan seluruh password tersimpan menggunakan algoritma `scrypt` berstandar OWASP melalui Better Auth crypto engine.
+     4. **Response Uniformity**: Menyeragamkan seluruh pesan galat autentikasi menjadi satu kalimat seragam (*"Email atau kata sandi tidak sesuai."*) untuk menutup celah *user enumeration*.
+     5. **Security Audit Logging**: Pencatatan riwayat kegagalan, pemblokiran rate limit, dan keberhasilan login ke berkas append-only `server/logs/auth-security.log` serta tabel basis data PostgreSQL `audit_log`.
+     6. **Double Opt-In Email Verification**: Perlindungan aktivasi akun melalui tautan email verifikasi dengan template resmi Perpusnas Press bagi pendaftar baru (`/verify-email`).
+2. **Penyelarasan Hak Akses & Sesi Pengguna Non-Admin:**
+   - Mengeliminasi *race condition* hidrasi sesi klien pasca login dengan menggunakan navigasi penuh jendela browser (`window.location.href`).
+   - Menyediakan kartu pembatas yang ramah dan informatif bagi akun non-staf (seperti Penulis atau Pengunjung) yang membuka URL `/admin`, lengkap dengan pencantuman identitas akun, peran aktif, tombol ke *"Dasbor Penulis"* (`/profil-saya`), dan tombol *"Keluar & Ganti Akun"*.
+   - Mencegah fenomena terkunci di sesi non-admin (*session lockout*) dengan menyajikan banner sesi aktif dan tombol ganti akun langsung di halaman login.
+3. **Antisipasi Pengunjung Mendaftar di Tab Pegawai (Registrasi Tertutup / Closed Provisioning):**
+   - Mengadopsi arsitektur keamanan standar pemerintahan & korporasi (*Gold Standard* OWASP & ISO 27001):
+     - Menghapus tab "Pegawai" dari formulir registrasi publik (`/login`).
+     - Halaman registrasi publik murni melayani pendaftaran **Pengunjung / Pembaca**.
+     - Pembuatan akun staf/pegawai dilakukan secara internal oleh **Super Administrator** melalui panel admin (`/admin/pengguna/pegawai` -> tombol `+ Tambah Pegawai Baru`).
+   - Menjamin bahwa Super Admin dan Pegawai tetap memiliki akses penuh tanpa batas ke seluruh tampilan website publik tanpa perlu logout.
+
+---
+
+### B. Perubahan Arsitektur & Kode Sumber
+
+1. **Backend Rate Limiting & CAPTCHA (`server/src/middlewares/authSecurity.ts` & `server/src/index.ts`):**
+   - Middleware `loginRateLimiter` dengan konfigurasi `windowMs: 15 * 60 * 1000`, `max: 5`, dan `skipSuccessfulRequests: true` (login berhasil tidak menghabiskan kuota percobaan).
+   - Generator tantangan CAPTCHA visual dinamis (`/api/auth/captcha-new`) dengan masa berlaku 5 menit dan konsumsi sekali pakai (*one-time token*).
+   - Interseptor respons Express yang menyeragamkan seluruh galat autentikasi 400/401 menjadi payload seragam untuk menutup celah *user enumeration*.
+
+2. **Otoritas Tambah Pegawai Internal (`server/src/controllers/adminController.ts` & `server/src/routes.ts`):**
+   - Endpoint `POST /api/admin/users` dilindungi oleh `requireAdmin` (hanya Super Administrator).
+   - Validasi skema Zod (Nama, Email, Password minimal 8 karakter, Role: `personil` / `reviewer` / `pegawai` / `admin`, Instansi).
+   - Enkripsi kata sandi menggunakan `hashPassword(password)` (`scrypt`).
+   - Akun langsung aktif (`status: 'active'`) dan tercatat di audit log.
+
+3. **Penyempurnaan AuthContext & Middleware Staf (`src/context/AuthContext.jsx` & `server/src/middlewares/auth.ts`):**
+   - `isAdmin` dan `isStaff` mewajibkan `user.status === 'active'`, sehingga akun berstatus `pending` terkunci rapat dari area admin.
+   - Penambahan flag `isPendingApproval: user?.status === 'pending'`.
+
+4. **Halaman Login & Pengujian Kredensial Interaktif (`src/pages/LoginPage.jsx`):**
+   - Menghapus pemilih tab *Pegawai*, menyatukan registrasi menjadi formulir pendaftaran anggota publik.
+   - Menambahkan kotak interaktif **"Pilih Akun Testing"**: mengklik baris akun dummy (*Super Admin*, *Reviewer QC*, *Personil Redaksi*, *Penulis*, *Pengunjung*) akan mengisi formulir login secara otomatis tanpa risiko salah ketik.
+   - Menampilkan banner sesi aktif dengan tombol *"Lanjut ke Dasbor"* dan *"Keluar / Ganti Akun"*.
+
+5. **Antarmuka Admin Pengguna (`src/pages/admin/AdminPengguna.jsx`):**
+   - Menambahkan tombol dan modal interaktif `+ Tambah Pegawai Baru` pada tab *Pegawai & Redaksi* khusus bagi Super Admin.
+   - Super Admin dapat mengisi data pegawai resmi dan menetapkan peran kedinasan secara aman.
+
+6. **Kartu Proteksi Rute Admin (`src/pages/admin/AdminLayout.jsx` & `ManagementLayout.jsx`):**
+   - Menangani pengalihan otomatis ke `/login` jika pengguna belum terautentikasi.
+   - Menampilkan kartu status yang jelas jika akun berstatus `pending` atau tidak memiliki hak akses staf, dengan opsi navigasi ke Dasbor Penulis atau Beranda Utama.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+
+1. **Kompilasi Frontend (`npm run build`):**
+   - Berhasil 100% tanpa galat (`built in 1.90s`).
+2. **Kompilasi TypeScript Backend (`npx tsc --noEmit`):**
+   - Berhasil 100% tanpa galat (`exit code 0`).
+3. **Pengujian Kredensial 5 Akun Dummy:**
+   - Seluruh akun dummy (`admin@perpusnas.go.id`, `personil@dev.local`, `editor@penerbitan.com`, `penulis@sipena.id`, `pengunjung@sipena.id`) lulus pengujian autentikasi dan aktif di database.
+4. **Verifikasi Keamanan:**
+   - Serangan berulang $\ge 3$ kali memunculkan verifikasi CAPTCHA matematika.
+   - Serangan berulang $\ge 5$ kali diblokir oleh Rate Limiter dengan HTTP 429 selama 15 menit.
+   - Registrasi publik tertutup bagi pegawai, mencegah eskalasi hak akses secara total.
+
 
 
 

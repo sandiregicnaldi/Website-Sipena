@@ -40,6 +40,9 @@ Dokumentasi lengkap dan kronologi pengembangan sistem SiPena serta integrasi Man
 16. **Bab 29**: Deduplikasi Komprehensif Interaksi Pembaca (Ulasan Rating, Baca, & Unduh) Antar Sesi Relogin dengan Tabel `book_reads`.
 17. **Bab 30**: Dasbor Admin Live Action (`GET /api/sipena/stats`) & Dropdown Kategori Terbitan Khusus (Pedoman/Standar, Prosiding, Laporan, Majalah/Jurnal).
 18. **Bab 31**: Standarisasi Fitur Pagination & Pemilihan Jumlah Baris (10, 25, 50, 100) di 5 Menu Admin SiPena (`AdminPagination.jsx`).
+19. **Bab 32 - 35**: Alur Baru Kegiatan & Klaim Sertifikat Berbasis Token, Upload Banner 16:9, Integrasi Konten Web, dan Template Sertifikat Koordinat Dinamis.
+20. **Bab 36 - 39**: Persistensi Sampul Buku, Unggah Template Sertifikat Kustom, Live Interactive Canvas Preview, dan Kustomisasi Ukuran & Jenis Font Sertifikat PDF.
+21. **Bab 40**: Sistem Pertahanan Anti-Brute Force (Rate Limiting 5x/15m, Visual Math CAPTCHA, scrypt Hashing, Response Uniformity, Security Audit Log), Smart Role-Based Auth & Session Switcher, serta Registrasi Tertutup Pegawai (*Closed Provisioning Model*).
 
 ---
 *Silakan buka [DOKUMENTASI_PENGEMBANGAN.md](./DOKUMENTASI_PENGEMBANGAN.md) untuk detail teknis, tabel skema, dan panduan pengujian alur kerja.*

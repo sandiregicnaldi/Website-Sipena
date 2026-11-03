@@ -60,6 +60,7 @@ router.patch("/notifications/read-all", NotificationController.markAllRead);
 
 // Admin - User Management
 router.get("/admin/users", requirePJOrAdmin, AdminController.getUsers);
+router.post("/admin/users", requireAdmin, AdminController.createUser);
 router.patch("/admin/users/:id", requirePJOrAdmin, AdminController.updateUser);
 router.post("/admin/users/:id/set-password", requireAdmin, AdminController.setPassword);
 router.delete("/admin/users/:id", requireAdmin, AdminController.deleteUser);

@@ -222,6 +222,10 @@ export const api = {
     // Admin - User Management
     admin: {
         getUsers: () => fetchAPI('/admin/users'),
+        createUser: (data) => fetchAPI('/admin/users', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
         updateUser: (id, data) => fetchAPI(`/admin/users/${id}`, {
             method: 'PATCH',
             body: JSON.stringify(data)

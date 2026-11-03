@@ -11,6 +11,7 @@ export type AuditAction =
     | 'revise_stage'
     | 'submit_review'
     | 'update_user'
+    | 'create_user'
     | 'delete_user'
     | 'update_profile'
     | 'change_password'

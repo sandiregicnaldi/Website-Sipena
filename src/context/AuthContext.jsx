@@ -157,10 +157,11 @@ export const AuthProvider = ({ children }) => {
       isLoggedIn: !!user,
       isAuthor: user?.isVerifiedAuthor === true,
       isApplicant: user?.isApplicant === true,
-      isAdmin: user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer',
-      isSuperAdmin: user?.role === 'admin',
-      isReviewer: user?.isReviewer === true,
-      isStaff: user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer',
+      isAdmin: (user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer') && user?.status === 'active',
+      isSuperAdmin: user?.role === 'admin' && user?.status === 'active',
+      isReviewer: user?.isReviewer === true && user?.status === 'active',
+      isStaff: (user?.role === 'admin' || user?.role === 'personil' || user?.role === 'pegawai' || user?.role === 'reviewer') && user?.status === 'active',
+      isPendingApproval: user?.status === 'pending',
       isPending, // Bisa dipakai untuk loading state
       isLoading: isPending,
     }}>

@@ -103,8 +103,11 @@ export function requirePJOrAdmin(req: Request, res: Response, next: NextFunction
     if (!req.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
-    const isStaff = req.user.role === "admin" || req.user.role === "personil" || req.user.role === "pegawai" || req.user.role === "reviewer";
+    const isStaff = (req.user.role === "admin" || req.user.role === "personil" || req.user.role === "pegawai" || req.user.role === "reviewer") && req.user.status === "active";
     if (!isStaff) {
+        if (req.user.status === "pending") {
+            return res.status(403).json({ error: "Akun pegawai Anda sedang menunggu persetujuan dari Super Administrator." });
+        }
         return res.status(403).json({ error: "Forbidden: Staff access required" });
     }
     next();

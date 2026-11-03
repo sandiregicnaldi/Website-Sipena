@@ -62,23 +62,44 @@ export default function ManagementLayout() {
   }
 
   if (!isAdmin) {
+    const isPendingPegawai = (user?.role === 'pegawai' || user?.role === 'personil') && user?.status === 'pending';
+
     return (
       <div className="admin-shell min-h-screen bg-[#F3F4F6] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center border border-slate-200">
-          <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-3xl">lock</span>
+          <div className={`w-16 h-16 ${isPendingPegawai ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+            <span className="material-symbols-outlined text-3xl">{isPendingPegawai ? 'hourglass_top' : 'lock'}</span>
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Akses Terbatas</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">
+            {isPendingPegawai ? 'Akun Menunggu Persetujuan' : 'Akses Terbatas'}
+          </h2>
           <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-            Anda saat ini masuk sebagai <strong>{user?.name || user?.email}</strong> (Peran: <code className="bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-800">{user?.role}</code>). Halaman ini khusus untuk Administrator dan personil redaksi.
+            {isPendingPegawai ? (
+              <>
+                Halo <strong>{user?.name || user?.email}</strong>, pendaftaran akun pegawai Anda sedang berstatus <code className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">Menunggu Persetujuan</code>. Hak akses ruang kerja penerbitan akan aktif setelah disetujui oleh Super Administrator.
+              </>
+            ) : (
+              <>
+                Anda saat ini masuk sebagai <strong>{user?.name || user?.email}</strong> (Peran: <code className="bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-800">{user?.role}</code>). Halaman ini khusus untuk Administrator dan personil redaksi.
+              </>
+            )}
           </p>
           <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => navigate('/profil-saya')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm"
-            >
-              Dasbor Penulis
-            </button>
+            {user?.role === 'penulis' ? (
+              <button
+                onClick={() => navigate('/profil-saya')}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm"
+              >
+                Dasbor Penulis
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/')}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm"
+              >
+                Beranda Utama
+              </button>
+            )}
             <button
               onClick={async () => { await logout(); }}
               className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl text-sm border border-rose-200 transition"

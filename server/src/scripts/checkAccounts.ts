@@ -23,7 +23,7 @@ async function checkAll() {
         const accs = await db.select().from(accounts).where(eq(accounts.userId, user.id));
         const hasCredential = accs.find(a => a.providerId === "credential");
         console.log(`[USER] ${item.email}:`);
-        console.log(`   id: ${user.id}, role: ${user.role}, verified: ${user.emailVerified}`);
+        console.log(`   id: ${user.id}, role: ${user.role}, status: ${user.status}, verified: ${user.emailVerified}`);
         console.log(`   hasCredentialAccount: ${!!hasCredential}`);
         if (hasCredential) {
             console.log(`   hasPasswordHash: ${!!hasCredential.password}`);

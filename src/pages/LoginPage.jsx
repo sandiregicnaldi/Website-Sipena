@@ -175,7 +175,6 @@ const INITIAL_FORM = {
 
 const LoginPage = () => {
   const [mode, setMode] = useState('login');          // 'login' | 'register'
-  const [roleType, setRoleType] = useState('pengunjung'); // 'pengunjung' | 'penulis'
   const [form, setForm] = useState({ email: '', password: '', ...INITIAL_FORM });
 
   // ── Proteksi Brute Force & CAPTCHA ────────────────────────
@@ -321,7 +320,7 @@ const LoginPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const resolved = await register(form, roleType);
+      const resolved = await register(form, 'pengunjung');
       if (resolved && resolved.requiresVerification) {
         showAlert({
           title: 'Pendaftaran Berhasil!',
@@ -374,19 +373,6 @@ const LoginPage = () => {
               Daftar
             </button>
           </div>
-
-
-          {/* Role Toggle — hanya tampil saat mode DAFTAR */}
-          {mode === 'register' && (
-            <div className="role-toggle">
-              <button className={`role-btn ${roleType === 'pengunjung' ? 'active' : ''}`} onClick={() => setRoleType('pengunjung')}>
-                Pengunjung
-              </button>
-              <button className={`role-btn ${roleType === 'pegawai' ? 'active' : ''}`} onClick={() => setRoleType('pegawai')}>
-                Pegawai
-              </button>
-            </div>
-          )}
 
 
           {/* ── LOGIN FORM ──────────────────────────────────── */}
@@ -508,34 +494,13 @@ const LoginPage = () => {
             </form>
           )}
 
-          {/* ── REGISTER FORM – PENGUNJUNG ───────────────────── */}
-          {mode === 'register' && roleType === 'pengunjung' && (
+          {/* ── REGISTER FORM (PUBLIK / PENGUNJUNG / PENULIS) ── */}
+          {mode === 'register' && (
             <form className="login-form" onSubmit={handleRegister}>
-              <div className="register-section-label">Data Diri Pengunjung</div>
+              <div className="register-section-label">Data Pendaftaran Anggota</div>
               <CommonRegisterFields form={form} onChange={handleChange} setForm={setForm} showAddress={true} />
-              <button type="submit" className="btn btn-primary login-btn">
-                Daftar Sekarang <ArrowRight size={18} />
-              </button>
-              <p className="switch-link">
-                Sudah punya akun?{' '}
-                <button type="button" className="link-btn" onClick={() => switchMode('login')}>
-                  Masuk di sini
-                </button>
-              </p>
-            </form>
-          )}
-
-          {/* ── REGISTER FORM – PEGAWAI ─────────────────────── */}
-          {mode === 'register' && roleType === 'pegawai' && (
-            <form className="login-form" onSubmit={handleRegister}>
-              <div className="register-section-label">Data Diri Pegawai</div>
-              <CommonRegisterFields form={form} onChange={handleChange} setForm={setForm} />
-              <div className="info-note">
-                <span>🔒</span>
-                <p>Pendaftaran akun pegawai memerlukan validasi dari administrator. Pastikan Anda menggunakan email instansi yang valid.</p>
-              </div>
-              <button type="submit" className="btn btn-primary login-btn">
-                Daftar Sebagai Pegawai <ArrowRight size={18} />
+              <button type="submit" className="btn btn-primary login-btn" disabled={isSubmitting}>
+                {isSubmitting ? 'Memproses Pendaftaran...' : 'Daftar Sekarang'} <ArrowRight size={18} />
               </button>
               <p className="switch-link">
                 Sudah punya akun?{' '}

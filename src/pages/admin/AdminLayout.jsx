@@ -163,22 +163,40 @@ const AdminLayout = () => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Jika sudah login tapi bukan admin/staf
+  // Jika sudah login tapi bukan admin/staf (misal peran penulis, atau akun pegawai yang masih 'pending')
   if (!isAdmin) {
+    const isPendingPegawai = (user.role === 'pegawai' || user.role === 'personil') && user.status === 'pending';
+
     return (
       <div className="admin-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-main)', padding: '1.5rem' }}>
-        <div style={{ maxWidth: 480, width: '100%', background: '#ffffff', borderRadius: 12, padding: '2.5rem 2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', fontSize: '1.75rem' }}>
-            🔒
+        <div style={{ maxWidth: 500, width: '100%', background: '#ffffff', borderRadius: 12, padding: '2.5rem 2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: isPendingPegawai ? '#fef3c7' : '#fef2f2', color: isPendingPegawai ? '#d97706' : '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', fontSize: '1.75rem' }}>
+            {isPendingPegawai ? '⏳' : '🔒'}
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' }}>Akses Terbatas</h2>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' }}>
+            {isPendingPegawai ? 'Akun Pegawai Menunggu Persetujuan' : 'Akses Terbatas'}
+          </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-            Anda saat ini masuk sebagai <strong>{user.name || user.email}</strong> dengan peran <code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: 4, color: '#0f172a', fontWeight: 600 }}>{user.role}</code>. Halaman ini khusus untuk Administrator dan Personil Redaksi.
+            {isPendingPegawai ? (
+              <>
+                Halo <strong>{user.name || user.email}</strong>, pendaftaran akun pegawai Anda telah kami terima namun saat ini berstatus <code style={{ background: '#fef3c7', color: '#92400e', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>Menunggu Persetujuan</code>. Hak akses ke ruang kerja staf baru akan aktif setelah disetujui oleh <strong>Super Administrator</strong>.
+              </>
+            ) : (
+              <>
+                Anda saat ini masuk sebagai <strong>{user.name || user.email}</strong> dengan peran <code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: 4, color: '#0f172a', fontWeight: 600 }}>{user.role}</code>. Halaman ini khusus untuk Administrator dan Personil Redaksi.
+              </>
+            )}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={() => navigate('/profil-saya')} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}>
-              Dasbor Penulis
-            </button>
+            {user.role === 'penulis' ? (
+              <button onClick={() => navigate('/profil-saya')} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}>
+                Dasbor Penulis
+              </button>
+            ) : (
+              <button onClick={() => navigate('/')} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}>
+                Beranda Utama
+              </button>
+            )}
             <button onClick={async () => { await logout(); }} className="btn btn-secondary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}>
               Keluar & Ganti Akun
             </button>

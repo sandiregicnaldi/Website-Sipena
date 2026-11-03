@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import './AdminLayout.css';
-import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users, ArrowUpCircle, ArrowDownCircle, RefreshCw } from 'lucide-react';
+import { Eye, Check, X, Trash2, Power, Pencil, CheckCircle, AlertTriangle, FileText, PenTool, Users, ArrowUpCircle, ArrowDownCircle, RefreshCw, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useDialog } from '../../context/DialogContext';
 import { api } from '../../services/api';
@@ -284,6 +284,135 @@ const EditAuthorModal = ({ user, onClose, onSave }) => {
   );
 };
 
+const CreatePegawaiModal = ({ onClose, onSuccess, showToast }) => {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'personil',
+    instansi: 'Perpustakaan Nasional RI',
+    pekerjaan: 'Personil Redaksi',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
+      setError('Mohon lengkapi Nama, Email, dan Kata Sandi.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await api.admin.createUser(form);
+      showToast(`Pegawai baru "${form.name}" berhasil ditambahkan.`);
+      if (onSuccess) await onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Gagal menambahkan pegawai baru');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }}>
+      <div style={{
+        background: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '520px',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+      }}>
+        <div style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ color: 'white', margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Users size={16} /> Tambah Pegawai / Tim Redaksi Baru
+          </h3>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '1rem' }}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
+          {error && (
+            <div style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#991b1b', padding: '0.6rem 0.8rem', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '1rem' }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Nama Lengkap Pegawai *</label>
+            <input
+              type="text"
+              required
+              placeholder="Nama lengkap beserta gelar (jika ada)"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Email Kedinasan / Resmi *</label>
+            <input
+              type="email"
+              required
+              placeholder="contoh: nama.pegawai@perpusnas.go.id"
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+              style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Peran / Otoritas *</label>
+              <select
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value, pekerjaan: e.target.value === 'reviewer' ? 'Reviewer / QC' : (e.target.value === 'admin' ? 'Super Administrator' : 'Personil Redaksi') })}
+                style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box', background: '#fff' }}
+              >
+                <option value="personil">Personil Redaksi</option>
+                <option value="reviewer">Reviewer / QC</option>
+                <option value="pegawai">Pegawai SiPena</option>
+                <option value="admin">Super Administrator</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Kata Sandi Sementara *</label>
+              <input
+                type="text"
+                required
+                placeholder="Minimal 8 karakter"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Instansi / Unit Kerja</label>
+            <input
+              type="text"
+              value={form.instansi}
+              onChange={e => setForm({ ...form, instansi: e.target.value })}
+              style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button type="button" onClick={onClose} className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+              Batal
+            </button>
+            <button type="submit" disabled={submitting} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem' }}>
+              {submitting ? 'Menyimpan...' : 'Simpan Pegawai'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   const { isSuperAdmin } = useAuth();
   const { showConfirm, showToast: triggerToast } = useDialog();
@@ -293,6 +422,7 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
   const [toast, setToast] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
   const [editAuthorModal, setEditAuthorModal] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -487,13 +617,24 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
         </div>
       )}
       <div className="admin-card">
-        <div className="admin-card-header">
-          <input
-            type="text" placeholder="Cari nama atau email..."
-            value={search} onChange={e => setSearch(e.target.value)}
-            style={{ padding: '0.45rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', width: '260px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-          />
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total: <strong>{filtered.length}</strong> pengguna</span>
+        <div className="admin-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="text" placeholder="Cari nama atau email..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              style={{ padding: '0.45rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', width: '260px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+            />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total: <strong>{filtered.length}</strong> pengguna</span>
+          </div>
+          {type === 'pegawai' && isSuperAdmin && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn btn-primary"
+              style={{ padding: '0.45rem 1rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: 'var(--radius-md)' }}
+            >
+              <UserPlus size={16} /> Tambah Pegawai Baru
+            </button>
+          )}
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -698,6 +839,13 @@ const UserTable = ({ type, title, users, reloadUsers, loading }) => {
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <UserDetailModal user={detailModal} onClose={() => setDetailModal(null)} onApprove={handleUpgradePenulis} onReject={handleTolakPenulis} />
       {editAuthorModal && <EditAuthorModal user={editAuthorModal} onClose={() => setEditAuthorModal(null)} onSave={handleSaveAuthorProfile} />}
+      {showCreateModal && (
+        <CreatePegawaiModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={reloadUsers}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 };

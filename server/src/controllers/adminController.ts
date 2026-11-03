@@ -280,4 +280,84 @@ export class AdminController {
             res.status(500).json({ error: e.message });
         }
     }
+
+    static async createUser(req: Request, res: Response) {
+        try {
+            const isSuperAdmin = req.user?.isSuperAdmin;
+            if (!isSuperAdmin) {
+                return res.status(403).json({ error: "Hanya Super Administrator yang dapat menambahkan pegawai/staf baru." });
+            }
+
+            const schema = z.object({
+                name: z.string().min(2, "Nama minimal 2 karakter"),
+                email: z.string().email("Format email tidak valid"),
+                password: z.string().min(8, "Password minimal 8 karakter"),
+                role: z.enum(["admin", "personil", "pegawai", "reviewer"]),
+                instansi: z.string().optional(),
+                pekerjaan: z.string().optional(),
+            });
+
+            const data = schema.parse(req.body);
+            const cleanEmail = data.email.trim().toLowerCase();
+
+            // Cek apakah email sudah terdaftar
+            const [existing] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.email, cleanEmail))
+                .limit(1);
+
+            if (existing) {
+                return res.status(400).json({ error: "Email sudah terdaftar di sistem." });
+            }
+
+            const newUserId = crypto.randomUUID();
+            const now = new Date();
+            const hashedPassword = await hashPassword(data.password);
+
+            const [newUser] = await db
+                .insert(users)
+                .values({
+                    id: newUserId,
+                    name: data.name.trim(),
+                    email: cleanEmail,
+                    emailVerified: true,
+                    role: data.role,
+                    status: "active",
+                    isReviewer: data.role === "reviewer" || data.role === "admin",
+                    instansi: data.instansi || "Perpustakaan Nasional RI",
+                    pekerjaan: data.pekerjaan || "Pegawai / Staf Redaksi",
+                    createdAt: now,
+                    updatedAt: now,
+                })
+                .returning();
+
+            await db.insert(accounts).values({
+                id: `cred_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+                userId: newUserId,
+                accountId: cleanEmail,
+                providerId: "credential",
+                password: hashedPassword,
+                createdAt: now,
+                updatedAt: now,
+            });
+
+            writeAuditLog({
+                userId: req.user?.id,
+                action: "create_user",
+                target: newUser.name,
+                targetId: newUser.id,
+                meta: { role: newUser.role, email: newUser.email },
+                ipAddress: req.ip,
+            });
+
+            res.status(201).json(newUser);
+        } catch (e: any) {
+            if (e.name === "ZodError") {
+                return res.status(400).json({ error: e.errors[0]?.message || "Input tidak valid" });
+            }
+            console.error("AdminController.createUser error:", e);
+            res.status(500).json({ error: e.message });
+        }
+    }
 }
