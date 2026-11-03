@@ -523,24 +523,34 @@ const AdminKegiatan = () => {
                   </span>
                 </div>
 
-                {modal.data.bannerUrl && (
+                <input
+                  ref={bannerFileRef}
+                  type="file"
+                  id="bannerFileInput"
+                  style={{ display: 'none' }}
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleBannerUpload}
+                  disabled={uploadingBanner}
+                />
+
+                {modal.data.bannerUrl ? (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '1rem',
-                    padding: '0.6rem 0.75rem',
+                    padding: '0.65rem 0.85rem',
                     background: '#ffffff',
                     borderRadius: '6px',
                     border: '1px solid #cbd5e1'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0 }}>
                       <img
                         src={modal.data.bannerUrl}
                         alt="Banner Preview"
                         style={{
-                          width: '88px',
-                          height: '50px',
+                          width: '96px',
+                          height: '54px',
                           objectFit: 'cover',
                           borderRadius: '4px',
                           border: '1px solid #cbd5e1',
@@ -548,18 +558,29 @@ const AdminKegiatan = () => {
                         }}
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
-                      <div style={{ minWidth: 0, fontSize: '0.78rem' }}>
-                        <div style={{ fontWeight: 600, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <CheckCircle size={14} /> Banner Siap Digunakan
+                      <div style={{ minWidth: 0, fontSize: '0.82rem' }}>
+                        <div style={{ fontWeight: 600, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <CheckCircle size={15} /> Banner Siap Digunakan
                         </div>
-                        <a
-                          href={modal.data.bannerUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: '#2563eb', textDecoration: 'underline', fontSize: '0.72rem', wordBreak: 'break-all' }}
-                        >
-                          Buka Gambar Penuh ↗
-                        </a>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.2rem' }}>
+                          <a
+                            href={modal.data.bannerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: '#2563eb', textDecoration: 'underline', fontSize: '0.75rem' }}
+                          >
+                            Buka Gambar Penuh ↗
+                          </a>
+                          <span style={{ color: '#cbd5e1' }}>•</span>
+                          <button
+                            type="button"
+                            onClick={() => bannerFileRef.current?.click()}
+                            disabled={uploadingBanner}
+                            style={{ background: 'none', border: 'none', color: '#475569', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
+                          >
+                            {uploadingBanner ? 'Mengunggah...' : 'Ganti Gambar'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <button
@@ -570,75 +591,54 @@ const AdminKegiatan = () => {
                       }}
                       className="btn btn-outline"
                       style={{
-                        padding: '0.3rem 0.6rem',
+                        padding: '0.35rem 0.65rem',
                         fontSize: '0.75rem',
                         color: 'var(--danger)',
                         borderColor: '#fca5a5',
                         background: '#fff',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.25rem',
+                        gap: '0.3rem',
                         flexShrink: 0
                       }}
                     >
                       <Trash2 size={13} /> Hapus
                     </button>
                   </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => bannerFileRef.current?.click()}
+                    disabled={uploadingBanner}
+                    className="btn btn-outline"
+                    style={{
+                      width: '100%',
+                      padding: '0.85rem 1rem',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      background: '#ffffff',
+                      border: '1.5px dashed #cbd5e1',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      cursor: uploadingBanner ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {uploadingBanner ? (
+                      <>
+                        <Loader2 size={16} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>Mengunggah file banner...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} color="var(--primary-color)" />
+                        <span>Pilih & Unggah File Banner (JPG, PNG, WEBP)</span>
+                      </>
+                    )}
+                  </button>
                 )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 2fr', gap: '0.75rem', alignItems: 'center' }}>
-                  <div>
-                    <input
-                      ref={bannerFileRef}
-                      type="file"
-                      id="bannerFileInput"
-                      style={{ display: 'none' }}
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={handleBannerUpload}
-                      disabled={uploadingBanner}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => bannerFileRef.current?.click()}
-                      disabled={uploadingBanner}
-                      className="btn btn-outline"
-                      style={{
-                        width: '100%',
-                        padding: '0.55rem 0.75rem',
-                        fontSize: '0.8rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem',
-                        background: '#ffffff',
-                        borderColor: '#cbd5e1',
-                        color: 'var(--text-primary)',
-                        cursor: uploadingBanner ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      {uploadingBanner ? (
-                        <>
-                          <Loader2 size={15} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
-                          Mengunggah...
-                        </>
-                      ) : (
-                        <>
-                          <Upload size={15} color="var(--primary-color)" />
-                          Pilih File Banner
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div>
-                    <input
-                      style={{ ...inputStyle, fontSize: '0.8rem', padding: '0.55rem 0.75rem' }}
-                      type="url"
-                      value={modal.data.bannerUrl || ''}
-                      onChange={e => setModal(p => ({ ...p, data: { ...p.data, bannerUrl: e.target.value } }))}
-                      placeholder="Atau tempel URL gambar (https://...)"
-                    />
-                  </div>
-                </div>
               </div>
 
               <div>
