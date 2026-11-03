@@ -1454,5 +1454,106 @@ Pada iterasi pengembangan ini, pengguna mengajukan beberapa kebutuhan perbaikan 
    - ImageCropModal terkunci penuh pada rasio 16:9 (kegiatan), 3:4 (buku), dan 1:1 (avatar).
    - Tampilan banner kegiatan di menu Home dan Menu Kegiatan kini serasi, simetris, dan responsif di berbagai resolusi layar.
 
+---
+
+## BAB 36: AUDIT & PERBAIKAN PERSISTENSI SAMPUL BUKU DARI RESET OTOMATIS MIGRASI BACKEND SERTA SINKRONISASI TAHAPAN PROYEK
+
+**Tanggal:** 3 November 2026  
+**Status:** Teruji & Terselesaikan Secara Permanen (*Production Ready*)
+
+---
+
+### A. Latar Belakang & Gejala Masalah (Incident Report)
+Pengguna melaporkan anomali pada sistem katalog SiPena:
+> *"cuy gua beberapa kali ubah sampul buku, berhasil berubah di admin sipena maupun tampilan publik, tapi tidak lama kemudian balik lagi ke sampul awal, coba diaudit deh"*
+
+Gejala yang terjadi:
+1. Admin mengunggah atau mengganti sampul buku melalui panel **Admin Katalog SiPena** (`/admin/katalog`).
+2. Perubahan sampul berhasil tersimpan dan tampil seketika di tabel katalog admin maupun halaman publik `/buku`.
+3. Namun selang beberapa waktu (atau saat server backend melakukan reload/restart), sampul buku tersebut **otomatis kembali (*revert*) ke gambar sampul lama**.
+
+---
+
+### B. Investigasi Mendalam (Root Cause Analysis)
+Audit menyeluruh dilakukan pada basis data PostgreSQL `sipena_dev`, log riwayat audit, dan alur startup backend:
+
+1. **Pemeriksaan Entitas Buku & Log Database:**
+   - Buku yang mengalami revert adalah buku dengan judul **"Tes"** (`id = '8bc40df3-7ca1-4be2-a6a1-4b65e3c5b830'`) yang tertaut ke ID Proyek `PRJ-2026-ZV9F`.
+   - File upload fisik tersimpan utuh di direktori `/server/uploads/covers/`, menandakan proses upload multer dan `PATCH /api/sipena/books/:id` berjalan normal.
+2. **Penemuan Hardcoded Query pada Migrasi Booting Server (`server/src/index.ts`):**
+   - Di dalam fungsi `runMigrations()` pada file [`server/src/index.ts`](file:///c:/dev/website-sipena/server/src/index.ts) baris 587-594, ditemukan query update SQL statis:
+     ```typescript
+     await db.execute(sql`
+         UPDATE books 
+         SET project_id = 'PRJ-2026-ZV9F', 
+             author_id = 'tkVJdyexUEz4bXFlO9MxcKkyaiXpPRpQ', 
+             cover_url = '/api/uploads/covers/cover-1793593551846-509456816.png',
+             updated_at = NOW() 
+         WHERE id = '8bc40df3-7ca1-4be2-a6a1-4b65e3c5b830'
+     `);
+     ```
+   - Lingkungan pengembangan backend berjalan dengan **`tsx watch src/index.ts`**.
+   - Setiap kali terjadi *code change* pada server, restart manual, atau auto-reload, fungsi `runMigrations()` otomatis dipanggil ulang.
+   - Karena query tersebut secara eksplisit menyertakan `cover_url = '/api/uploads/covers/cover-1793593551846-509456816.png'`, maka nilai kolom `cover_url` pada database PostgreSQL **selalu dipaksa kembali (*overwritten*)** ke file lama tersebut.
+
+---
+
+### C. Solusi Arsitektur & Tindakan Perbaikan
+Perbaikan dilakukan pada 3 komponen inti:
+
+#### 1. Pembersihan & Proteksi Migrasi Backend ([`server/src/index.ts`](file:///c:/dev/website-sipena/server/src/index.ts))
+- **Menghapus Atribut Statis `cover_url`:** Baris `cover_url = ...` dihilangkan sepenuhnya dari statement update buku.
+- **Menambahkan Klausa Idempoten `AND project_id IS NULL`:**
+  ```typescript
+  await db.execute(sql`
+      UPDATE books 
+      SET project_id = 'PRJ-2026-ZV9F', 
+          author_id = 'tkVJdyexUEz4bXFlO9MxcKkyaiXpPRpQ', 
+          updated_at = NOW() 
+      WHERE id = '8bc40df3-7ca1-4be2-a6a1-4b65e3c5b830' AND project_id IS NULL
+  `);
+  ```
+  Dengan proteksi ini, jika buku sudah pernah dihubungkan ke proyek, query migrasi ini tidak akan pernah lagi menyentuh data buku tersebut pada siklus reboot berikutnya.
+
+#### 2. Sinkronisasi Otomatis dari Admin Katalog ke Tahapan Proyek ([`server/src/controllers/sipenaController.ts`](file:///c:/dev/website-sipena/server/src/controllers/sipenaController.ts))
+- Pada `SipenaBooksController.update`, jika buku yang diedit memiliki relasi `projectId` dan terdapat pembaruan `coverUrl`, sistem secara otomatis mencari tahapan `Desain Sampul` pada proyek tersebut dan menyinkronkan metadata `coverUrl`-nya:
+  ```typescript
+  if (projectId && req.body.coverUrl) {
+      const stageSampul = await db.query.stages.findFirst({
+          where: and(
+              eq(stages.projectId, projectId),
+              eq(stages.label, 'Desain Sampul')
+          )
+      });
+      if (stageSampul) {
+          const newMeta = { ...(stageSampul.metadata || {}), coverUrl: req.body.coverUrl };
+          await db.update(stages).set({ metadata: newMeta }).where(eq(stages.id, stageSampul.id));
+      }
+  }
+  ```
+
+#### 3. Sinkronisasi Otomatis dari Dasbor Proyek ke Katalog Publik ([`server/src/controllers/stageController.ts`](file:///c:/dev/website-sipena/server/src/controllers/stageController.ts))
+- Pada `StageController.update`, jika tim redaksi atau Penanggung Jawab (PJ) memperbarui hasil desain sampul pada tahapan `Desain Sampul`, URL sampul tersebut langsung diteruskan untuk mengupdate `books.coverUrl`:
+  ```typescript
+  if (existingStage.label === 'Desain Sampul' && data.metadata?.coverUrl && existingStage.projectId) {
+      await db.update(books)
+          .set({ coverUrl: data.metadata.coverUrl, updatedAt: new Date() })
+          .where(eq(books.projectId, existingStage.projectId));
+  }
+  ```
+
+---
+
+### D. Hasil Verifikasi & Uji Ketahanan (Persistence Test)
+1. **Simulasi Eksekusi Migrasi Startup:**
+   - Dijalankan automated test script yang mengubah sampul buku, lalu mengeksekusi ulang seluruh logika startup `runMigrations()`.
+   - **Hasil:** Sampul baru tetap bertahan 100% dan tidak mengalami revert (*"SUCCESS! Cover URL remained persistent and was NOT overwritten!"*).
+2. **Pengujian Build Kompilasi:**
+   - Server backend (`server`): `npm run build` sukses 100% tanpa error TypeScript.
+   - Frontend web (`root`): `npm run build` sukses 100% tanpa error.
+3. **Status Data:**
+   - Seluruh relasi data antara `books` dan `stages` kini selaras dan aman dari reset otomatis.
+
+
 
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../../context/AppContext'
 import { api } from '../../../services/api'
+import CaptchaChallenge from '../../../components/CaptchaChallenge'
 
 export default function Login() {
     const [isRegister, setIsRegister] = useState(false)
@@ -14,6 +15,12 @@ export default function Login() {
     const [success, setSuccess] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+
+    // ── Proteksi Brute Force & CAPTCHA ────────────────────────
+    const [consecutiveFailures, setConsecutiveFailures] = useState(0)
+    const [showCaptcha, setShowCaptcha] = useState(false)
+    const [captchaData, setCaptchaData] = useState({ token: '', answer: '', isComplete: false })
+
     const { currentUser, login } = useApp()
     const navigate = useNavigate()
 
@@ -31,16 +38,44 @@ export default function Login() {
             setError('Alamat email wajib diisi.')
             return
         }
+
+        if (showCaptcha && (!captchaData.isComplete || !captchaData.answer)) {
+            setError('Silakan isi verifikasi keamanan (CAPTCHA) terlebih dahulu.')
+            return
+        }
+
         setIsSubmitting(true)
-        const result = await login(cleanEmail, password)
+        const result = await login(cleanEmail, password, {
+            captchaToken: captchaData.token,
+            captchaAnswer: captchaData.answer,
+        })
+
         if (result === true) {
+            setConsecutiveFailures(0)
+            setShowCaptcha(false)
             navigate('/')
         } else if (result === 'pending') {
             setError('Akun Anda masih menunggu persetujuan admin.')
         } else if (result === 'disabled') {
             setError('Akun Anda telah dinonaktifkan. Hubungi admin.')
+        } else if (typeof result === 'object') {
+            if (result.requiresVerification) {
+                setError(result.error || 'Akun Anda belum aktif. Silakan periksa email Anda untuk verifikasi.')
+            } else if (result.status === 429) {
+                setError(result.error || 'Terlalu banyak percobaan login gagal. Silakan coba lagi dalam 15 menit.')
+            } else {
+                const nextFailures = result.consecutiveFailures || (consecutiveFailures + 1)
+                setConsecutiveFailures(nextFailures)
+                if (nextFailures >= 3 || result.requiresCaptcha) {
+                    setShowCaptcha(true)
+                }
+                setError(result.error || 'Email atau kata sandi tidak sesuai.')
+            }
         } else {
-            setError('Login gagal. Periksa email dan password Anda.')
+            const nextFailures = consecutiveFailures + 1
+            setConsecutiveFailures(nextFailures)
+            if (nextFailures >= 3) setShowCaptcha(true)
+            setError('Email atau kata sandi tidak sesuai.')
         }
         setIsSubmitting(false)
     }
@@ -72,7 +107,7 @@ export default function Login() {
         setIsSubmitting(true)
         try {
             await api.auth.signUp({ name: cleanName, email: cleanEmail, password })
-            setSuccess('Pendaftaran berhasil! Akun Anda menunggu persetujuan admin.')
+            setSuccess('Pendaftaran berhasil! Tautan verifikasi telah dikirimkan ke email Anda. Silakan verifikasi email Anda sebelum masuk.')
             setIsRegister(false)
             setName('')
             setPassword('')
@@ -262,6 +297,12 @@ export default function Login() {
                                 {isRegister && (
                                     <p className="text-xs text-[#464555]/60">Minimal 8 karakter</p>
                                 )}
+                            </div>
+                        )}
+
+                        {!isForgotPass && !isRegister && showCaptcha && (
+                            <div className="pt-1">
+                                <CaptchaChallenge onVerifyChange={setCaptchaData} />
                             </div>
                         )}
 

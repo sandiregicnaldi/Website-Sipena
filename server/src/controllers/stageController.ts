@@ -2,7 +2,7 @@
 import { Request, Response } from "express";
 import { StageService } from "../services/stageService";
 import { db } from "../db";
-import { stages, projects, users, appSettings, auditLogs, notifications } from "../db/schema";
+import { stages, projects, users, appSettings, auditLogs, notifications, books } from "../db/schema";
 import { eq, and, asc, desc, or, like, sql } from "drizzle-orm";
 import { CATEGORIES } from "../data/categories";
 import { z } from "zod";
@@ -316,6 +316,17 @@ export const StageController = {
 
             const stage = await StageService.updateStage(stageId, updateData);
             res.json(stage);
+
+            // Jika tahapan Desain Sampul diupdate coverUrl-nya, sinkronkan ke katalog buku (jika sudah terdaftar)
+            if (existingStage.label === 'Desain Sampul' && data.metadata?.coverUrl && existingStage.projectId) {
+                try {
+                    await db.update(books)
+                        .set({ coverUrl: data.metadata.coverUrl, updatedAt: new Date() })
+                        .where(eq(books.projectId, existingStage.projectId));
+                } catch (bookSyncErr) {
+                    console.warn("[StageController.update] Syncing book coverUrl error:", bookSyncErr);
+                }
+            }
 
             // Audit log: stage approved
             if (data.status === 'done' && existingStage.status !== 'done') {

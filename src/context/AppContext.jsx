@@ -152,10 +152,10 @@ export function AppProvider({ children }) {
     }, [])
 
     // Auth actions
-    const login = useCallback(async (email, password) => {
+    const login = useCallback(async (email, password, captchaData = {}) => {
         try {
             const cleanEmail = (email || '').trim().toLowerCase()
-            const signInResult = await api.auth.signIn(cleanEmail, password)
+            const signInResult = await api.auth.signIn(cleanEmail, password, captchaData)
             const session = await api.auth.getSession()
             if (session?.user) {
                 const userStatus = session.user.status || 'pending'
@@ -182,8 +182,14 @@ export function AppProvider({ children }) {
             }
             return false
         } catch (e) {
-            console.error(e)
-            return false
+            console.error('[AppContext.login error]:', e)
+            return {
+                error: e.message || 'Email atau kata sandi tidak sesuai.',
+                status: e.status,
+                requiresCaptcha: e.requiresCaptcha || false,
+                consecutiveFailures: e.consecutiveFailures || 0,
+                requiresVerification: e.requiresVerification || false,
+            }
         }
     }, [])
 

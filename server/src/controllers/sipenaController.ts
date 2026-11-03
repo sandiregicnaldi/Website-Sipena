@@ -971,6 +971,24 @@ export const SipenaBooksController = {
                 }
             }
 
+            // Sinkronisasi cover ke tahapan Desain Sampul jika buku terhubung ke project_id
+            if (projectId && req.body.coverUrl) {
+                try {
+                    const stageSampul = await db.query.stages.findFirst({
+                        where: and(
+                            eq(stages.projectId, projectId),
+                            eq(stages.label, 'Desain Sampul')
+                        )
+                    });
+                    if (stageSampul) {
+                        const newMeta = { ...(stageSampul.metadata || {}), coverUrl: req.body.coverUrl };
+                        await db.update(stages).set({ metadata: newMeta }).where(eq(stages.id, stageSampul.id));
+                    }
+                } catch (stageErr) {
+                    console.warn("[SipenaBooksController.update] Syncing stage cover error:", stageErr);
+                }
+            }
+
             res.json(updated);
         } catch (error) {
             res.status(500).json({ error: "Failed to update book" });

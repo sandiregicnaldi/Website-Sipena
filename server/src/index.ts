@@ -581,16 +581,15 @@ async function runMigrations() {
             await db.execute(sql`
                 UPDATE manuscripts 
                 SET project_id = 'PRJ-2026-ZV9F', status = 'published', updated_at = NOW() 
-                WHERE id = 'ebb69f8e-f1f5-411e-9932-60ca58e8dcea'
+                WHERE id = 'ebb69f8e-f1f5-411e-9932-60ca58e8dcea' AND project_id IS NULL
             `);
 
             await db.execute(sql`
                 UPDATE books 
                 SET project_id = 'PRJ-2026-ZV9F', 
                     author_id = 'tkVJdyexUEz4bXFlO9MxcKkyaiXpPRpQ', 
-                    cover_url = '/api/uploads/covers/cover-1793593551846-509456816.png',
                     updated_at = NOW() 
-                WHERE id = '8bc40df3-7ca1-4be2-a6a1-4b65e3c5b830'
+                WHERE id = '8bc40df3-7ca1-4be2-a6a1-4b65e3c5b830' AND project_id IS NULL
             `);
 
             await db.execute(sql`

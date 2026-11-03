@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
-import { Mail, Lock, ArrowRight, User, MapPin, Calendar, Briefcase, Building2, ChevronDown } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, MapPin, Calendar, Briefcase, Building2, ChevronDown, ShieldAlert } from 'lucide-react';
+import CaptchaChallenge from '../components/CaptchaChallenge';
 import './LoginPage.css';
 
 // ── Shared form components ──────────────────────────────────────────────────
@@ -177,6 +178,14 @@ const LoginPage = () => {
   const [roleType, setRoleType] = useState('pengunjung'); // 'pengunjung' | 'penulis'
   const [form, setForm] = useState({ email: '', password: '', ...INITIAL_FORM });
 
+  // ── Proteksi Brute Force & CAPTCHA ────────────────────────
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [captchaData, setCaptchaData] = useState({ token: '', answer: '', isComplete: false });
+  const [captchaError, setCaptchaError] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { user, login, register, isPending } = useAuth();
 
   const { showAlert } = useDialog();
@@ -237,39 +246,96 @@ const LoginPage = () => {
     e.preventDefault();
     if (!form.email.trim() || !form.password.trim()) return;
 
+    if (showCaptcha && (!captchaData.isComplete || !captchaData.answer)) {
+      setCaptchaError('Silakan masukkan jawaban verifikasi keamanan (CAPTCHA).');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setCaptchaError('');
+    setLoginError('');
+
     try {
       const resolvedUser = await login({
         email: form.email,
         password: form.password,
+        captchaToken: captchaData.token,
+        captchaAnswer: captchaData.answer,
       });
 
+      setConsecutiveFailures(0);
+      setShowCaptcha(false);
       redirectAfter(resolvedUser);
     } catch (err) {
+      const errMsg = err.message || 'Email atau kata sandi tidak sesuai.';
+      setLoginError(errMsg);
+
+      if (err.requiresVerification) {
+        showAlert({
+          title: 'Verifikasi Email Diperlukan',
+          message: err.message || 'Akun Anda belum aktif. Silakan periksa email Anda dan klik tautan verifikasi sebelum masuk.',
+          type: 'warning'
+        });
+        return;
+      }
+
+      if (err.status === 429) {
+        showAlert({
+          title: 'Akses Dibatasi Sementara',
+          message: err.message || 'Terlalu banyak percobaan login gagal. Demi keamanan akun Anda, silakan coba lagi dalam 15 menit.',
+          type: 'error'
+        });
+        return;
+      }
+
+      const newFailures = err.consecutiveFailures || (consecutiveFailures + 1);
+      setConsecutiveFailures(newFailures);
+      if (newFailures >= 3 || err.requiresCaptcha) {
+        setShowCaptcha(true);
+        setCaptchaError('Verifikasi CAPTCHA diperlukan setelah beberapa kali gagal.');
+      }
+
       showAlert({
         title: 'Login Gagal',
-        message: 'Kombinasi email atau kata sandi tidak sesuai. Silakan periksa kembali akun Anda.',
+        message: errMsg,
         type: 'error'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
-      const resolvedUser = await register(form, roleType);
-      redirectAfter(resolvedUser);
+      const resolved = await register(form, roleType);
+      if (resolved && resolved.requiresVerification) {
+        showAlert({
+          title: 'Pendaftaran Berhasil!',
+          message: 'Tautan verifikasi telah dikirimkan ke email Anda. Silakan buka kotak masuk email Anda dan klik tautan aktivasi sebelum masuk.',
+          type: 'success'
+        });
+        switchMode('login');
+      } else {
+        redirectAfter(resolved);
+      }
     } catch (err) {
       showAlert({
         title: 'Pendaftaran Gagal',
         message: err.message || 'Terjadi kesalahan saat memproses pendaftaran. Silakan periksa kelengkapan data Anda.',
         type: 'error'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const switchMode = (newMode) => {
     setMode(newMode);
     setForm({ email: '', password: '', ...INITIAL_FORM });
+    setCaptchaError('');
+    setLoginError('');
   };
 
   return (
@@ -314,10 +380,37 @@ const LoginPage = () => {
           {/* ── LOGIN FORM ──────────────────────────────────── */}
           {mode === 'login' && (
             <form className="login-form" onSubmit={handleLogin}>
+              {loginError && (
+                <div style={{
+                  background: '#fee2e2',
+                  border: '1px solid #fca5a5',
+                  color: '#991b1b',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '14px',
+                  lineHeight: '1.4',
+                }}>
+                  <ShieldAlert size={18} color="#dc2626" style={{ flexShrink: 0 }} />
+                  <span>{loginError}</span>
+                </div>
+              )}
               <InputField icon={Mail} label="Email" type="email" name="email" placeholder="contoh@email.com" value={form.email} onChange={handleChange} required />
               <InputField icon={Lock} label="Kata Sandi" type="password" name="password" placeholder="Masukkan kata sandi" value={form.password} onChange={handleChange} required />
-              <button type="submit" className="btn btn-primary login-btn">
-                Masuk <ArrowRight size={18} />
+              
+              {showCaptcha && (
+                <CaptchaChallenge
+                  onVerifyChange={setCaptchaData}
+                  isError={!!captchaError}
+                  errorMessage={captchaError}
+                />
+              )}
+
+              <button type="submit" className="btn btn-primary login-btn" disabled={isSubmitting}>
+                {isSubmitting ? 'Memeriksa Keamanan...' : 'Masuk'} <ArrowRight size={18} />
               </button>
               <p className="switch-link">
                 Belum punya akun?{' '}

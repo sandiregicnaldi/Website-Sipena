@@ -43,15 +43,37 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (userData) => {
     try {
-      const { data, error } = await authClient.signIn.email({
-        email: userData.email,
-        password: userData.password
+      const res = await fetch('/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          captchaToken: userData.captchaToken,
+          captchaAnswer: userData.captchaAnswer,
+        }),
       });
-      if (error) throw error;
-      return data.user;
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const err = new Error(data.error || data.message || "Email atau kata sandi tidak sesuai.");
+        err.status = res.status;
+        err.requiresCaptcha = data.requiresCaptcha === true;
+        err.consecutiveFailures = data.consecutiveFailures || 0;
+        err.code = data.code;
+        err.requiresVerification = data.requiresVerification === true;
+        throw err;
+      }
+
+      await authClient.getSession();
+      return data.user || data;
     } catch (err) {
-      console.error(err);
-      throw new Error("Gagal login: Periksa email dan password");
+      if (err.status !== 401 && err.status !== 400 && err.status !== 429) {
+        console.error("[AuthContext.login]:", err);
+      }
+      throw err;
     }
   };
 
@@ -74,10 +96,10 @@ export const AuthProvider = ({ children }) => {
         kelurahan: formData.kelurahan,
       });
       if (error) throw error;
-      return data.user;
+      return { ...data, requiresVerification: true };
     } catch (err) {
-      console.error(err);
-      throw new Error("Gagal mendaftar");
+      console.error("[AuthContext.register]:", err);
+      throw err;
     }
   };
 

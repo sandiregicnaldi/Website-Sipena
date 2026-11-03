@@ -24,7 +24,12 @@ async function fetchAPI(endpoint, options = {}) {
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const msg = errorData.message || (typeof errorData.error === 'string' ? errorData.error : errorData.error?.message) || errorData.body?.message || `API Error: ${response.statusText}`;
-        throw new Error(msg);
+        const err = new Error(msg);
+        err.status = response.status;
+        err.requiresCaptcha = errorData.requiresCaptcha === true;
+        err.consecutiveFailures = errorData.consecutiveFailures || 0;
+        err.requiresVerification = errorData.requiresVerification === true;
+        throw err;
     }
 
     // Handle empty responses (e.g. 204 No Content)
@@ -35,9 +40,9 @@ async function fetchAPI(endpoint, options = {}) {
 export const api = {
     // Auth - Better Auth uses specific endpoint names
     auth: {
-        signIn: (email, password) => fetchAPI('/auth/sign-in/email', {
+        signIn: (email, password, captchaData = {}) => fetchAPI('/auth/sign-in/email', {
             method: 'POST',
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, ...captchaData })
         }),
         signUp: (data) => fetchAPI('/auth/sign-up/email', {
             method: 'POST',
