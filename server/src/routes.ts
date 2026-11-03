@@ -149,6 +149,11 @@ router.patch("/sipena/manuscripts/:id/status", requirePJOrAdmin, SipenaManuscrip
 
 // Kegiatan (Events)
 router.get("/sipena/events", SipenaEventsController.getAll); // Public access
+router.get("/sipena/events/my-certificates", requireAuth, SipenaEventsController.getMyCertificates);
+router.get("/sipena/events/:id", SipenaEventsController.getOne);
+router.post("/sipena/events/:id/claim-certificate", requireAuth, SipenaEventsController.claimCertificate);
+router.get("/sipena/events/:id/participants", requirePJOrAdmin, SipenaEventsController.getParticipants);
+router.patch("/sipena/events/:id/toggle-claim", requirePJOrAdmin, SipenaEventsController.toggleClaim);
 router.post("/sipena/events", requirePJOrAdmin, SipenaEventsController.create);
 router.patch("/sipena/events/:id", requirePJOrAdmin, SipenaEventsController.update);
 router.delete("/sipena/events/:id", requirePJOrAdmin, SipenaEventsController.delete);

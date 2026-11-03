@@ -1241,6 +1241,55 @@ Pada menu daftar buku, manajemen naskah, pengguna, kegiatan, dan konten web, daf
 2. **Backend Daemon Task**: Server berjalan normal di port `5001` melayani API secara responsif.
 3. **UI Consistency**: Seluruh tabel di admin SiPena kini memiliki tata letak dan pengalaman navigasi pagination yang seragam dan rapi.
 
+---
+
+## BAB 32: Alur Baru Kegiatan & Klaim Sertifikat Berbasis Token SiPena
+
+### A. Latar Belakang & Kebutuhan Alur Baru
+Sebelumnya, alur kegiatan mengharuskan pengunjung mendaftar sebelum acara dan link Zoom terkunci bagi non-pendaftar. Selain itu, kode PIN presensi bocor di halaman web publik dan jam buka-tutup presensi kaku.
+Untuk menghadirkan pengalaman pengguna (*User Experience*) yang mudah (*easy*), transparan, dan terpercaya:
+1. **Sebelum Acara:** Pengunjung tidak perlu login hanya untuk melihat info atau menghadiri Zoom. Link Zoom terbuka bebas untuk umum.
+2. **Saat Acara Berlangsung:** Panitia mengadakan sesi Zoom seperti biasa. Pada **15 menit sebelum Zoom berakhir**, panitia mengumumkan **Token Sertifikat Khusus** (misal: `SIPENA-LIT2026`) di layar / chat Zoom.
+3. **Klaim Sertifikat di Website:** Tombol *"Klaim & Unduh Sertifikat"* aktif otomatis 15 menit sebelum acara usai (atau melalui sakelar manual admin). Peserta memasukkan token &rarr; divalidasi backend &rarr; nomor sertifikat resmi diterbitkan (`SIPENA/CERT/...`) dan tersimpan permanen di database akun mereka.
+4. **Sisi Admin:** Admin tidak perlu mengatur jam buka/tutup menit per menit. Cukup menentukan token (atau generate acak), dan memiliki tombol sakelar cepat (*toggle switch*) untuk membuka/menutup klaim secara manual bila waktu acara molor atau berubah.
+
+### B. Implementasi Teknis
+1. **Database PostgreSQL & Drizzle ORM (`server/src/db/schema.ts` & `index.ts`)**:
+   - Kolom baru pada tabel `events`: `certificate_token`, `is_claim_open`, `claim_opens_at`, `time`, `zoom_url`, `speakers`, `max_participants`.
+   - Tabel baru `event_participants`: `id`, `event_id`, `user_id`, `name`, `email`, `institution`, `token_used`, `certificate_number`, `status`, `claimed_at`, `created_at`.
+   - Indeks unik `unique_user_event_cert (event_id, user_id)` untuk mencegah klaim sertifikat ganda.
+2. **Backend Controller & Routing (`server/src/controllers/sipenaController.ts` & `routes.ts`)**:
+   - Helper `isEventClaimActive(event)`: Evaluasi status buka klaim (otomatis H-15 menit atau sakelar override admin).
+   - `SipenaEventsController.claimCertificate`: Validasi token case-insensitive & trimmed, pencegahan klaim ganda, penerbitan nomor registrasi unik `SIPENA/CERT/{TAHUN}/{BULAN_ROMAWI}/{NOMOR_URUT}`, dan notifikasi akun.
+   - `SipenaEventsController.getMyCertificates`: Mengambil riwayat sertifikat user yang login.
+   - `SipenaEventsController.getParticipants`: Mengambil data peserta nyata untuk admin.
+   - `SipenaEventsController.toggleClaim`: Sakelar manual Buka / Tutup / Auto klaim.
+3. **Frontend API Client & Context (`src/lib/api.js` & `src/context/EventContext.jsx`)**:
+   - Metode pemanggil API baru: `getEventById`, `claimEventCertificate`, `getMyCertificates`, `getEventParticipants`, `toggleEventClaim`.
+   - Sinkronisasi atribut event dan fungsi `checkIfClaimOpen(event)`.
+4. **Halaman Detail Kegiatan (`src/pages/EventDetail.jsx`)**:
+   - Akses publik langsung ke sesi Zoom tanpa kewajiban login.
+   - Kartu Sertifikat Kehadiran dengan hitung mundur otomatis H-15 menit.
+   - Modal input Token Zoom, Nama Lengkap, dan Instansi.
+   - Otomatis mengunduh PDF resmi Perpusnas Press ber-nomor registrasi unik setelah klaim berhasil.
+5. **Dashboard Pengguna (`src/pages/AuthorDashboard.jsx`)**:
+   - Tab *"Kegiatan Saya"* terhubung live ke endpoint `getMyCertificates()`.
+   - Riwayat kegiatan nyata, nomor sertifikat, dan tombol unduh ulang PDF.
+6. **Panel Admin Kegiatan (`src/pages/admin/AdminKegiatan.jsx`)**:
+   - Input token sertifikat dengan generator token acak.
+   - Sakelar kilat Buka Klaim / Tutup Klaim / Auto langsung pada baris tabel kegiatan.
+   - Tabel peserta nyata dari database dengan tombol Ekspor CSV (Excel).
+
+### C. Hasil Pengujian & Verifikasi
+1. **Backend TypeScript Compilation**: `npx tsc --noEmit` sukses (0 error).
+2. **Frontend Production Build**: `npm run build` sukses (2.02 detik).
+3. **Automated E2E Test (`scratch/test_e2e_claim.cjs`)**:
+   - Validasi token case-insensitive berhasil (*PASS*).
+   - Penolakan token salah berhasil (*PASS*).
+   - Penerbitan nomor sertifikat resmi `SIPENA/CERT/2026/XI/0001` berhasil (*PASS*).
+   - Pencegahan klaim ganda terbukti aman via unique constraint PostgreSQL (*PASS*).
+   - Pengambilan sertifikat pengguna pada profil berhasil (*PASS*).
+
 
 
 

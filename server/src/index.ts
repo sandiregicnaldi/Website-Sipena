@@ -197,6 +197,34 @@ async function runMigrations() {
     } catch (e) {
         console.warn("[migration] app_settings table skipped:", (e as Error).message);
     }
+    try {
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS certificate_token TEXT`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_claim_open BOOLEAN DEFAULT FALSE`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS claim_opens_at TEXT`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS time TEXT`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS zoom_url TEXT`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS speakers JSONB DEFAULT '[]'::jsonb`);
+        await db.execute(`ALTER TABLE events ADD COLUMN IF NOT EXISTS max_participants INTEGER DEFAULT 0`);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS event_participants (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+                user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                institution TEXT,
+                token_used TEXT NOT NULL,
+                certificate_number TEXT,
+                status TEXT DEFAULT 'Hadir',
+                claimed_at TIMESTAMP DEFAULT NOW(),
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS unique_user_event_cert ON event_participants (event_id, user_id)`);
+        console.log("[migration] events & event_participants columns and table ensured");
+    } catch (e) {
+        console.warn("[migration] events & event_participants skipped:", (e as Error).message);
+    }
 
     // Migrasi data: Kembalikan terjemahan sebagai type di terbitan dan tambahkan typeStages
     // PENTING: Jangan timpa seluruh data terbitan — hanya tambahkan typeStages/types yang hilang

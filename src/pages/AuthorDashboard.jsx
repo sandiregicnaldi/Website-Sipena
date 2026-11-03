@@ -73,11 +73,9 @@ const AuthorDashboard = () => {
     { id: 3, judul: 'Misteri Gunung Merapi', linkDrive: 'https://drive.google.com/...', tanggal: '2026-07-10', status: 'Ditolak', alasan: 'Tema tidak sesuai dengan fokus penerbitan Perpusnas Press tahun ini.' },
   ]);
 
-  // State untuk Kegiatan Saya (Mock)
-  const [kegiatanList, setKegiatanList] = useState([
-    { id: 1, judul: 'Seminar Literasi Digital 2026', tanggal: '2026-08-10', statusPresensi: 'Hadir' },
-    { id: 2, judul: 'Workshop Penulisan Ilmiah', tanggal: '2026-07-20', statusPresensi: 'Belum Hadir' },
-  ]);
+  // State untuk Kegiatan Saya (Live dari Database)
+  const [kegiatanList, setKegiatanList] = useState([]);
+  const [loadingKegiatan, setLoadingKegiatan] = useState(false);
 
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('biodata');
@@ -117,7 +115,35 @@ const AuthorDashboard = () => {
         console.warn('Failed to load user manuscripts:', err);
       }
     };
+
+    const fetchUserCertificates = async () => {
+      try {
+        setLoadingKegiatan(true);
+        const data = await SipenaAPI.getMyCertificates();
+        if (Array.isArray(data)) {
+          setKegiatanList(data.map(item => ({
+            id: item.id,
+            eventId: item.eventId,
+            judul: item.event?.title || 'Kegiatan SiPena',
+            tanggal: item.event?.date || item.claimedAt,
+            jamKegiatan: item.event?.time || '',
+            certificateNumber: item.certificateNumber,
+            tokenUsed: item.tokenUsed,
+            statusPresensi: item.status || 'Hadir',
+            claimedAt: item.claimedAt,
+            nama: item.name,
+            instansi: item.institution,
+          })));
+        }
+      } catch (err) {
+        console.warn('Failed to load user certificates:', err);
+      } finally {
+        setLoadingKegiatan(false);
+      }
+    };
+
     fetchUserManuscripts();
+    fetchUserCertificates();
   }, [user]);
 
   const hasPublishedManuscript = naskahList.some(n => n.status === 'Sudah Terbit' || n.rawStatus === 'published');
@@ -305,46 +331,104 @@ const AuthorDashboard = () => {
   };
 
   const downloadSertifikat = (kegiatan) => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    
-    // Background and border
-    doc.setFillColor(245, 247, 250);
-    doc.rect(0, 0, 297, 210, 'F');
-    doc.setDrawColor(37, 99, 235);
-    doc.setLineWidth(2);
-    doc.rect(10, 10, 277, 190);
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const width = 297;
+    const height = 210;
 
-    // Title
-    doc.setFontSize(28);
+    // Background
+    doc.setFillColor(250, 250, 252);
+    doc.rect(0, 0, width, height, 'F');
+
+    // Bingkai ganda elegan (Biru Perpusnas & Emas)
+    doc.setDrawColor(30, 58, 138); // Blue 900
+    doc.setLineWidth(2.5);
+    doc.rect(10, 10, width - 20, height - 20);
+
+    doc.setDrawColor(202, 138, 4); // Amber 600
+    doc.setLineWidth(0.8);
+    doc.rect(14, 14, width - 28, height - 28);
+
+    // Header Lembaga
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 58, 138);
-    doc.text('SERTIFIKAT KEHADIRAN', 148.5, 50, { align: 'center' });
-    
-    // Subtitle
-    doc.setFontSize(14);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Diberikan kepada:', 148.5, 75, { align: 'center' });
+    doc.text('PERPUSNAS PRESS • PERPUSTAKAAN NASIONAL REPUBLIK INDONESIA', 148.5, 30, { align: 'center' });
 
-    // Name
-    doc.setFontSize(32);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Sistem Informasi & Pengelolaan Penerbitan Buku SiPena', 148.5, 36, { align: 'center' });
+
+    // Judul Sertifikat
+    doc.setFontSize(26);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(user.namaLengkap || user.username, 148.5, 100, { align: 'center' });
+    doc.text('SERTIFIKAT KEHADIRAN', 148.5, 54, { align: 'center' });
 
-    // Text
-    doc.setFontSize(14);
+    // Nomor Registrasi Sertifikat Resmi
+    const certNumber = kegiatan.certificateNumber || `SIPENA/CERT/${new Date().getFullYear()}/XI/0001`;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
-    doc.text('Atas partisipasinya dalam kegiatan:', 148.5, 125, { align: 'center' });
+    doc.text(`Nomor Registrasi: ${certNumber}`, 148.5, 62, { align: 'center' });
 
-    // Event Title
-    doc.setFontSize(20);
-    doc.setTextColor(37, 99, 235);
-    doc.text(kegiatan.judul, 148.5, 145, { align: 'center' });
-
-    // Date
+    // Diberikan kepada
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Jakarta, ${new Date(kegiatan.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 148.5, 175, { align: 'center' });
+    doc.text('Diberikan dengan hormat kepada:', 148.5, 80, { align: 'center' });
 
-    doc.save(`Sertifikat_${kegiatan.judul.replace(/\s+/g, '_')}.pdf`);
+    // Nama Peserta
+    const recipientName = kegiatan.nama || user.namaLengkap || user.name || user.username || 'Peserta Terdaftar';
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 58, 138);
+    doc.text(recipientName, 148.5, 96, { align: 'center' });
+
+    // Instansi jika ada
+    if (kegiatan.instansi) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(71, 85, 105);
+      doc.text(kegiatan.instansi, 148.5, 104, { align: 'center' });
+    }
+
+    // Keterangan Partisipasi
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Atas partisipasi aktif dan kehadirannya dalam kegiatan:', 148.5, 120, { align: 'center' });
+
+    // Judul Kegiatan
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(kegiatan.judul, 148.5, 134, { align: 'center' });
+
+    // Tanggal
+    const eventDateStr = new Date(kegiatan.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    doc.setFontSize(10.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Diselenggarakan pada ${eventDateStr} ${kegiatan.jamKegiatan ? `• ${kegiatan.jamKegiatan}` : ''}`, 148.5, 144, { align: 'center' });
+
+    // Tanda Tangan
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(40, 168, 100, 168);
+    doc.line(197, 168, 257, 168);
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 58, 138);
+    doc.text('Panitia Pelaksana', 70, 175, { align: 'center' });
+    doc.text('Perpusnas Press', 227, 175, { align: 'center' });
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('Dokumen ini resmi diterbitkan secara elektronik melalui Portal SiPena Perpusnas Press.', 148.5, 194, { align: 'center' });
+
+    doc.save(`Sertifikat_${kegiatan.judul.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   const infoItems = [
@@ -839,44 +923,87 @@ const AuthorDashboard = () => {
             {/* ── TAB KEGIATAN SAYA ─────────────────────────────────── */}
             {activeTab === 'kegiatan' && (
               <div className="tab-panel">
-                <p className="tab-desc">Lihat riwayat kegiatan yang Anda ikuti dan unduh sertifikat kehadiran.</p>
-                
-                <div style={{overflowX: 'auto'}}>
-                  <table className="admin-table" style={{width: '100%', marginTop: '1rem'}}>
-                    <thead>
-                      <tr>
-                        <th>Nama Kegiatan</th>
-                        <th>Tanggal</th>
-                        <th>Status Presensi</th>
-                        <th>Sertifikat</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {kegiatanList.map(k => (
-                        <tr key={k.id}>
-                          <td style={{fontWeight: 600}}>{k.judul}</td>
-                          <td style={{fontSize: '0.85rem'}}>
-                            {new Date(k.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </td>
-                          <td>
-                            <span className={`badge ${k.statusPresensi === 'Hadir' ? 'badge-green' : 'badge-amber'}`}>
-                              {k.statusPresensi}
-                            </span>
-                          </td>
-                          <td>
-                            {k.statusPresensi === 'Hadir' ? (
-                              <button onClick={() => downloadSertifikat(k)} className="btn btn-outline" style={{padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem'}}>
-                                <Download size={14} /> Unduh PDF
-                              </button>
-                            ) : (
-                              <span style={{color: 'var(--text-tertiary)', fontSize: '0.8rem'}}>-</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <p className="tab-desc" style={{ margin: 0 }}>Lihat riwayat kegiatan yang Anda ikuti dan unduh sertifikat kehadiran resmi.</p>
+                  <Link to="/event" className="btn btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    + Jelajahi Kegiatan Baru
+                  </Link>
                 </div>
+                
+                {loadingKegiatan ? (
+                  <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <Loader2 size={24} className="spin" style={{ margin: '0 auto 0.5rem', display: 'block', animation: 'spin 1s linear infinite' }} />
+                    Memuat riwayat sertifikat...
+                  </div>
+                ) : kegiatanList.length === 0 ? (
+                  <div style={{
+                    padding: '3rem 2rem', textAlign: 'center', background: '#f8fafc',
+                    borderRadius: 'var(--radius-lg)', border: '1px dashed #cbd5e1', marginTop: '1rem'
+                  }}>
+                    <Award size={36} color="#94a3b8" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
+                    <h4 style={{ margin: '0 0 0.5rem', color: '#1e293b' }}>Belum Ada Sertifikat Kegiatan</h4>
+                    <p style={{ margin: '0 0 1.25rem', color: '#64748b', fontSize: '0.875rem', maxWidth: '460px', marginLeft: 'auto', marginRight: 'auto' }}>
+                      Anda belum mengklaim sertifikat kehadiran untuk kegiatan apapun. Ikuti seminar &amp; webinar literasi Perpusnas Press dan dapatkan sertifikat resmi.
+                    </p>
+                    <Link to="/event" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+                      Lihat Jadwal Kegiatan SiPena
+                    </Link>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table" style={{ width: '100%', marginTop: '1rem' }}>
+                      <thead>
+                        <tr>
+                          <th>Kegiatan &amp; Nomor Registrasi</th>
+                          <th>Tanggal Acara</th>
+                          <th>Status</th>
+                          <th>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {kegiatanList.map(k => (
+                          <tr key={k.id}>
+                            <td>
+                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{k.judul}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.2rem' }}>
+                                No: <strong>{k.certificateNumber || '-'}</strong>
+                              </div>
+                            </td>
+                            <td style={{ fontSize: '0.85rem' }}>
+                              <div>{new Date(k.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                              {k.jamKegiatan && <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{k.jamKegiatan} WIB</div>}
+                            </td>
+                            <td>
+                              <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <Check size={11} /> {k.statusPresensi || 'Hadir'}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                <button
+                                  onClick={() => downloadSertifikat(k)}
+                                  className="btn btn-primary"
+                                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                >
+                                  <Download size={13} /> Unduh PDF
+                                </button>
+                                {k.eventId && (
+                                  <Link
+                                    to={`/event/${k.eventId}`}
+                                    className="btn btn-outline"
+                                    style={{ padding: '0.35rem 0.6rem', fontSize: '0.78rem', textDecoration: 'none' }}
+                                  >
+                                    Detail
+                                  </Link>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 

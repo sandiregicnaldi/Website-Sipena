@@ -257,12 +257,33 @@ export const events = pgTable("events", {
     title: text("title").notNull(),
     description: text("description"),
     date: timestamp("date").notNull(),
+    time: text("time"),
     location: text("location"),
     imageUrl: text("image_url"),
+    zoomUrl: text("zoom_url"),
     registrationLink: text("registration_link"),
-    status: text("status").default("upcoming"), // 'upcoming' | 'ongoing' | 'completed'
+    speakers: jsonb("speakers").$type<string[]>().default([]),
+    maxParticipants: integer("max_participants").default(0),
+    certificateToken: text("certificate_token"),
+    isClaimOpen: boolean("is_claim_open").default(false),
+    claimOpensAt: text("claim_opens_at"),
+    status: text("status").default("Akan Datang"), // 'Akan Datang' | 'Segera' | 'Selesai'
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const eventParticipants = pgTable("event_participants", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id").references(() => events.id, { onDelete: 'cascade' }).notNull(),
+    userId: text("user_id").references(() => users.id, { onDelete: 'cascade' }),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    institution: text("institution"),
+    tokenUsed: text("token_used").notNull(),
+    certificateNumber: text("certificate_number"),
+    status: text("status").default("Hadir"),
+    claimedAt: timestamp("claimed_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
 });
 
 // ---- Drizzle Relations (required for relational queries with `with:`) ----
@@ -279,6 +300,16 @@ export const usersRelations = relations(users, ({ many }) => ({
     manuscripts: many(manuscripts),
     ratings: many(bookRatings),
     downloads: many(bookDownloads),
+    eventCertificates: many(eventParticipants),
+}));
+
+export const eventsRelations = relations(events, ({ many }) => ({
+    participants: many(eventParticipants),
+}));
+
+export const eventParticipantsRelations = relations(eventParticipants, ({ one }) => ({
+    event: one(events, { fields: [eventParticipants.eventId], references: [events.id] }),
+    user: one(users, { fields: [eventParticipants.userId], references: [users.id] }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

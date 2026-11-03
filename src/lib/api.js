@@ -28,7 +28,7 @@ export const SipenaAPI = {
     createBook: (data) => api.post('/sipena/books', data).then(res => res.data),
     updateBook: (id, data) => api.patch(`/sipena/books/${id}`, data).then(res => res.data),
     deleteBook: (id) => api.delete(`/sipena/books/${id}`).then(res => res.data),
-    getDashboardStats: () => api.get('/sipena/stats').then(res => res.data),
+    getDashboardStats: (params) => api.get('/sipena/stats', { params }).then(res => res.data),
 
     // Uploads
     uploadCover: (file) => {
@@ -48,9 +48,14 @@ export const SipenaAPI = {
 
     // Events
     getEvents: () => api.get('/sipena/events').then(res => res.data),
+    getEventById: (id) => api.get(`/sipena/events/${id}`).then(res => res.data),
     createEvent: (data) => api.post('/sipena/events', data).then(res => res.data),
     updateEvent: (id, data) => api.patch(`/sipena/events/${id}`, data).then(res => res.data),
     deleteEvent: (id) => api.delete(`/sipena/events/${id}`).then(res => res.data),
+    claimEventCertificate: (id, data) => api.post(`/sipena/events/${id}/claim-certificate`, data).then(res => res.data),
+    getMyCertificates: () => api.get('/sipena/events/my-certificates').then(res => res.data),
+    getEventParticipants: (id) => api.get(`/sipena/events/${id}/participants`).then(res => res.data),
+    toggleEventClaim: (id, data) => api.patch(`/sipena/events/${id}/toggle-claim`, data).then(res => res.data),
 
     // Manuscripts
     getManuscripts: () => api.get('/sipena/manuscripts').then(res => res.data),

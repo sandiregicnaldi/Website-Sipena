@@ -63,7 +63,7 @@ const EventsPage = () => {
             {events.map(ev => {
               const { hari, bulan } = getBadgeParts(ev.tanggal);
               const statusStyle     = STATUS_COLOR[ev.status] || STATUS_COLOR['Akan Datang'];
-              const jumlahPeserta   = (peserta[ev.id] || []).length;
+              const jumlahPeserta   = ev.participantCount || 0;
               const gambar          = ev.bannerUrl || getDefaultImage(ev.judul);
 
               return (
@@ -92,7 +92,7 @@ const EventsPage = () => {
                       <span className="meta-item"><Clock size={15} /> {ev.jamKegiatan} WIB</span>
                       <span className="meta-item"><MapPin size={15} /> {ev.lokasi}</span>
                       {jumlahPeserta > 0 && (
-                        <span className="meta-item"><Users size={15} /> {jumlahPeserta} mendaftar</span>
+                        <span className="meta-item"><Users size={15} /> {jumlahPeserta} hadir</span>
                       )}
                     </div>
                     <p className="event-desc-large">{ev.penjelasan}</p>

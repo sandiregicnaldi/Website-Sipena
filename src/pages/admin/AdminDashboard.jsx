@@ -1,6 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, FileText, BarChart2, Book, PenTool, Clipboard, RefreshCw } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
+} from 'recharts';
+import {
+  BookOpen,
+  FileText,
+  BarChart2,
+  Book,
+  PenTool,
+  Clipboard,
+  RefreshCw,
+  Download,
+  Eye,
+  Star,
+  Trophy,
+  Users,
+  Calendar,
+  LogIn,
+  ArrowUpRight
+} from 'lucide-react';
 import { SipenaAPI } from '../../lib/api';
 import './AdminLayout.css';
 import './AdminDashboard.css';
@@ -24,180 +50,121 @@ const ICON_MAP = {
   'Total Penulis': <PenTool size={16} />,
 };
 
-// Download per year (2015-2026)
-const CHART_DATA = [
-  { year: '2015', val: 120  },
-  { year: '2016', val: 480  },
-  { year: '2017', val: 900  },
-  { year: '2018', val: 2800 },
-  { year: '2019', val: 3100 },
-  { year: '2020', val: 4200 },
-  { year: '2021', val: 5300 },
-  { year: '2022', val: 6100 },
-  { year: '2023', val: 6800 },
-  { year: '2024', val: 14800},
-  { year: '2025', val: 9600 },
-  { year: '2026', val: 2900 },
-];
-
-const RECENT_BOOKS = [
-  { id: 1, judul: 'Sejarah Perpustakaan Nasional RI',   penulis: 'Dr. Ahmad Fauzi',    kategori: 'Sejarah',    status: 'Terbit',    tanggal: '2026-06-10' },
-  { id: 2, judul: 'Pedoman Katalogisasi Perpustakaan',  penulis: 'Dra. Siti Rahayu',   kategori: 'Pedoman',    status: 'Terbit',    tanggal: '2026-05-22' },
-  { id: 3, judul: 'Literasi Informasi di Era Digital',  penulis: 'Prof. Budi Santoso', kategori: 'Teknologi',  status: 'Proses',    tanggal: '2026-07-01' },
-  { id: 4, judul: 'Naskah Nusantara: Koleksi Pilihan',  penulis: 'Drs. Hendra Wijaya', kategori: 'Manuskrip',  status: 'Review',    tanggal: '2026-07-05' },
-  { id: 5, judul: 'Manajemen Arsip Modern',             penulis: 'Dr. Rina Dewi',      kategori: 'Manajemen',  status: 'Terbit',    tanggal: '2026-04-18' },
-];
-
-const RECENT_USERS = [
-  { id: 1, nama: 'Agus Pratama',    role: 'Calon Penulis', email: 'agus@email.com',    tanggal: '2026-07-15' },
-  { id: 2, nama: 'Sari Indah',      role: 'Pengunjung',    email: 'sari@email.com',    tanggal: '2026-07-14' },
-  { id: 3, nama: 'Wahyu Nugroho',   role: 'Penulis',       email: 'wahyu@email.com',   tanggal: '2026-07-12' },
-  { id: 4, nama: 'Dian Kusuma',     role: 'Calon Penulis', email: 'dian@email.com',    tanggal: '2026-07-11' },
-  { id: 5, nama: 'Rizki Fauzan',    role: 'Pengunjung',    email: 'rizki@email.com',   tanggal: '2026-07-10' },
-];
+const CATEGORY_COLORS = {
+  'Anak-anak': '#0ea5e9',
+  'Anak': '#0ea5e9',
+  'Biografi & Memoar': '#8b5cf6',
+  'Ekonomi & Management': '#059669',
+  'Fiksi': '#e11d48',
+  'Hukum & Politik': '#4f46e5',
+  'Hukum': '#6b21a8',
+  'Humaniora': '#d97706',
+  'Inkubator Literasi': '#2563eb',
+  'Kesehatan': '#10b981',
+  'Komik': '#f59e0b',
+  'Lifestyle': '#ec4899',
+  'Sastra': '#1e3a8a',
+  'Sejarah': '#b91c1c',
+  'Budaya': '#047857',
+  'Umum': '#475569'
+};
 
 const ROLE_BADGE = {
+  'Super Admin':   'badge-red',
+  'Admin':         'badge-red',
+  'Personil':      'badge-purple',
   'Penulis':       'badge-blue',
   'Calon Penulis': 'badge-amber',
   'Pengunjung':    'badge-gray',
-  'Pegawai':       'badge-purple',
 };
 
-const STATUS_BADGE = {
-  'Terbit': 'badge-green',
-  'Proses': 'badge-amber',
-  'Review': 'badge-blue',
-};
+const DEFAULT_MONTHLY_DATA = [
+  { month: 'Jan', dibaca: 1250, diunduh: 580 },
+  { month: 'Feb', dibaca: 1420, diunduh: 690 },
+  { month: 'Mar', dibaca: 1680, diunduh: 850 },
+  { month: 'Apr', dibaca: 1530, diunduh: 760 },
+  { month: 'Mei', dibaca: 1890, diunduh: 920 },
+  { month: 'Jun', dibaca: 2100, diunduh: 1050 },
+  { month: 'Jul', dibaca: 1950, diunduh: 980 },
+  { month: 'Agu', dibaca: 2200, diunduh: 1100 },
+  { month: 'Sep', dibaca: 2450, diunduh: 1250 },
+  { month: 'Okt', dibaca: 2600, diunduh: 1340 },
+  { month: 'Nov', dibaca: 2300, diunduh: 1150 },
+  { month: 'Des', dibaca: 2800, diunduh: 1400 },
+];
 
-// ── SVG Line Chart ───────────────────────────────────────────────────────────
-const LineChart = ({ data }) => {
-  const W = 700, H = 260, PAD = { top: 20, right: 20, bottom: 40, left: 55 };
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-
-  const maxVal = Math.max(...data.map(d => d.val));
-  const xStep = innerW / (data.length - 1);
-
-  const toX = i => PAD.left + i * xStep;
-  const toY = v => PAD.top + innerH - (v / maxVal) * innerH;
-
-  // Y-axis labels (5 ticks)
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => Math.round(t * maxVal));
-
-  // Polyline points
-  const points = data.map((d, i) => `${toX(i)},${toY(d.val)}`).join(' ');
-
-  // Area fill path
-  const area = `M${toX(0)},${toY(data[0].val)} ` +
-    data.slice(1).map((d, i) => `L${toX(i + 1)},${toY(d.val)}`).join(' ') +
-    ` L${toX(data.length - 1)},${PAD.top + innerH} L${toX(0)},${PAD.top + innerH} Z`;
-
-  const [tooltip, setTooltip] = useState(null);
-
-  return (
-    <div className="chart-container" style={{ position: 'relative' }}>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', fontFamily: 'Inter, sans-serif' }}
-      >
-        {/* Grid lines */}
-        {yTicks.map((t, i) => {
-          const y = toY(t);
-          return (
-            <g key={i}>
-              <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
-                stroke="#e2e8f0" strokeWidth="1" strokeDasharray={i > 0 ? '4,4' : '0'} />
-              <text x={PAD.left - 6} y={y + 4} textAnchor="end"
-                fontSize="10" fill="#94a3b8">
-                {t >= 1000 ? (t / 1000).toFixed(0) + 'k' : t}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Y-axis label */}
-        <text
-          transform={`translate(12, ${PAD.top + innerH / 2}) rotate(-90)`}
-          textAnchor="middle" fontSize="10" fill="#94a3b8">
-          Jumlah Download
-        </text>
-
-        {/* Area fill */}
-        <path d={area} fill="url(#areaGrad)" opacity="0.25" />
-        <defs>
-          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-
-        {/* Line */}
-        <polyline
-          points={points}
-          fill="none"
-          stroke="#2563eb"
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-
-        {/* Dots + X labels */}
-        {data.map((d, i) => (
-          <g key={i}>
-            <text x={toX(i)} y={H - 10} textAnchor="middle" fontSize="10" fill="#64748b">
-              {d.year}
-            </text>
-            <circle
-              cx={toX(i)} cy={toY(d.val)} r="5"
-              fill="#fff" stroke="#2563eb" strokeWidth="2.5"
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={() => setTooltip({ i, d })}
-              onMouseLeave={() => setTooltip(null)}
-            />
-          </g>
-        ))}
-      </svg>
-
-      {/* Tooltip */}
-      {tooltip && (
-        <div className="chart-tooltip" style={{
-          left: `${(tooltip.i / (data.length - 1)) * 100}%`,
-        }}>
-          <strong>{tooltip.d.year}</strong>
-          <span>{tooltip.d.val.toLocaleString('id-ID')} download</span>
+// Custom Tooltip Recharts
+const CustomChartTooltip = ({ active, payload, label, selectedYear }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px',
+        padding: '0.65rem 0.9rem',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        minWidth: '180px'
+      }}>
+        <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.45rem', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.35rem' }}>
+          {label} {selectedYear}
         </div>
-      )}
-    </div>
-  );
+        {payload.map((entry, index) => (
+          <div key={`tooltip-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.85rem', fontSize: '0.8rem', marginTop: '0.35rem' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: entry.dataKey === 'dibaca' ? '#0284c7' : '#2563eb', fontWeight: 600 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: entry.fill, display: 'inline-block' }}></span>
+              {entry.name}:
+            </span>
+            <span style={{ fontWeight: 700, color: '#0f172a' }}>
+              {Number(entry.value || 0).toLocaleString('id-ID')}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
 };
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 const AdminDashboard = () => {
   const [stats, setStats] = useState(INITIAL_STATS);
-  const [recentBooks, setRecentBooks] = useState(RECENT_BOOKS);
-  const [recentUsers, setRecentUsers] = useState(RECENT_USERS);
-  const [chartData, setChartData] = useState(CHART_DATA);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [availableYears, setAvailableYears] = useState([2026, 2025, 2024, 2023, 2022, 2021, 2020]);
+  const [monthlyChartData, setMonthlyChartData] = useState(DEFAULT_MONTHLY_DATA);
+  const [topDownloadedBooks, setTopDownloadedBooks] = useState([]);
+  const [topReadBooks, setTopReadBooks] = useState([]);
+  const [topActiveUsers, setTopActiveUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchDashboardData = async (isManual = false) => {
+  const fetchDashboardData = async (yearToFetch = selectedYear, isManual = false) => {
     try {
       if (isManual) setIsRefreshing(true);
-      const res = await SipenaAPI.getDashboardStats();
-      if (res && res.stats) {
-        setStats(res.stats.map(s => ({
-          ...s,
-          icon: ICON_MAP[s.label] || <BookOpen size={16} />
-        })));
-        if (Array.isArray(res.recentBooks) && res.recentBooks.length > 0) {
-          setRecentBooks(res.recentBooks);
+      const res = await SipenaAPI.getDashboardStats({ year: yearToFetch });
+      if (res) {
+        if (Array.isArray(res.stats)) {
+          setStats(res.stats.map(s => ({
+            ...s,
+            icon: ICON_MAP[s.label] || <BookOpen size={16} />
+          })));
         }
-        if (Array.isArray(res.recentUsers) && res.recentUsers.length > 0) {
-          setRecentUsers(res.recentUsers);
+        if (Array.isArray(res.availableYears)) {
+          setAvailableYears(res.availableYears);
         }
-        if (Array.isArray(res.chartData) && res.chartData.length > 0) {
-          setChartData(res.chartData);
+        if (res.selectedYear) {
+          setSelectedYear(res.selectedYear);
+        }
+        if (Array.isArray(res.monthlyChartData) && res.monthlyChartData.length > 0) {
+          setMonthlyChartData(res.monthlyChartData);
+        }
+        if (Array.isArray(res.topDownloadedBooks)) {
+          setTopDownloadedBooks(res.topDownloadedBooks);
+        }
+        if (Array.isArray(res.topReadBooks)) {
+          setTopReadBooks(res.topReadBooks);
+        }
+        if (Array.isArray(res.topActiveUsers)) {
+          setTopActiveUsers(res.topActiveUsers);
         }
       }
     } catch (err) {
@@ -209,8 +176,23 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(selectedYear);
   }, []);
+
+  const handleYearChange = (e) => {
+    const yr = parseInt(e.target.value, 10);
+    setSelectedYear(yr);
+    fetchDashboardData(yr, true);
+  };
+
+  const renderRankBadge = (rank) => {
+    const cls = rank === 1 ? 'dashboard-rank--gold' : rank === 2 ? 'dashboard-rank--silver' : rank === 3 ? 'dashboard-rank--bronze' : 'dashboard-rank--default';
+    return (
+      <span className={`dashboard-rank ${cls}`}>
+        {rank}
+      </span>
+    );
+  };
 
   const now = new Date();
   const greet = now.getHours() < 12 ? 'Selamat Pagi' : now.getHours() < 17 ? 'Selamat Siang' : 'Selamat Sore';
@@ -239,7 +221,7 @@ const AdminDashboard = () => {
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span> Live Terhubung
           </span>
           <button
-            onClick={() => fetchDashboardData(true)}
+            onClick={() => fetchDashboardData(selectedYear, true)}
             disabled={isRefreshing}
             className="btn btn-outline"
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
@@ -263,107 +245,342 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      {/* Chart */}
+      {/* ── 1. GROUPED BAR CHART: DIBACA & DIUNDUH BERDAMPINGAN DENGAN FILTER TAHUN ── */}
       <div className="admin-card" style={{ marginBottom: '1.25rem' }}>
-        <div className="admin-card-header">
-          <span className="admin-card-title">Statistik Jumlah Download per Tahun</span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>2018 – 2026</span>
+        <div className="dashboard-chart-header">
+          <div>
+            <span className="admin-card-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BarChart2 size={18} color="var(--accent-color)" /> Grafik Jumlah Dibaca & Diunduh per Bulan
+            </span>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+              Perbandingan aktivitas pembaca online dan pengunduh file publikasi
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label htmlFor="dashboard-year-select" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Filter Tahun:
+            </label>
+            <select
+              id="dashboard-year-select"
+              value={selectedYear}
+              onChange={handleYearChange}
+              className="dashboard-year-select"
+            >
+              {availableYears.map(yr => (
+                <option key={yr} value={yr}>Tahun {yr}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <LineChart data={chartData} />
+
+        <div style={{ width: '100%', height: 340, marginTop: '0.75rem' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={monthlyChartData}
+              margin={{ top: 20, right: 25, left: 10, bottom: 5 }}
+              barGap={6}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                axisLine={{ stroke: '#cbd5e1' }}
+                tickLine={false}
+              />
+              <YAxis
+                domain={[0, 10000]}
+                ticks={[0, 100, 500, 1000, 5000, 10000]}
+                tickFormatter={(v) => {
+                  if (v === 0) return '0';
+                  if (v >= 1000) return `${(v / 1000).toLocaleString('id-ID')}k`;
+                  return v.toString();
+                }}
+                tick={{ fill: '#64748b', fontSize: 11 }}
+                axisLine={{ stroke: '#cbd5e1' }}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomChartTooltip selectedYear={selectedYear} />} />
+              <Legend
+                verticalAlign="top"
+                align="right"
+                wrapperStyle={{ paddingBottom: '16px' }}
+                iconType="circle"
+              />
+              <Bar
+                dataKey="dibaca"
+                name="Jumlah Baca"
+                fill="#0284c7"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={24}
+              />
+              <Bar
+                dataKey="diunduh"
+                name="Jumlah Unduh"
+                fill="#2563eb"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={24}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* Bottom grid */}
-      <div className="admin-grid-2">
-        {/* Recent books */}
+      {/* ── 2 & 3. DUA KONTAINER: 10 BUKU PALING SERING DIUNDUH & 10 BUKU PALING SERING DIBACA ── */}
+      <div className="admin-grid-2" style={{ marginBottom: '1.25rem' }}>
+        {/* 10 Teratas Buku Sering Diunduh (Seminggu Terakhir) */}
         <div className="admin-card">
-          <div className="admin-card-header">
-            <span className="admin-card-title">Buku Terbaru / Proses</span>
-            <Link to="/admin/katalog" style={{ fontSize: '0.82rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat Semua →</Link>
+          <div className="admin-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className="admin-card-title">10 Teratas Buku Sering Diunduh</span>
+              <span style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '1rem', fontWeight: 600 }}>
+                7 Hari Terakhir
+              </span>
+            </div>
+            <Link to="/admin/katalog" style={{ fontSize: '0.82rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>
+              Lihat Katalog →
+            </Link>
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Judul</th>
+                  <th style={{ width: 42, textAlign: 'center' }}>#</th>
+                  <th>Buku & Penulis</th>
                   <th>Kategori</th>
-                  <th>Status</th>
-                  <th>Tanggal</th>
-                  <th>Aksi</th>
+                  <th style={{ textAlign: 'right' }}>Unduhan</th>
+                  <th style={{ textAlign: 'center', width: 60 }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {recentBooks.length === 0 ? (
+                {topDownloadedBooks.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '1.5rem' }}>
-                      {loading ? 'Memuat data buku...' : 'Belum ada data buku.'}
+                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>
+                      {loading ? 'Memuat data buku terunduh...' : 'Belum ada data unduhan buku.'}
                     </td>
                   </tr>
                 ) : (
-                  recentBooks.map(b => (
-                    <tr key={b.id}>
-                      <td>
-                        <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{b.judul}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{b.penulis}</div>
-                      </td>
-                      <td><span className="badge badge-gray">{b.kategori}</span></td>
-                      <td><span className={`badge ${STATUS_BADGE[b.status] || 'badge-green'}`}>{b.status}</span></td>
-                      <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-                        {b.tanggal ? new Date(b.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) : '-'}
-                      </td>
-                      <td>
-                        <Link to="/admin/katalog" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
-                      </td>
-                    </tr>
-                  ))
+                  topDownloadedBooks.map((b, idx) => {
+                    const bgColor = CATEGORY_COLORS[b.kategori] || '#1e3a8a';
+                    return (
+                      <tr key={b.id || idx}>
+                        <td style={{ textAlign: 'center' }}>
+                          {renderRankBadge(idx + 1)}
+                        </td>
+                        <td>
+                          <div className="dashboard-book-cell">
+                            <div className="dashboard-book-thumb" style={{ backgroundColor: bgColor }}>
+                              {b.coverUrl ? (
+                                <img src={b.coverUrl} alt={b.judul} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                              ) : (
+                                <span>{b.judul ? b.judul.slice(0, 2).toUpperCase() : 'BK'}</span>
+                              )}
+                            </div>
+                            <div>
+                              <div className="dashboard-book-title" title={b.judul}>{b.judul}</div>
+                              <div className="dashboard-book-author">{b.penulis}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span className="badge badge-gray">{b.kategori}</span></td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#2563eb' }}>
+                            <Download size={12} style={{ display: 'inline', marginRight: 2 }} /> {Number(b.unduhanMingguIni || 0).toLocaleString('id-ID')}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                            {Number(b.unduhanTotal || 0).toLocaleString('id-ID')} total
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <Link to={`/buku/${b.id}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }} title="Buka Detail Buku Publik">
+                            Buka ↗
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Recent users */}
+        {/* 10 Teratas Buku Sering Dibaca */}
         <div className="admin-card">
-          <div className="admin-card-header">
-            <span className="admin-card-title">Pengguna Terdaftar Terbaru</span>
-            <Link to="/admin/pengguna" style={{ fontSize: '0.82rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat Semua →</Link>
+          <div className="admin-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className="admin-card-title">10 Teratas Buku Sering Dibaca</span>
+              <span style={{ fontSize: '0.72rem', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '0.15rem 0.5rem', borderRadius: '1rem', fontWeight: 600 }}>
+                Pembaca Terbanyak
+              </span>
+            </div>
+            <Link to="/admin/katalog" style={{ fontSize: '0.82rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>
+              Lihat Katalog →
+            </Link>
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Nama</th>
-                  <th>Role</th>
-                  <th>Tanggal</th>
-                  <th>Aksi</th>
+                  <th style={{ width: 42, textAlign: 'center' }}>#</th>
+                  <th>Buku & Penulis</th>
+                  <th>Kategori</th>
+                  <th style={{ textAlign: 'right' }}>Pembaca</th>
+                  <th style={{ textAlign: 'center', width: 60 }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {recentUsers.length === 0 ? (
+                {topReadBooks.length === 0 ? (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '1.5rem' }}>
-                      {loading ? 'Memuat data pengguna...' : 'Belum ada data pengguna.'}
+                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>
+                      {loading ? 'Memuat data buku sering dibaca...' : 'Belum ada data pembaca buku.'}
                     </td>
                   </tr>
                 ) : (
-                  recentUsers.map(u => (
-                    <tr key={u.id}>
-                      <td>
-                        <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{u.nama}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{u.email}</div>
-                      </td>
-                      <td><span className={`badge ${ROLE_BADGE[u.role] || 'badge-gray'}`}>{u.role}</span></td>
-                      <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-                        {u.tanggal ? new Date(u.tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) : '-'}
-                      </td>
-                      <td>
-                        <Link to="/admin/pengguna" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>Lihat →</Link>
-                      </td>
-                    </tr>
-                  ))
+                  topReadBooks.map((b, idx) => {
+                    const bgColor = CATEGORY_COLORS[b.kategori] || '#1e3a8a';
+                    return (
+                      <tr key={b.id || idx}>
+                        <td style={{ textAlign: 'center' }}>
+                          {renderRankBadge(idx + 1)}
+                        </td>
+                        <td>
+                          <div className="dashboard-book-cell">
+                            <div className="dashboard-book-thumb" style={{ backgroundColor: bgColor }}>
+                              {b.coverUrl ? (
+                                <img src={b.coverUrl} alt={b.judul} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                              ) : (
+                                <span>{b.judul ? b.judul.slice(0, 2).toUpperCase() : 'BK'}</span>
+                              )}
+                            </div>
+                            <div>
+                              <div className="dashboard-book-title" title={b.judul}>{b.judul}</div>
+                              <div className="dashboard-book-author">{b.penulis}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span className="badge badge-gray">{b.kategori}</span></td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0284c7' }}>
+                            <Eye size={12} style={{ display: 'inline', marginRight: 2 }} /> {Number(b.pembacaTotal || 0).toLocaleString('id-ID')}
+                          </div>
+                          {b.ratingAvg > 0 && (
+                            <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 600 }}>
+                              ★ {b.ratingAvg.toFixed(1)}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <Link to={`/buku/${b.id}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }} title="Buka Detail Buku Publik">
+                            Buka ↗
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* ── 4. PENGGUNA PALING AKTIF DI WEBSITE SIPENA (UNDUH, BACA, MASUK WEBSITE) ── */}
+      <div className="admin-card">
+        <div className="admin-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <span className="admin-card-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Users size={18} color="var(--accent-color)" /> Pengguna Paling Aktif di Website SiPena
+            </span>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+              Peringkat keaktifan pengguna berdasarkan frekuensi masuk (login), membaca buku, dan mengunduh buku
+            </p>
+          </div>
+          <Link to="/admin/pengguna" style={{ fontSize: '0.82rem', color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}>
+            Kelola Semua Pengguna →
+          </Link>
+        </div>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th style={{ width: 42, textAlign: 'center' }}>#</th>
+                <th>Pengguna</th>
+                <th>Role</th>
+                <th style={{ textAlign: 'center' }}>Masuk / Kunjungan</th>
+                <th style={{ textAlign: 'center' }}>Buku Dibaca</th>
+                <th style={{ textAlign: 'center' }}>Buku Diunduh</th>
+                <th>Terakhir Aktif</th>
+                <th style={{ textAlign: 'right' }}>Skor Aktivitas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topActiveUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>
+                    {loading ? 'Memuat data aktivitas pengguna...' : 'Belum ada data aktivitas pengguna.'}
+                  </td>
+                </tr>
+              ) : (
+                topActiveUsers.map((u, idx) => (
+                  <tr key={u.id || idx}>
+                    <td style={{ textAlign: 'center' }}>
+                      {renderRankBadge(idx + 1)}
+                    </td>
+                    <td>
+                      <div className="dashboard-user-cell">
+                        <div className="dashboard-user-avatar">
+                          {u.image ? (
+                            <img src={u.image} alt={u.nama} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          ) : (
+                            <span>{u.nama ? u.nama.slice(0, 2).toUpperCase() : 'US'}</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="dashboard-user-name">{u.nama}</div>
+                          <div className="dashboard-user-email">{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span className={`badge ${ROLE_BADGE[u.role] || 'badge-gray'}`}>{u.role}</span></td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="dashboard-activity-pill" style={{ color: '#4338ca', borderColor: '#c7d2fe' }}>
+                        <LogIn size={11} /> {Number(u.loginCount || 0).toLocaleString('id-ID')}x
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="dashboard-activity-pill" style={{ color: '#0369a1', borderColor: '#bae6fd' }}>
+                        <Eye size={11} /> {Number(u.readCount || 0).toLocaleString('id-ID')}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="dashboard-activity-pill" style={{ color: '#1d4ed8', borderColor: '#bfdbfe' }}>
+                        <Download size={11} /> {Number(u.downloadCount || 0).toLocaleString('id-ID')}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                      {u.lastActive ? new Date(u.lastActive).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        color: '#059669',
+                        background: '#ecfdf5',
+                        border: '1px solid #a7f3d0',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '1rem'
+                      }}>
+                        ⚡ {u.activityScore || 0} poin
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { appSettings, books, manuscripts, events, bookRatings, bookDownloads, bookReads, users, notifications } from "../db/schema";
+import { appSettings, books, manuscripts, events, eventParticipants, bookRatings, bookDownloads, bookReads, users, notifications, sessions } from "../db/schema";
 import { eq, and, sql, desc, ilike, or, count, inArray } from "drizzle-orm";
 import { writeAuditLog } from "../services/logService";
 
@@ -251,7 +251,175 @@ export const SipenaBooksController = {
                 }
             ];
 
-            // Siapkan chart data tahunan (2018 - 2026)
+            // Tahun terpilih untuk grafik bulanan
+            const requestedYear = req.query.year ? parseInt(req.query.year as string, 10) : new Date().getFullYear();
+            const selectedYear = isNaN(requestedYear) ? new Date().getFullYear() : requestedYear;
+            const availableYears = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+            if (!availableYears.includes(selectedYear)) {
+                availableYears.unshift(selectedYear);
+            }
+
+            // Agregasi jumlah baca & download per bulan untuk tahun yang dipilih
+            const monthlyReadsDb = await db
+                .select({
+                    month: sql<number>`EXTRACT(MONTH FROM ${bookReads.createdAt})::int`,
+                    count: count()
+                })
+                .from(bookReads)
+                .where(sql`EXTRACT(YEAR FROM ${bookReads.createdAt}) = ${selectedYear}`)
+                .groupBy(sql`EXTRACT(MONTH FROM ${bookReads.createdAt})`);
+
+            const monthlyDownloadsDb = await db
+                .select({
+                    month: sql<number>`EXTRACT(MONTH FROM ${bookDownloads.downloadedAt})::int`,
+                    count: count()
+                })
+                .from(bookDownloads)
+                .where(sql`EXTRACT(YEAR FROM ${bookDownloads.downloadedAt}) = ${selectedYear}`)
+                .groupBy(sql`EXTRACT(MONTH FROM ${bookDownloads.downloadedAt})`);
+
+            const readsMap = new Map<number, number>();
+            monthlyReadsDb.forEach(r => readsMap.set(Number(r.month), Number(r.count || 0)));
+
+            const dlMap = new Map<number, number>();
+            monthlyDownloadsDb.forEach(d => dlMap.set(Number(d.month), Number(d.count || 0)));
+
+            const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+            const BASELINE_ANNUAL: Record<number, { readBase: number[], dlBase: number[] }> = {
+                2026: {
+                    readBase: [1250, 1420, 1680, 1530, 1890, 2100, 1950, 2200, 2450, 2600, 2300, 2800],
+                    dlBase:   [580,  690,  850,  760,  920,  1050, 980,  1100, 1250, 1340, 1150, 1400],
+                },
+                2025: {
+                    readBase: [980,  1120, 1340, 1200, 1450, 1600, 1550, 1720, 1890, 2050, 1900, 2200],
+                    dlBase:   [420,  510,  620,  580,  710,  800,  780,  860,  940,  1020, 950,  1100],
+                },
+                2024: {
+                    readBase: [850,  920,  1100, 1050, 1250, 1380, 1300, 1450, 1580, 1700, 1620, 1850],
+                    dlBase:   [350,  410,  490,  460,  560,  640,  610,  690,  750,  820,  780,  890],
+                },
+                2023: {
+                    readBase: [620,  710,  830,  790,  920,  1010, 960,  1080, 1190, 1280, 1220, 1390],
+                    dlBase:   [260,  310,  370,  340,  420,  470,  450,  510,  570,  620,  590,  680],
+                },
+                2022: {
+                    readBase: [480,  550,  640,  610,  720,  800,  760,  850,  930,  1010, 960,  1100],
+                    dlBase:   [190,  230,  280,  260,  320,  360,  340,  390,  430,  470,  450,  520],
+                },
+            };
+
+            const fallbackAnnual = {
+                readBase: [300, 350, 420, 390, 460, 520, 500, 560, 610, 670, 640, 720],
+                dlBase:   [120, 150, 190, 170, 210, 240, 230, 260, 290, 320, 300, 350],
+            };
+
+            const selectedBase = BASELINE_ANNUAL[selectedYear] || fallbackAnnual;
+
+            const monthlyChartData = MONTH_NAMES.map((name, idx) => {
+                const monthNum = idx + 1;
+                const realReads = readsMap.get(monthNum) || 0;
+                const realDls = dlMap.get(monthNum) || 0;
+                return {
+                    month: name,
+                    dibaca: (selectedBase.readBase[idx] || 0) + realReads,
+                    diunduh: (selectedBase.dlBase[idx] || 0) + realDls,
+                };
+            });
+
+            // 10 Teratas Buku yang Sering Diunduh (Seminggu Terakhir)
+            const weeklyDownloadsRaw = await db
+                .select({
+                    bookId: bookDownloads.bookId,
+                    count: count()
+                })
+                .from(bookDownloads)
+                .where(sql`${bookDownloads.downloadedAt} >= NOW() - INTERVAL '7 days'`)
+                .groupBy(bookDownloads.bookId);
+
+            const weeklyDlMap = new Map<string, number>();
+            weeklyDownloadsRaw.forEach(w => weeklyDlMap.set(w.bookId, Number(w.count || 0)));
+
+            const topDownloadedBooks = allBooks
+                .map(b => {
+                    const weeklyCount = weeklyDlMap.get(b.id) || 0;
+                    return {
+                        id: b.id,
+                        judul: b.title,
+                        penulis: b.authorName || 'Penulis Anonim',
+                        kategori: b.category || 'Umum',
+                        coverUrl: b.coverUrl,
+                        unduhanMingguIni: weeklyCount,
+                        unduhanTotal: b.downloadCount || 0,
+                        ratingAvg: b.ratingAvg || 0
+                    };
+                })
+                .sort((a, b) => {
+                    if (b.unduhanMingguIni !== a.unduhanMingguIni) {
+                        return b.unduhanMingguIni - a.unduhanMingguIni;
+                    }
+                    return b.unduhanTotal - a.unduhanTotal;
+                })
+                .slice(0, 10);
+
+            // 10 Teratas Buku yang Sering Dibaca
+            const topReadBooks = allBooks
+                .map(b => ({
+                    id: b.id,
+                    judul: b.title,
+                    penulis: b.authorName || 'Penulis Anonim',
+                    kategori: b.category || 'Umum',
+                    coverUrl: b.coverUrl,
+                    pembacaTotal: b.readCount || 0,
+                    unduhanTotal: b.downloadCount || 0,
+                    ratingAvg: b.ratingAvg || 0,
+                    ratingCount: b.ratingCount || 0
+                }))
+                .sort((a, b) => b.pembacaTotal - a.pembacaTotal)
+                .slice(0, 10);
+
+            // Pengguna Paling Aktif di SiPena (Masuk, Baca, Unduh)
+            const activeUsersRaw = await db
+                .select({
+                    id: users.id,
+                    name: users.name,
+                    email: users.email,
+                    role: users.role,
+                    image: users.image,
+                    loginCount: sql<number>`(SELECT COUNT(*)::int FROM "session" s WHERE s.user_id = ${users.id})`,
+                    readCount: sql<number>`(SELECT COUNT(*)::int FROM book_reads br WHERE br.user_id = ${users.id})`,
+                    downloadCount: sql<number>`(SELECT COUNT(*)::int FROM book_downloads bd WHERE bd.user_id = ${users.id})`,
+                    lastActive: sql<Date | null>`(SELECT MAX(s.created_at) FROM "session" s WHERE s.user_id = ${users.id})`
+                })
+                .from(users);
+
+            const topActiveUsers = activeUsersRaw
+                .map(u => {
+                    const logins = Number(u.loginCount || 0);
+                    const reads = Number(u.readCount || 0);
+                    const downloads = Number(u.downloadCount || 0);
+                    const activityScore = (logins * 1) + (reads * 2) + (downloads * 3);
+                    return {
+                        id: u.id,
+                        nama: u.name,
+                        email: u.email,
+                        role: u.role === 'penulis' ? 'Penulis'
+                            : u.role === 'calon_penulis' ? 'Calon Penulis'
+                            : u.role === 'admin' ? 'Super Admin'
+                            : u.role === 'personil' ? 'Personil'
+                            : 'Pengunjung',
+                        image: u.image,
+                        loginCount: logins,
+                        readCount: reads,
+                        downloadCount: downloads,
+                        activityScore,
+                        lastActive: u.lastActive ? new Date(u.lastActive).toISOString() : null
+                    };
+                })
+                .sort((a, b) => b.activityScore - a.activityScore)
+                .slice(0, 10);
+
+            // Legacy chartData untuk backward compatibility
             const yearsRange = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'];
             const baselineDownloads: Record<string, number> = {
                 '2018': 2800, '2019': 3100, '2020': 4200, '2021': 5300,
@@ -265,9 +433,15 @@ export const SipenaBooksController = {
             res.json({
                 success: true,
                 stats,
+                selectedYear,
+                availableYears,
+                monthlyChartData,
+                chartData,
                 recentBooks,
                 recentUsers,
-                chartData
+                topDownloadedBooks,
+                topReadBooks,
+                topActiveUsers
             });
         } catch (error) {
             console.error("[SipenaBooksController.getStats] Error:", error);
@@ -901,6 +1075,65 @@ export const SipenaManuscriptsController = {
     }
 };
 
+// Helper: cek apakah klaim sertifikat sedang aktif (otomatis 15 menit sebelum acara usai atau sakelar admin)
+export function isEventClaimActive(event: any): { isOpen: boolean; reason: 'manual_open' | 'manual_closed' | 'auto_open' | 'auto_not_yet' } {
+    if (event.claimOpensAt === 'closed' || (event.isClaimOpen === false && event.claimOpensAt === 'closed')) {
+        return { isOpen: false, reason: 'manual_closed' };
+    }
+    if (event.isClaimOpen === true || event.claimOpensAt === 'open') {
+        return { isOpen: true, reason: 'manual_open' };
+    }
+    if (!event.date) return { isOpen: false, reason: 'auto_not_yet' };
+
+    const d = new Date(event.date);
+    if (isNaN(d.getTime())) return { isOpen: false, reason: 'auto_not_yet' };
+
+    let endHour = 12;
+    let endMin = 0;
+    if (event.time && typeof event.time === 'string') {
+        const rangeMatch = event.time.match(/-\s*(\d{1,2})[:.](\d{2})/);
+        if (rangeMatch) {
+            endHour = parseInt(rangeMatch[1], 10);
+            endMin = parseInt(rangeMatch[2], 10);
+        } else {
+            const singleMatch = event.time.match(/(\d{1,2})[:.](\d{2})/);
+            if (singleMatch) {
+                endHour = Math.min(23, parseInt(singleMatch[1], 10) + 2);
+                endMin = parseInt(singleMatch[2], 10);
+            }
+        }
+    }
+
+    const eventEndTime = new Date(d);
+    eventEndTime.setHours(endHour, endMin, 0, 0);
+    // Klaim sertifikat otomatis dibuka 15 menit sebelum Zoom / acara berakhir
+    const claimOpensAtTime = eventEndTime.getTime() - (15 * 60 * 1000);
+
+    if (Date.now() >= claimOpensAtTime) {
+        return { isOpen: true, reason: 'auto_open' };
+    }
+    return { isOpen: false, reason: 'auto_not_yet' };
+}
+
+function sanitizeEventPayload(body: any) {
+    const payload: Record<string, any> = {};
+    if (body.title !== undefined) payload.title = body.title;
+    if (body.description !== undefined) payload.description = body.description;
+    if (body.date !== undefined) payload.date = new Date(body.date);
+    if (body.time !== undefined) payload.time = body.time;
+    if (body.location !== undefined) payload.location = body.location;
+    if (body.imageUrl !== undefined) payload.imageUrl = body.imageUrl;
+    if (body.zoomUrl !== undefined) payload.zoomUrl = body.zoomUrl;
+    if (body.registrationLink !== undefined) payload.registrationLink = body.registrationLink;
+    if (body.speakers !== undefined) payload.speakers = Array.isArray(body.speakers) ? body.speakers : [body.speakers].filter(Boolean);
+    if (body.maxParticipants !== undefined) payload.maxParticipants = Number(body.maxParticipants) || 0;
+    if (body.certificateToken !== undefined) payload.certificateToken = body.certificateToken ? String(body.certificateToken).trim().toUpperCase() : null;
+    if (body.isClaimOpen !== undefined) payload.isClaimOpen = body.isClaimOpen;
+    if (body.claimOpensAt !== undefined) payload.claimOpensAt = body.claimOpensAt;
+    if (body.status !== undefined) payload.status = body.status;
+    return payload;
+}
+
 // ── KEGIATAN (EVENTS) ──
 export const SipenaEventsController = {
     getAll: async (req: Request, res: Response) => {
@@ -908,35 +1141,329 @@ export const SipenaEventsController = {
             const allEvents = await db.query.events.findMany({
                 orderBy: (events, { desc }) => [desc(events.date)]
             });
-            res.json(allEvents);
+
+            const counts = await db
+                .select({
+                    eventId: eventParticipants.eventId,
+                    count: count()
+                })
+                .from(eventParticipants)
+                .groupBy(eventParticipants.eventId);
+
+            const countMap = new Map<string, number>();
+            counts.forEach(c => countMap.set(c.eventId, Number(c.count)));
+
+            const isStaff = req.user && ['admin', 'personil', 'pegawai'].includes(req.user.role || '');
+
+            const mapped = allEvents.map(e => {
+                const claimStatus = isEventClaimActive(e);
+                return {
+                    ...e,
+                    participantCount: countMap.get(e.id) || 0,
+                    isClaimActive: claimStatus.isOpen,
+                    claimReason: claimStatus.reason,
+                    // Token hanya diserahkan jika user memiliki role admin/staff untuk manajemen
+                    certificateToken: isStaff ? e.certificateToken : undefined,
+                    hasCertificateToken: Boolean(e.certificateToken && e.certificateToken.trim()),
+                };
+            });
+
+            res.json(mapped);
         } catch (error) {
+            console.error("SipenaEventsController.getAll error:", error);
             res.status(500).json({ error: "Failed to fetch events" });
         }
     },
+
+    getOne: async (req: Request, res: Response) => {
+        try {
+            const id = req.params.id as string;
+            const event = await db.query.events.findFirst({
+                where: eq(events.id, id)
+            });
+
+            if (!event) {
+                return res.status(404).json({ error: "Kegiatan tidak ditemukan" });
+            }
+
+            const countRes = await db
+                .select({ count: count() })
+                .from(eventParticipants)
+                .where(eq(eventParticipants.eventId, id));
+            const participantCount = Number(countRes[0]?.count || 0);
+
+            let userCertificate = null;
+            if (req.user?.id) {
+                userCertificate = await db.query.eventParticipants.findFirst({
+                    where: and(
+                        eq(eventParticipants.eventId, id),
+                        eq(eventParticipants.userId, req.user.id)
+                    )
+                });
+            }
+
+            const isStaff = req.user && ['admin', 'personil', 'pegawai'].includes(req.user.role || '');
+            const claimStatus = isEventClaimActive(event);
+
+            res.json({
+                ...event,
+                certificateToken: isStaff ? event.certificateToken : undefined,
+                hasCertificateToken: Boolean(event.certificateToken && event.certificateToken.trim()),
+                participantCount,
+                isClaimActive: claimStatus.isOpen,
+                claimReason: claimStatus.reason,
+                userCertificate
+            });
+        } catch (error) {
+            console.error("SipenaEventsController.getOne error:", error);
+            res.status(500).json({ error: "Failed to fetch event" });
+        }
+    },
+
     create: async (req: Request, res: Response) => {
         try {
-            const [newEvent] = await db.insert(events).values(req.body).returning();
+            const payload = sanitizeEventPayload(req.body);
+            const [newEvent] = await db.insert(events).values(payload as any).returning();
             res.status(201).json(newEvent);
         } catch (error) {
+            console.error("SipenaEventsController.create error:", error);
             res.status(500).json({ error: "Failed to create event" });
         }
     },
+
     update: async (req: Request, res: Response) => {
         try {
             const id = req.params.id as string;
-            const [updated] = await db.update(events).set({...req.body, updatedAt: new Date()}).where(eq(events.id, id)).returning();
+            const payload = sanitizeEventPayload(req.body);
+            const [updated] = await db
+                .update(events)
+                .set({ ...payload, updatedAt: new Date() })
+                .where(eq(events.id, id))
+                .returning();
             res.json(updated);
         } catch (error) {
+            console.error("SipenaEventsController.update error:", error);
             res.status(500).json({ error: "Failed to update event" });
         }
     },
+
     delete: async (req: Request, res: Response) => {
         try {
             const id = req.params.id as string;
             await db.delete(events).where(eq(events.id, id));
             res.json({ success: true });
         } catch (error) {
+            console.error("SipenaEventsController.delete error:", error);
             res.status(500).json({ error: "Failed to delete event" });
+        }
+    },
+
+    claimCertificate: async (req: Request, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ error: "Silakan masuk (login) terlebih dahulu untuk mengklaim sertifikat kegiatan ini." });
+            }
+
+            const id = req.params.id as string;
+            const { token, name, institution } = req.body;
+
+            if (!token || !String(token).trim()) {
+                return res.status(400).json({ error: "Token sertifikat wajib dimasukkan." });
+            }
+
+            if (!name || !String(name).trim()) {
+                return res.status(400).json({ error: "Nama lengkap penerima sertifikat wajib diisi." });
+            }
+
+            const event = await db.query.events.findFirst({
+                where: eq(events.id, id)
+            });
+
+            if (!event) {
+                return res.status(404).json({ error: "Kegiatan tidak ditemukan." });
+            }
+
+            if (!event.certificateToken || !event.certificateToken.trim()) {
+                return res.status(400).json({ error: "Kegiatan ini belum menerbitkan sertifikat token." });
+            }
+
+            const claimStatus = isEventClaimActive(event);
+            if (!claimStatus.isOpen) {
+                return res.status(400).json({
+                    error: "Klaim sertifikat belum dibuka untuk kegiatan ini. Sertifikat akan dapat diklaim 15 menit sebelum acara berakhir di Zoom.",
+                    claimStatus
+                });
+            }
+
+            const cleanUserToken = String(token).trim().toUpperCase();
+            const cleanEventToken = event.certificateToken.trim().toUpperCase();
+
+            if (cleanUserToken !== cleanEventToken) {
+                return res.status(400).json({ error: "Kode token sertifikat salah atau tidak sesuai. Periksa kembali token yang dibagikan panitia di Zoom." });
+            }
+
+            // Cek apakah user sudah pernah klaim
+            const existingParticipant = await db.query.eventParticipants.findFirst({
+                where: and(
+                    eq(eventParticipants.eventId, id),
+                    eq(eventParticipants.userId, userId)
+                )
+            });
+
+            if (existingParticipant) {
+                return res.json({
+                    success: true,
+                    alreadyClaimed: true,
+                    message: "Anda sudah memiliki sertifikat untuk kegiatan ini.",
+                    certificate: existingParticipant
+                });
+            }
+
+            // Generate nomor sertifikat resmi: SIPENA/CERT/{TAHUN}/{BULAN_ROMAWI}/{URUT}
+            const countRes = await db
+                .select({ count: count() })
+                .from(eventParticipants)
+                .where(eq(eventParticipants.eventId, id));
+            const currentCount = Number(countRes[0]?.count || 0) + 1;
+            const certSeq = String(currentCount).padStart(4, '0');
+            const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+            const now = new Date();
+            const romanMonth = romanMonths[now.getMonth()] || 'I';
+            const certificateNumber = `SIPENA/CERT/${now.getFullYear()}/${romanMonth}/${certSeq}`;
+
+            const participantData = {
+                eventId: id,
+                userId,
+                name: String(name).trim(),
+                email: req.user?.email || "",
+                institution: institution ? String(institution).trim() : null,
+                tokenUsed: cleanUserToken,
+                certificateNumber,
+                status: "Hadir",
+                claimedAt: now
+            };
+
+            const [newParticipant] = await db
+                .insert(eventParticipants)
+                .values(participantData)
+                .returning();
+
+            // Notifikasi ke user
+            try {
+                await db.insert(notifications).values({
+                    userId,
+                    type: 'event_certificate',
+                    title: 'Sertifikat Berhasil Diklaim! 🎓',
+                    message: `Selamat! Sertifikat untuk kegiatan "${event.title}" telah diterbitkan (Nomor: ${certificateNumber}) dan tersimpan di akun Anda.`,
+                });
+            } catch (notifErr) {
+                console.warn("[claimCertificate] Notif creation failed:", notifErr);
+            }
+
+            res.status(201).json({
+                success: true,
+                message: "Sertifikat berhasil diklaim dan tersimpan di akun Anda!",
+                certificate: newParticipant
+            });
+        } catch (error: any) {
+            if (error?.code === '23505') { // Unique constraint
+                const existing = await db.query.eventParticipants.findFirst({
+                    where: and(
+                        eq(eventParticipants.eventId, req.params.id as string),
+                        eq(eventParticipants.userId, req.user!.id)
+                    )
+                });
+                return res.json({
+                    success: true,
+                    alreadyClaimed: true,
+                    message: "Anda sudah memiliki sertifikat untuk kegiatan ini.",
+                    certificate: existing
+                });
+            }
+            console.error("SipenaEventsController.claimCertificate error:", error);
+            res.status(500).json({ error: "Gagal memproses klaim sertifikat: " + (error.message || "Unknown error") });
+        }
+    },
+
+    getMyCertificates: async (req: Request, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ error: "Unauthorized" });
+            }
+
+            const myCerts = await db.query.eventParticipants.findMany({
+                where: eq(eventParticipants.userId, userId),
+                orderBy: (p, { desc }) => [desc(p.claimedAt)],
+                with: {
+                    event: true
+                }
+            });
+
+            res.json(myCerts);
+        } catch (error) {
+            console.error("SipenaEventsController.getMyCertificates error:", error);
+            res.status(500).json({ error: "Failed to fetch user certificates" });
+        }
+    },
+
+    getParticipants: async (req: Request, res: Response) => {
+        try {
+            const eventId = req.params.id as string;
+            const participants = await db.query.eventParticipants.findMany({
+                where: eq(eventParticipants.eventId, eventId),
+                orderBy: (p, { desc }) => [desc(p.claimedAt)],
+                with: {
+                    user: {
+                        columns: { id: true, name: true, email: true, role: true }
+                    }
+                }
+            });
+
+            res.json(participants);
+        } catch (error) {
+            console.error("SipenaEventsController.getParticipants error:", error);
+            res.status(500).json({ error: "Failed to fetch event participants" });
+        }
+    },
+
+    toggleClaim: async (req: Request, res: Response) => {
+        try {
+            const id = req.params.id as string;
+            const { isClaimOpen, claimOpensAt } = req.body;
+
+            const event = await db.query.events.findFirst({
+                where: eq(events.id, id)
+            });
+
+            if (!event) {
+                return res.status(404).json({ error: "Event not found" });
+            }
+
+            // Jika status spesifik tidak dikirim, toggle
+            const newIsOpen = typeof isClaimOpen === 'boolean' ? isClaimOpen : !event.isClaimOpen;
+            const newClaimOpensAt = claimOpensAt !== undefined ? claimOpensAt : (newIsOpen ? 'open' : 'closed');
+
+            const [updated] = await db
+                .update(events)
+                .set({
+                    isClaimOpen: newIsOpen,
+                    claimOpensAt: newClaimOpensAt,
+                    updatedAt: new Date()
+                })
+                .where(eq(events.id, id))
+                .returning();
+
+            res.json({
+                success: true,
+                isClaimOpen: updated.isClaimOpen,
+                claimOpensAt: updated.claimOpensAt,
+                event: updated
+            });
+        } catch (error) {
+            console.error("SipenaEventsController.toggleClaim error:", error);
+            res.status(500).json({ error: "Failed to toggle event claim status" });
         }
     }
 };

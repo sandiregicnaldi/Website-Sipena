@@ -1,26 +1,174 @@
 .admin-dashboard { }
 
-.chart-container { position: relative; }
-
-.chart-tooltip {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  background: var(--text-primary);
-  color: #fff;
-  padding: 0.35rem 0.65rem;
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
+/* Chart Controls */
+.dashboard-chart-header {
   display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  pointer-events: none;
-  white-space: nowrap;
-  box-shadow: var(--shadow-md);
-  z-index: 10;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
-.chart-tooltip strong {
+.dashboard-year-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dashboard-year-select:hover {
+  border-color: var(--accent-color, #2563eb);
+}
+
+.dashboard-year-select:focus {
+  border-color: var(--accent-color, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Rank Badges */
+.dashboard-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dashboard-rank--gold {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.15);
+}
+
+.dashboard-rank--silver {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.dashboard-rank--bronze {
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.dashboard-rank--default {
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px solid #f1f5f9;
+}
+
+/* Book Item in Table */
+.dashboard-book-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dashboard-book-thumb {
+  width: 32px;
+  height: 44px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.dashboard-book-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dashboard-book-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dashboard-book-author {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 0.15rem;
+}
+
+/* User item in table */
+.dashboard-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dashboard-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
   font-size: 0.8rem;
+  border: 1px solid #dbeafe;
+  overflow: hidden;
+  flex-shrink: 0;
 }
+
+.dashboard-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dashboard-user-name {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.dashboard-user-email {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.dashboard-activity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.55rem;
+  border-radius: 1rem;
+}
+
