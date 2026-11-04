@@ -2028,13 +2028,17 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
    - Memperbaiki kekeliruan *false positive* di mana kata *"verifikasi"* pada respon galat CAPTCHA sebelumnya memicu modal popup *"Verifikasi Email Diperlukan"* seolah-olah akun dummy belum terverifikasi.
    - Menambahkan flag `isCaptchaError: true` dan menyederhanakan redaksi pesan menjadi *"Jawaban angka CAPTCHA tidak tepat atau belum diisi"*.
    - Mengimplementasikan `forwardRef` dan `autoSolve()` pada `CaptchaChallenge.jsx`: ketika tombol akun testing diklik (misal *Reviewer: personil@dev.local*), jawaban angka CAPTCHA terisi otomatis sehingga pengujian dapat dilakukan dengan 1-klik tanpa hambatan.
+6. **Perbaikan Urutan React Hooks (*Rules of Hooks*) pada Halaman Profil Penulis (`src/pages/AuthorDashboard.jsx`):**
+   - Menemukan deklarasi `const [cropModal, setCropModal] = useState(...)` yang sebelumnya diletakkan di bawah *conditional early returns* (`if (isPending) return ...` dan `if (!user) return ...`).
+   - Hal tersebut memicu pelanggaran *Rules of Hooks* (*"Rendered more hooks than during previous render"*) saat sesi Better Auth selesai dimuat, menyebabkan *ErrorBoundary* menangkap galat dan merender kartu *"Terjadi Kendala Memuat Komponen"*.
+   - Memindahkan seluruh deklarasi state `cropModal` ke baris atas bersama state lainnya sebelum pengalihan bersyarat, sehingga komponen `AuthorDashboard` kini dirender dengan lancar dan stabil.
 
 ---
 
 ### C. Hasil Pengujian & Verifikasi
-1. **Pengujian Akun Dummy:**
+1. **Pengujian Akun Dummy & Pengalihan Halaman:**
    - Seluruh 5 akun testing bawaan (`admin@perpusnas.go.id`, `personil@dev.local`, `editor@penerbitan.com`, `penulis@sipena.id`, `pengunjung@sipena.id`) lolos 100% otentikasi login.
-   - Mengklik akun testing $\rightarrow$ email, password, dan solusi CAPTCHA terisi otomatis $\rightarrow$ tombol Masuk langsung berhasil membawa pengguna ke dasbor yang sesuai.
+   - Login sebagai Penulis (`penulis@sipena.id`) langsung dialihkan ke `/profil-saya` tanpa galat kendala komponen; halaman Dasbor & Profil Penulis tampil sempurna dengan seluruh tab (Biodata, Pengajuan Naskah, Profil Publik, dan Sertifikat Kegiatan).
 2. **Pengujian API Backend:**
    - Permintaan sign-in tanpa CAPTCHA $\rightarrow$ Ditolak (HTTP 400: *"Jawaban angka CAPTCHA tidak tepat atau belum diisi"* dengan `isCaptchaError: true`, tanpa memunculkan modal verifikasi email).
    - Permintaan sign-in dengan CAPTCHA benar $\rightarrow$ Berhasil login (HTTP 200).

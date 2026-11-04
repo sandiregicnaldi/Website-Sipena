@@ -82,6 +82,11 @@ const AuthorDashboard = () => {
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState(location.state?.tab || 'biodata');
   const [submittingNaskah, setSubmittingNaskah] = useState(false);
+  const [cropModal, setCropModal] = useState({
+    isOpen: false,
+    imageSrc: null,
+    fileName: 'foto-profil.jpg',
+  });
 
   // Responsif jika ada perpindahan tab melalui navigation state
   useEffect(() => {
@@ -198,14 +203,6 @@ const AuthorDashboard = () => {
   if (isAdmin) {
     return <Navigate to="/admin" replace />;
   }
-
-
-
-  const [cropModal, setCropModal] = useState({
-    isOpen: false,
-    imageSrc: null,
-    fileName: 'foto-profil.jpg',
-  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
