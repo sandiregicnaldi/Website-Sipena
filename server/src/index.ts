@@ -87,12 +87,13 @@ app.post(
                 email,
                 ip,
                 userAgent: req.headers["user-agent"] as string,
-                reason: "Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi",
+                reason: "Jawaban angka CAPTCHA tidak tepat atau belum diisi",
                 consecutiveFailures: failures,
             });
             return res.status(400).json({
-                error: "Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi. Silakan coba lagi.",
-                message: "Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi. Silakan coba lagi.",
+                error: "Jawaban angka CAPTCHA tidak tepat atau belum diisi. Silakan hitung kembali.",
+                message: "Jawaban angka CAPTCHA tidak tepat atau belum diisi. Silakan hitung kembali.",
+                isCaptchaError: true,
                 requiresCaptcha: true,
                 consecutiveFailures: failures,
             });

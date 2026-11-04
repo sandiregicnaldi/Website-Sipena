@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
@@ -180,6 +180,7 @@ const LoginPage = () => {
   const [form, setForm] = useState({ email: '', password: '', ...INITIAL_FORM });
 
   // ── Proteksi Brute Force & CAPTCHA (Selalu Aktif) ─────────
+  const captchaRef = useRef(null);
   const [consecutiveFailures, setConsecutiveFailures] = useState(0);
   const [captchaData, setCaptchaData] = useState({ token: '', answer: '', isComplete: false });
   const [captchaError, setCaptchaError] = useState('');
@@ -254,7 +255,12 @@ const LoginPage = () => {
   const fillCredentials = (email, password) => {
     setForm(prev => ({ ...prev, email, password }));
     setLoginError('');
+    setCaptchaError('');
     setUnverifiedEmail('');
+    // Otomatis hitung dan isi jawaban CAPTCHA saat memilih akun testing
+    setTimeout(() => {
+      captchaRef.current?.autoSolve();
+    }, 50);
   };
 
   const getDestinationPath = (resolvedUser) => {
@@ -353,9 +359,23 @@ const LoginPage = () => {
       redirectAfter(resolvedUser);
     } catch (err) {
       const errMsg = err.message || 'Email atau kata sandi tidak sesuai.';
+
+      // 1. Tangani kesalahan CAPTCHA secara spesifik (jangan tampilkan modal email verification!)
+      if (err.isCaptchaError || (err.requiresCaptcha && !err.requiresVerification && !err.code)) {
+        setCaptchaError(errMsg || 'Jawaban angka CAPTCHA belum tepat. Silakan hitung ulang.');
+        setLoginError('');
+        return;
+      }
+
       setLoginError(errMsg);
 
-      if (err.requiresVerification || err.code === 'EMAIL_NOT_VERIFIED' || errMsg.toLowerCase().includes('verifikasi')) {
+      // 2. Tangani HANYA jika akun benar-benar belum verifikasi email
+      const isEmailNotVerified = err.requiresVerification === true || 
+        err.code === 'EMAIL_NOT_VERIFIED' || 
+        errMsg.toLowerCase().includes('email anda belum diverifikasi') ||
+        errMsg.toLowerCase().includes('email belum diverifikasi');
+
+      if (isEmailNotVerified) {
         setUnverifiedEmail(form.email);
         showAlert({
           title: 'Verifikasi Email Diperlukan',
@@ -401,9 +421,6 @@ const LoginPage = () => {
 
       const newFailures = err.consecutiveFailures || (consecutiveFailures + 1);
       setConsecutiveFailures(newFailures);
-      if (err.requiresCaptcha) {
-        setCaptchaError('Jawaban captcha tidak tepat. Silakan hitung ulang.');
-      }
 
       showAlert({
         title: 'Login Gagal',
@@ -643,6 +660,7 @@ const LoginPage = () => {
 
               {/* CAPTCHA Selalu Aktif */}
               <CaptchaChallenge
+                ref={captchaRef}
                 onVerifyChange={setCaptchaData}
                 isError={!!captchaError}
                 errorMessage={captchaError}

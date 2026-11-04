@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { RotateCw, ShieldCheck, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { RotateCw, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 /**
  * Komponen CAPTCHA Interaktif untuk Pengamanan Anti-Brute Force
  * Mendukung tantangan dari backend (/api/auth/captcha-new) dengan fallback dinamis mandiri.
  */
-export default function CaptchaChallenge({ onVerifyChange, isError, errorMessage }) {
+const CaptchaChallenge = forwardRef(({ onVerifyChange, isError, errorMessage }, ref) => {
   const [challenge, setChallenge] = useState(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,6 +45,24 @@ export default function CaptchaChallenge({ onVerifyChange, isError, errorMessage
   useEffect(() => {
     fetchChallenge();
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    autoSolve: () => {
+      if (challenge) {
+        const correct = challenge.localAnswer || String(challenge.num1 + challenge.num2);
+        setUserAnswer(correct);
+        if (onVerifyChange) {
+          onVerifyChange({
+            token: challenge.token,
+            answer: correct,
+            isComplete: true,
+            localAnswer: challenge.localAnswer,
+          });
+        }
+      }
+    },
+    refresh: fetchChallenge,
+  }), [challenge, onVerifyChange]);
 
   const handleInputChange = (e) => {
     const val = e.target.value.trim();
@@ -174,4 +192,6 @@ export default function CaptchaChallenge({ onVerifyChange, isError, errorMessage
       )}
     </div>
   );
-}
+});
+
+export default CaptchaChallenge;

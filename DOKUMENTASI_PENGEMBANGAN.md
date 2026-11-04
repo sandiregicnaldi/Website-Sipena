@@ -2024,16 +2024,23 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
    - Menyediakan tombol aktivasi cepat satu-klik:
      - Pada modal sukses pendaftaran: *"✓ Aktifkan Akun Sekarang (Instant)"*.
      - Pada kartu error login jika akun belum terverifikasi: *"✓ Klik untuk Verifikasi Akun Ini Sekarang"*.
+5. **Pemisahan Tegas Galat CAPTCHA vs Verifikasi Email & Otomasi Akun Testing:**
+   - Memperbaiki kekeliruan *false positive* di mana kata *"verifikasi"* pada respon galat CAPTCHA sebelumnya memicu modal popup *"Verifikasi Email Diperlukan"* seolah-olah akun dummy belum terverifikasi.
+   - Menambahkan flag `isCaptchaError: true` dan menyederhanakan redaksi pesan menjadi *"Jawaban angka CAPTCHA tidak tepat atau belum diisi"*.
+   - Mengimplementasikan `forwardRef` dan `autoSolve()` pada `CaptchaChallenge.jsx`: ketika tombol akun testing diklik (misal *Reviewer: personil@dev.local*), jawaban angka CAPTCHA terisi otomatis sehingga pengujian dapat dilakukan dengan 1-klik tanpa hambatan.
 
 ---
 
 ### C. Hasil Pengujian & Verifikasi
-1. **Pengujian API Backend:**
-   - Permintaan sign-in tanpa CAPTCHA $\rightarrow$ Ditolak (HTTP 400: *"Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi"*).
+1. **Pengujian Akun Dummy:**
+   - Seluruh 5 akun testing bawaan (`admin@perpusnas.go.id`, `personil@dev.local`, `editor@penerbitan.com`, `penulis@sipena.id`, `pengunjung@sipena.id`) lolos 100% otentikasi login.
+   - Mengklik akun testing $\rightarrow$ email, password, dan solusi CAPTCHA terisi otomatis $\rightarrow$ tombol Masuk langsung berhasil membawa pengguna ke dasbor yang sesuai.
+2. **Pengujian API Backend:**
+   - Permintaan sign-in tanpa CAPTCHA $\rightarrow$ Ditolak (HTTP 400: *"Jawaban angka CAPTCHA tidak tepat atau belum diisi"* dengan `isCaptchaError: true`, tanpa memunculkan modal verifikasi email).
    - Permintaan sign-in dengan CAPTCHA benar $\rightarrow$ Berhasil login (HTTP 200).
    - Endpoint `POST /api/auth/verify-email-direct` $\rightarrow$ Berhasil memvalidasi akun uji (`anggota.baru@sipena.id`) menjadi aktif (HTTP 200).
-2. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat.
-3. **Kompilasi Backend (`npx tsc --noEmit`):** Bersih 100% tanpa galat tipe TypeScript.
+3. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat.
+4. **Kompilasi Backend (`npx tsc --noEmit`):** Bersih 100% tanpa galat tipe TypeScript.
 
 
 

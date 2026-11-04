@@ -60,6 +60,7 @@ export const AuthProvider = ({ children }) => {
       if (!res.ok) {
         const err = new Error(data.error || data.message || "Email atau kata sandi tidak sesuai.");
         err.status = res.status;
+        err.isCaptchaError = data.isCaptchaError === true;
         err.requiresCaptcha = data.requiresCaptcha === true;
         err.consecutiveFailures = data.consecutiveFailures || 0;
         err.code = data.code;
