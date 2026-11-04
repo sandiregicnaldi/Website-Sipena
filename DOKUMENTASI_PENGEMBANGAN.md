@@ -1939,6 +1939,55 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
 3. **Kontras & Visual:**
    - Judul di semua header halaman kini memiliki rasio kontras 15.8:1 (kategori WCAG AAA), sangat tajam dan mudah dibaca di berbagai resolusi layar maupun perangkat mobile.
 
+---
+
+## BAB 42: IMPLEMENTASI GUEST GUARD & AUTO-REDIRECT PENGGUNA TERAUTENTIKASI PADA HALAMAN LOGIN (REDIRECT IF AUTHENTICATED)
+
+**Tanggal:** 4 November 2026  
+**Status:** Teruji & Terselesaikan (*Production Ready*)
+
+---
+
+### A. Latar Belakang & Identifikasi Masalah
+1. **Akses Formulir Login oleh Pengguna yang Sudah Masuk (*Unprotected Guest Route*):**
+   - Ketika pengguna yang sudah login (misalnya sebagai *Penulis* atau *Pengunjung*) mengakses rute `/login` (baik via ketikan URL langsung, tombol CTA, atau tombol *back* browser), halaman login tetap merender formulir input email, kata sandi, tombol masuk, dan beralih ke daftar.
+   - Meskipun terdapat banner kecil *"Sesi aktif"*, kemunculan formulir login di bawahnya membingungkan pengguna (*"kenapa sudah login malah bisa akses ke halaman login awal ya?"*).
+2. **Ketiadaan *Guest Route Guard* / Pengalihan Otomatis:**
+   - Halaman `LoginPage.jsx` sebelumnya tidak memiliki hook `useEffect` untuk mendeteksi `user` yang aktif saat halaman dimuat.
+3. **Tautan CTA Statis ke `/login` pada Halaman Panduan:**
+   - Pada halaman `PanduanPenerbitan.jsx`, tombol *"Mulai Daftar Sekarang"* dan *"Ajukan Naskah"* di-hardcode ke `to="/login"`, sehingga pengguna yang sudah masuk diarahkan kembali ke halaman login alih-alih ke dasbor penerbitan (`/profil-saya`).
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Guest Guard & Auto-Redirect Realtime (`src/pages/LoginPage.jsx`):**
+   - Menambahkan fungsi pemetaan tujuan cerdas `getDestinationPath(user)`:
+     - Jika staf/admin/reviewer $\rightarrow$ diarahkan ke `/admin`.
+     - Jika penulis/penulis terverifikasi $\rightarrow$ diarahkan ke `/profil-saya`.
+     - Jika pengunjung umum $\rightarrow$ diarahkan ke halaman asal (`fromPath`) atau `/`.
+   - Mengimplementasikan `useEffect` yang langsung mengeksekusi `navigate(dest, { replace: true })` seketika saat `user` terdeteksi aktif.
+2. **Kartu Khusus Pengguna Aktif (*Clean Authenticated State UI*):**
+   - Jika pengguna yang sudah login membuka `/login`, formulir email & password disembunyikan 100%.
+   - Halaman hanya menyajikan kartu bersih *"Anda Sudah Masuk ke Sistem"* dengan nama pengguna, badge peran, tombol *"Lanjut ke Dasbor"*, dan tombol *"Keluar / Ganti Akun"*.
+3. **Penyempurnaan Fungsi Logout Terarah (`src/context/AuthContext.jsx`):**
+   - Mengizinkan parameter `logout(redirectPath = '/')`.
+   - Tombol *"Keluar / Ganti Akun"* pada kartu login memanggil `logout('/login')`, sehingga sesi dibersihkan dan halaman login siap menerima akun baru tanpa harus berpindah halaman.
+4. **CTA Cerdas pada Halaman Panduan (`src/pages/PanduanPenerbitan.jsx`):**
+   - Mengintegrasikan hook `useAuth()`.
+   - Tombol CTA Hero: `to={isLoggedIn ? "/profil-saya" : "/login"}` (label dinamis: *"Buka Dasbor Penerbitan"* jika sudah login, atau *"Mulai Daftar Sekarang"* jika tamu).
+   - Tombol CTA Bawah: `to={isLoggedIn ? "/profil-saya" : "/login"}` (label dinamis: *"Ajukan Naskah di Dasbor"* jika sudah login, atau *"Ajukan Naskah"* jika tamu).
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+1. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat (`built in 8.26s`).
+2. **Pengujian Alur Pengguna:**
+   - Pengguna dengan sesi aktif membuka `/login` $\rightarrow$ langsung dialihkan otomatis ke dasbor yang sesuai tanpa melihat formulir login.
+   - Mengklik *"Keluar / Ganti Akun"* $\rightarrow$ sesi terputus bersih dan formulir login muncul kembali untuk memasukkan akun lain.
+   - Pengguna aktif di menu Panduan mengklik *"Ajukan Naskah"* $\rightarrow$ langsung masuk ke dasbor pengajuan naskah `/profil-saya`.
+
+
 
 
 

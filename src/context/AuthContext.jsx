@@ -142,9 +142,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = async (redirectPath = '/') => {
     await authClient.signOut();
-    window.location.href = '/'; // Refresh state
+    window.location.href = redirectPath; // Refresh state
   };
 
   return (

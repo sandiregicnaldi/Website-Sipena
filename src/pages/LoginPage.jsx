@@ -201,7 +201,7 @@ const LoginPage = () => {
     setLoginError('');
   };
 
-  const redirectAfter = (resolvedUser) => {
+  const getDestinationPath = (resolvedUser) => {
     const fromPath = typeof location.state?.from === 'string'
       ? location.state.from
       : location.state?.from?.pathname;
@@ -209,8 +209,7 @@ const LoginPage = () => {
     // 1. Jika sedang membaca atau mengunduh buku tertentu (misal: /buku/12), kembalikan ke buku tersebut
     const isViewingBook = fromPath && (fromPath.startsWith('/buku/') || fromPath.startsWith('/book/'));
     if (isViewingBook) {
-      window.location.href = fromPath;
-      return;
+      return fromPath;
     }
 
     // 2. Cek apakah pengguna merupakan admin / personil / pegawai / reviewer
@@ -222,13 +221,10 @@ const LoginPage = () => {
     );
 
     if (isStaff) {
-      // Jika sebelumnya membuka halaman admin spesifik (misal: /admin/manajemen)
       if (fromPath && (fromPath.startsWith('/admin') || fromPath.startsWith('/manajemen'))) {
-        window.location.href = fromPath;
-      } else {
-        window.location.href = '/admin';
+        return fromPath;
       }
-      return;
+      return '/admin';
     }
 
     // 3. Jika pengguna adalah Penulis
@@ -238,20 +234,29 @@ const LoginPage = () => {
     );
     if (isAuthor) {
       if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin') && !fromPath.startsWith('/manajemen')) {
-        window.location.href = fromPath;
-      } else {
-        window.location.href = '/profil-saya';
+        return fromPath;
       }
-      return;
+      return '/profil-saya';
     }
 
     // 4. Untuk pengguna umum / pengunjung publik
     if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin') && !fromPath.startsWith('/manajemen')) {
-      window.location.href = fromPath;
-      return;
+      return fromPath;
     }
-    window.location.href = '/';
+    return '/';
   };
+
+  const redirectAfter = (resolvedUser) => {
+    window.location.href = getDestinationPath(resolvedUser);
+  };
+
+  // ── Auto-Redirect jika Pengguna Sudah Login (Guest Protection) ──
+  useEffect(() => {
+    if (user && !isPending) {
+      const dest = getDestinationPath(user);
+      navigate(dest, { replace: true });
+    }
+  }, [user, isPending, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -349,6 +354,57 @@ const LoginPage = () => {
     setLoginError('');
   };
 
+  if (user) {
+    const dest = getDestinationPath(user);
+    return (
+      <main className="login-page">
+        <div className="login-container">
+          <div className="login-card" style={{ textAlign: 'center', padding: '2.5rem 1.75rem' }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%', background: '#eff6ff',
+              color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 1.25rem', boxShadow: '0 4px 12px rgba(37,99,235,0.15)'
+            }}>
+              <User size={28} />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+              Anda Sudah Masuk ke Sistem
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.92rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Sesi aktif sebagai <strong>{user.name || user.email}</strong>{' '}
+              <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 700 }}>
+                {user.role}
+              </span>
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: '0.82rem', marginBottom: '1.5rem' }}>
+              Mengalihkan Anda secara otomatis ke dasbor...
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => navigate(dest, { replace: true })}
+                className="btn btn-primary"
+                style={{ padding: '0.65rem 1.5rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                Lanjut ke Dasbor <ArrowRight size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await logout('/login');
+                }}
+                className="btn btn-secondary"
+                style={{ padding: '0.65rem 1.25rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontWeight: 600 }}
+              >
+                Keluar / Ganti Akun
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="login-page">
       <div className="login-container">
@@ -378,41 +434,6 @@ const LoginPage = () => {
           {/* ── LOGIN FORM ──────────────────────────────────── */}
           {mode === 'login' && (
             <form className="login-form" onSubmit={handleLogin}>
-              {user && (
-                <div style={{
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: '10px',
-                  padding: '12px 14px',
-                  marginBottom: '14px',
-                  textAlign: 'center',
-                }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#1e40af' }}>
-                    Sesi aktif: <strong>{user.name || user.email}</strong> (<span style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>{user.role}</span>)
-                  </p>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => redirectAfter(user)}
-                      className="btn btn-primary"
-                      style={{ padding: '4px 12px', fontSize: '0.78rem' }}
-                    >
-                      Buka Dasbor
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await logout();
-                        setForm({ email: '', password: '', ...INITIAL_FORM });
-                      }}
-                      className="btn btn-secondary"
-                      style={{ padding: '4px 12px', fontSize: '0.78rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}
-                    >
-                      Keluar / Ganti Akun
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {loginError && (
                 <div style={{

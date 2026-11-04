@@ -5,6 +5,7 @@ import {
   Award, Globe, BarChart2, DollarSign, Users, Shield, ArrowRight, Phone
 } from 'lucide-react';
 import { usePanduan } from '../context/PanduanContext';
+import { useAuth } from '../context/AuthContext';
 import './PanduanPenerbitan.css';
 
 // Peta nama icon string → Lucide component
@@ -20,6 +21,7 @@ const getIcon = (name, size = 22, color = 'currentColor') => {
 
 const PanduanPenerbitan = () => {
   const { data } = usePanduan();
+  const { isLoggedIn } = useAuth();
 
   return (
     <main className="panduan-page">
@@ -37,8 +39,8 @@ const PanduanPenerbitan = () => {
               )}
             </h1>
             <p className="panduan-hero-desc">{data.heroDeskripsi}</p>
-            <Link to="/login" className="panduan-hero-cta">
-              Mulai Daftar Sekarang <ArrowRight size={18} />
+            <Link to={isLoggedIn ? "/profil-saya" : "/login"} className="panduan-hero-cta">
+              {isLoggedIn ? 'Buka Dasbor Penerbitan' : 'Mulai Daftar Sekarang'} <ArrowRight size={18} />
             </Link>
           </div>
         </div>
@@ -112,8 +114,8 @@ const PanduanPenerbitan = () => {
               yang diakui secara nasional bersama Perpusnas Press.
             </p>
             <div className="panduan-cta-buttons">
-              <Link to="/login" className="panduan-cta-btn-primary">
-                <ArrowRight size={18} /> Ajukan Naskah
+              <Link to={isLoggedIn ? "/profil-saya" : "/login"} className="panduan-cta-btn-primary">
+                <ArrowRight size={18} /> {isLoggedIn ? 'Ajukan Naskah di Dasbor' : 'Ajukan Naskah'}
               </Link>
               <Link to="/faq" className="panduan-cta-btn-outline">
                 <Phone size={16} /> Hubungi Kami
