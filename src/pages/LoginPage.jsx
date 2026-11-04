@@ -8,18 +8,20 @@ import './LoginPage.css';
 
 // ── Shared form components ──────────────────────────────────────────────────
 
-const InputField = ({ icon: Icon, label, type = 'text', name, placeholder, value, onChange, required }) => (
+const InputField = ({ icon: Icon, label, type = 'text', name, id, placeholder, value, onChange, required, autoComplete }) => (
   <div className="form-group">
-    <label>{label}</label>
+    <label htmlFor={id || name}>{label}</label>
     <div className="input-with-icon">
       <Icon size={18} className="input-icon" />
       <input
         type={type}
         name={name}
+        id={id || name}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         required={required}
+        autoComplete={autoComplete}
       />
     </div>
   </div>
@@ -159,8 +161,8 @@ const CommonRegisterFields = ({ form, onChange, setForm, showAddress }) => {
         </>
       )}
 
-      <InputField icon={Mail} label="Email" type="email" name="email" placeholder="contoh@email.com" value={form.email} onChange={onChange} required />
-      <InputField icon={Lock} label="Kata Sandi" type="password" name="password" placeholder="Minimal 8 karakter" value={form.password} onChange={onChange} required />
+      <InputField icon={Mail} label="Email" type="email" name="email" id="register-email" autoComplete="email" placeholder="contoh@email.com" value={form.email} onChange={onChange} required />
+      <InputField icon={Lock} label="Kata Sandi" type="password" name="password" id="register-password" autoComplete="new-password" placeholder="Minimal 8 karakter" value={form.password} onChange={onChange} required />
     </>
   );
 };
@@ -177,13 +179,21 @@ const LoginPage = () => {
   const [mode, setMode] = useState('login');          // 'login' | 'register'
   const [form, setForm] = useState({ email: '', password: '', ...INITIAL_FORM });
 
-  // ── Proteksi Brute Force & CAPTCHA ────────────────────────
+  // ── Proteksi Brute Force & CAPTCHA (Selalu Aktif) ─────────
   const [consecutiveFailures, setConsecutiveFailures] = useState(0);
-  const [showCaptcha, setShowCaptcha] = useState(false);
   const [captchaData, setCaptchaData] = useState({ token: '', answer: '', isComplete: false });
   const [captchaError, setCaptchaError] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    try {
+      return localStorage.getItem('sipena_remember_me') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [isActivating, setIsActivating] = useState(false);
 
   const { user, login, register, logout, isPending } = useAuth();
 
@@ -191,14 +201,60 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Muat email tersimpan jika rememberMe aktif
+  useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem('sipena_saved_email');
+      if (savedEmail) {
+        setForm(prev => ({ ...prev, email: savedEmail }));
+      }
+    } catch (e) {
+      console.warn('LocalStorage access warning:', e);
+    }
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleDirectActivation = async (targetEmail) => {
+    const emailToActivate = targetEmail || unverifiedEmail || form.email;
+    if (!emailToActivate) return;
+    setIsActivating(true);
+    try {
+      const res = await fetch('/api/auth/verify-email-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToActivate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setLoginError('');
+        setUnverifiedEmail('');
+        showAlert({
+          title: 'Akun Berhasil Diaktifkan!',
+          message: 'Email akun Anda telah berhasil diverifikasi. Silakan masukkan kata sandi dan jawaban angka captcha untuk masuk.',
+          type: 'success',
+        });
+      } else {
+        throw new Error(data.error || 'Gagal mengaktifkan akun');
+      }
+    } catch (err) {
+      showAlert({
+        title: 'Aktivasi Gagal',
+        message: err.message || 'Terjadi kesalahan saat mengaktifkan akun.',
+        type: 'error',
+      });
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
   const fillCredentials = (email, password) => {
     setForm(prev => ({ ...prev, email, password }));
     setLoginError('');
+    setUnverifiedEmail('');
   };
 
   const getDestinationPath = (resolvedUser) => {
@@ -262,14 +318,15 @@ const LoginPage = () => {
     e.preventDefault();
     if (!form.email.trim() || !form.password.trim()) return;
 
-    if (showCaptcha && (!captchaData.isComplete || !captchaData.answer)) {
-      setCaptchaError('Silakan masukkan jawaban verifikasi keamanan (CAPTCHA).');
+    if (!captchaData.isComplete || !captchaData.answer) {
+      setCaptchaError('Silakan ketik jawaban angka captcha.');
       return;
     }
 
     setIsSubmitting(true);
     setCaptchaError('');
     setLoginError('');
+    setUnverifiedEmail('');
 
     try {
       const resolvedUser = await login({
@@ -279,17 +336,55 @@ const LoginPage = () => {
         captchaAnswer: captchaData.answer,
       });
 
+      // Simpan kredensial jika fitur "Ingat saya" dicentang
+      try {
+        if (rememberMe) {
+          localStorage.setItem('sipena_saved_email', form.email);
+          localStorage.setItem('sipena_remember_me', 'true');
+        } else {
+          localStorage.removeItem('sipena_saved_email');
+          localStorage.setItem('sipena_remember_me', 'false');
+        }
+      } catch (storageErr) {
+        console.warn('Storage error:', storageErr);
+      }
+
       setConsecutiveFailures(0);
-      setShowCaptcha(false);
       redirectAfter(resolvedUser);
     } catch (err) {
       const errMsg = err.message || 'Email atau kata sandi tidak sesuai.';
       setLoginError(errMsg);
 
-      if (err.requiresVerification) {
+      if (err.requiresVerification || err.code === 'EMAIL_NOT_VERIFIED' || errMsg.toLowerCase().includes('verifikasi')) {
+        setUnverifiedEmail(form.email);
         showAlert({
           title: 'Verifikasi Email Diperlukan',
-          message: err.message || 'Akun Anda belum aktif. Silakan periksa email Anda dan klik tautan verifikasi sebelum masuk.',
+          message: (
+            <div>
+              <p style={{ marginBottom: '12px', lineHeight: 1.5 }}>
+                Akun dengan email <strong>{form.email}</strong> belum aktif karena belum diverifikasi.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleDirectActivation(form.email)}
+                disabled={isActivating}
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '9px 16px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                {isActivating ? 'Mengaktifkan...' : '✓ Aktifkan Akun Ini Sekarang (Instant)'}
+              </button>
+            </div>
+          ),
           type: 'warning'
         });
         return;
@@ -306,9 +401,8 @@ const LoginPage = () => {
 
       const newFailures = err.consecutiveFailures || (consecutiveFailures + 1);
       setConsecutiveFailures(newFailures);
-      if (newFailures >= 3 || err.requiresCaptcha) {
-        setShowCaptcha(true);
-        setCaptchaError('Verifikasi CAPTCHA diperlukan setelah beberapa kali gagal.');
+      if (err.requiresCaptcha) {
+        setCaptchaError('Jawaban captcha tidak tepat. Silakan hitung ulang.');
       }
 
       showAlert({
@@ -324,15 +418,47 @@ const LoginPage = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const regEmail = form.email;
+    const regPassword = form.password;
     try {
       const resolved = await register(form, 'pengunjung');
       if (resolved && resolved.requiresVerification) {
         showAlert({
           title: 'Pendaftaran Berhasil!',
-          message: 'Tautan verifikasi telah dikirimkan ke email Anda. Silakan buka kotak masuk email Anda dan klik tautan aktivasi sebelum masuk.',
+          message: (
+            <div>
+              <p style={{ marginBottom: '10px', lineHeight: 1.5 }}>
+                Pendaftaran untuk <strong>{regEmail}</strong> berhasil.
+              </p>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>
+                Untuk kemudahan pengujian di lingkungan dev / localhost, Anda dapat langsung mengaktifkan akun sekarang:
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleDirectActivation(regEmail);
+                  setForm(prev => ({ ...prev, email: regEmail, password: regPassword }));
+                  switchMode('login');
+                }}
+                style={{
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '9px 18px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)',
+                }}
+              >
+                ✓ Aktifkan Akun Sekarang (Instant)
+              </button>
+            </div>
+          ),
           type: 'success'
         });
         switchMode('login');
+        setForm(prev => ({ ...prev, email: regEmail, password: regPassword }));
       } else {
         redirectAfter(resolved);
       }
@@ -349,9 +475,9 @@ const LoginPage = () => {
 
   const switchMode = (newMode) => {
     setMode(newMode);
-    setForm({ email: '', password: '', ...INITIAL_FORM });
     setCaptchaError('');
     setLoginError('');
+    setUnverifiedEmail('');
   };
 
   if (user) {
@@ -433,7 +559,7 @@ const LoginPage = () => {
 
           {/* ── LOGIN FORM ──────────────────────────────────── */}
           {mode === 'login' && (
-            <form className="login-form" onSubmit={handleLogin}>
+            <form className="login-form" onSubmit={handleLogin} method="POST" autoComplete="on">
 
               {loginError && (
                 <div style={{
@@ -444,25 +570,83 @@ const LoginPage = () => {
                   borderRadius: '8px',
                   fontSize: '0.85rem',
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: 'column',
                   gap: '8px',
                   marginBottom: '14px',
                   lineHeight: '1.4',
                 }}>
-                  <ShieldAlert size={18} color="#dc2626" style={{ flexShrink: 0 }} />
-                  <span>{loginError}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldAlert size={18} color="#dc2626" style={{ flexShrink: 0 }} />
+                    <span>{loginError}</span>
+                  </div>
+                  {unverifiedEmail && (
+                    <button
+                      type="button"
+                      onClick={() => handleDirectActivation(unverifiedEmail)}
+                      disabled={isActivating}
+                      style={{
+                        alignSelf: 'flex-start',
+                        background: '#dc2626',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '5px 12px',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {isActivating ? 'Mengaktifkan...' : '✓ Klik untuk Verifikasi Akun Ini Sekarang'}
+                    </button>
+                  )}
                 </div>
               )}
-              <InputField icon={Mail} label="Email" type="email" name="email" placeholder="contoh@email.com" value={form.email} onChange={handleChange} required />
-              <InputField icon={Lock} label="Kata Sandi" type="password" name="password" placeholder="Masukkan kata sandi" value={form.password} onChange={handleChange} required />
-              
-              {showCaptcha && (
-                <CaptchaChallenge
-                  onVerifyChange={setCaptchaData}
-                  isError={!!captchaError}
-                  errorMessage={captchaError}
-                />
-              )}
+              <InputField
+                icon={Mail}
+                label="Email"
+                type="email"
+                name="email"
+                id="login-email"
+                autoComplete="username email"
+                placeholder="contoh@email.com"
+                value={form.email}
+                onChange={handleChange}
+                required
+              />
+              <InputField
+                icon={Lock}
+                label="Kata Sandi"
+                type="password"
+                name="password"
+                id="login-password"
+                autoComplete="current-password"
+                placeholder="Masukkan kata sandi"
+                value={form.password}
+                onChange={handleChange}
+                required
+              />
+
+              {/* Checkbox Ingat Saya (Simpan Kredensial Otomatis) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '-4px', marginBottom: '8px', fontSize: '0.85rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#475569', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#2563eb' }}
+                  />
+                  <span>Ingat email saya di perangkat ini</span>
+                </label>
+              </div>
+
+              {/* CAPTCHA Selalu Aktif */}
+              <CaptchaChallenge
+                onVerifyChange={setCaptchaData}
+                isError={!!captchaError}
+                errorMessage={captchaError}
+              />
 
               <button type="submit" className="btn btn-primary login-btn" disabled={isSubmitting}>
                 {isSubmitting ? 'Memeriksa Keamanan...' : 'Masuk'} <ArrowRight size={18} />

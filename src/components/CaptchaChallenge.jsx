@@ -62,65 +62,34 @@ export default function CaptchaChallenge({ onVerifyChange, isError, errorMessage
 
   return (
     <div style={{
-      background: 'rgba(239, 246, 255, 0.7)',
-      border: isError ? '1px solid #ef4444' : '1px solid #bfdbfe',
-      borderRadius: '10px',
-      padding: '14px',
-      marginTop: '12px',
+      marginTop: '10px',
       marginBottom: '14px',
-      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.05)',
       fontFamily: 'inherit',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e40af', fontWeight: 600, fontSize: '0.875rem' }}>
-          <ShieldCheck size={18} color="#2563eb" />
-          <span>Verifikasi Keamanan (Anti-Bot & Brute Force)</span>
-        </div>
-        <button
-          type="button"
-          onClick={fetchChallenge}
-          disabled={loading}
-          title="Muat ulang pertanyaan"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px',
-            color: '#3b82f6',
-            display: 'flex',
-            alignItems: 'center',
-            borderRadius: '4px',
-            transition: 'transform 0.2s',
-          }}
-        >
-          <RotateCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
-
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        flexWrap: 'wrap',
+        gap: '8px',
       }}>
-        {/* Visual Box Tantangan dengan Efek Distorsi Garis */}
+        {/* Badge Soal Matematika */}
         <div style={{
           position: 'relative',
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
           color: '#ffffff',
           fontWeight: 700,
-          fontSize: '1rem',
+          fontSize: '0.95rem',
           letterSpacing: '1px',
-          padding: '8px 16px',
-          borderRadius: '6px',
+          padding: '0 12px',
+          borderRadius: '8px',
           userSelect: 'none',
-          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)',
+          boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minWidth: '130px',
+          minWidth: '105px',
           height: '42px',
           overflow: 'hidden',
+          flexShrink: 0,
         }}>
           {/* Garis derau pengaman visual (distorsi) */}
           <div style={{
@@ -142,38 +111,65 @@ export default function CaptchaChallenge({ onVerifyChange, isError, errorMessage
             transform: 'rotate(7deg)',
           }} />
           <span style={{ position: 'relative', zIndex: 1 }}>
-            {loading ? '...' : (challenge ? `${challenge.num1} + ${challenge.num2} = ?` : 'Memuat...')}
+            {loading ? '...' : (challenge ? `${challenge.num1} + ${challenge.num2} = ?` : '...')}
           </span>
         </div>
 
+        {/* Tombol Reload Soal */}
+        <button
+          type="button"
+          onClick={fetchChallenge}
+          disabled={loading}
+          title="Ganti angka tantangan"
+          style={{
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            cursor: 'pointer',
+            padding: '8px',
+            color: '#2563eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '8px',
+            height: '42px',
+            width: '42px',
+            flexShrink: 0,
+            transition: 'background 0.2s',
+          }}
+        >
+          <RotateCw size={18} className={loading ? 'animate-spin' : ''} />
+        </button>
+
         {/* Input Jawaban */}
-        <div style={{ flex: 1, minWidth: '120px' }}>
+        <div style={{ flex: 1 }}>
           <input
             type="text"
             inputMode="numeric"
-            placeholder="Ketik jawaban angka"
+            placeholder="Jawaban angka"
             value={userAnswer}
             onChange={handleInputChange}
             required
             style={{
               width: '100%',
-              padding: '9px 12px',
+              height: '42px',
+              padding: '0 12px',
               fontSize: '0.9rem',
-              borderRadius: '6px',
+              borderRadius: '8px',
               border: isError ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1',
               outline: 'none',
               background: '#ffffff',
               boxSizing: 'border-box',
               fontWeight: 500,
+              transition: 'border-color 0.2s',
             }}
           />
         </div>
       </div>
 
       {isError && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', color: '#dc2626', fontSize: '0.8rem' }}>
-          <AlertCircle size={14} />
-          <span>{errorMessage || 'Jawaban verifikasi keamanan belum tepat. Silakan coba lagi.'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', color: '#dc2626', fontSize: '0.8rem' }}>
+          <AlertCircle size={14} style={{ flexShrink: 0 }} />
+          <span>{errorMessage || 'Jawaban captcha belum tepat.'}</span>
         </div>
       )}
     </div>

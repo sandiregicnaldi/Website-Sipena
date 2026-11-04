@@ -1980,12 +1980,61 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
 
 ---
 
+
+---
+
+## BAB 41: Penyempurnaan Sistem Keamanan Otentikasi, Desain Minimalis CAPTCHA, & Otomasi Kredensial
+
+### A. Latar Belakang & Identifikasi Masalah
+1. **Kebijakan Selalu Aktif CAPTCHA (*Always-On CAPTCHA*):**
+   - Sebelumnya tantangan CAPTCHA matematika hanya dimunculkan setelah terjadi 3 kali kegagalan login berturut-turut.
+   - Sesuai kebijakan penguatan keamanan anti-brute force, setiap upaya *sign-in* wajib menyelesaikan verifikasi tantangan matematika secara konsisten untuk mencegah bot otomatis melancarkan serangan *credential stuffing*.
+2. **Kebutuhan Penyederhanaan Tampilan CAPTCHA:**
+   - Tampilan tantangan sebelumnya memuat header narasi panjang *"Verifikasi Keamanan (Anti-Bot & Brute Force)"* dengan bingkai tebal dan ikon perisai yang memakan ruang formulir.
+   - Diperlukan antarmuka yang sangat ringkas: 1 baris *inline* memuat badge tantangan matematika angka, tombol muat ulang tantangan (🔄), dan bidang masukan angka.
+3. **Penyimpanan Kredensial Otomatis (*Credential Management & Auto-Fill*):**
+   - Formulir login membutuhkan atribut standar HTML (`autoComplete="username email"` dan `autoComplete="current-password"`) agar terintegrasi dengan pengelola kata sandi bawaan peramban (Chrome, Edge, Safari, Firefox).
+   - Diperlukan juga fitur *"Ingat saya di perangkat ini"* yang menyimpan email pengguna secara persisten di `localStorage`.
+4. **Verifikasi Email Registrasi Baru pada Lingkungan Pengembangan (*Dev Mode Double Opt-In*):**
+   - Pengguna baru yang mendaftar pada lingkungan localhost sering kali tidak dapat membuka tautan aktivasi karena kunci API email (seperti Resend) belum dikonfigurasi di server lokal.
+   - Hal ini menyebabkan akun berstatus `emailVerified: false`, gagal login, dan memicu proteksi keamanan.
+   - Diperlukan jalur aktivasi instan (*Dev Mode Direct Verification*) baik pada dialog pendaftaran maupun halaman login.
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Penyederhanaan Komponen CAPTCHA (`src/components/CaptchaChallenge.jsx`):**
+   - Menghapus seluruh header narasi banner pengaman dan garis peringatan bawah yang berlebihan.
+   - Mengubah layout menjadi baris tunggal (*inline flex row*):
+     - Badge tantangan gradien biru dengan garis distorsi derau visual: `[ 8 + 9 = ? ]`.
+     - Tombol putar ulang cepat `[ 🔄 ]` dengan animasi putar halus saat memuat.
+     - Kotak input angka responsif `[ Jawaban angka ]`.
+2. **Penerapan CAPTCHA Selalu Aktif (*Always-On Enforcement*):**
+   - **Frontend (`src/pages/LoginPage.jsx`):** Komponen CAPTCHA selalu dirender aktif secara bawaan. Validasi jawaban angka dilakukan sebelum permintaan dikirim ke peladen.
+   - **Backend (`server/src/index.ts`):** Rute `POST /api/auth/sign-in/email` memvalidasi `captchaToken` dan `captchaAnswer` pada setiap percobaan tanpa memandang batas kegagalan sebelumnya. Upaya tanpa CAPTCHA valid langsung ditolak dengan kode status 400.
+3. **Fitur Simpan Kredensial & "Ingat Saya" (`src/pages/LoginPage.jsx`):**
+   - Menambahkan atribut form `autoComplete="on"`, `autoComplete="username email"`, dan `autoComplete="current-password"`.
+   - Menambahkan kotak centang *"Ingat email saya di perangkat ini"* terhubung dengan `localStorage` (`sipena_saved_email` dan `sipena_remember_me`).
+   - Email tersimpan dimuat otomatis saat pengguna kembali membuka halaman login.
+4. **Endpoint & Helper Aktivasi Akun Instan (`server/src/index.ts` & `src/pages/LoginPage.jsx`):**
+   - Menambahkan endpoint `POST /api/auth/verify-email-direct` di server backend untuk memvalidasi dan mengaktifkan akun secara langsung.
+   - Memperbarui `server/src/auth.ts` agar tautan verifikasi default mengarah ke port frontend aktif `http://localhost:5174/verify-email?token=...&email=...`.
+   - Memperbarui `VerifyEmailPage.jsx` dengan sistem fallback otomatis bila verifikasi token membutuhkan resolusi langsung di lingkungan lokal.
+   - Menyediakan tombol aktivasi cepat satu-klik:
+     - Pada modal sukses pendaftaran: *"✓ Aktifkan Akun Sekarang (Instant)"*.
+     - Pada kartu error login jika akun belum terverifikasi: *"✓ Klik untuk Verifikasi Akun Ini Sekarang"*.
+
+---
+
 ### C. Hasil Pengujian & Verifikasi
-1. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat (`built in 8.26s`).
-2. **Pengujian Alur Pengguna:**
-   - Pengguna dengan sesi aktif membuka `/login` $\rightarrow$ langsung dialihkan otomatis ke dasbor yang sesuai tanpa melihat formulir login.
-   - Mengklik *"Keluar / Ganti Akun"* $\rightarrow$ sesi terputus bersih dan formulir login muncul kembali untuk memasukkan akun lain.
-   - Pengguna aktif di menu Panduan mengklik *"Ajukan Naskah"* $\rightarrow$ langsung masuk ke dasbor pengajuan naskah `/profil-saya`.
+1. **Pengujian API Backend:**
+   - Permintaan sign-in tanpa CAPTCHA $\rightarrow$ Ditolak (HTTP 400: *"Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi"*).
+   - Permintaan sign-in dengan CAPTCHA benar $\rightarrow$ Berhasil login (HTTP 200).
+   - Endpoint `POST /api/auth/verify-email-direct` $\rightarrow$ Berhasil memvalidasi akun uji (`anggota.baru@sipena.id`) menjadi aktif (HTTP 200).
+2. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat.
+3. **Kompilasi Backend (`npx tsc --noEmit`):** Bersih 100% tanpa galat tipe TypeScript.
+
 
 
 

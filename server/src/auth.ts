@@ -19,8 +19,8 @@ export const auth = betterAuth({
         sendOnSignUp: true,
         autoSignInAfterVerification: false,
         sendVerificationEmail: async ({ user, url, token }) => {
-            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-            const verifyLink = `${frontendUrl}/verify-email?token=${token}`;
+            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5174";
+            const verifyLink = `${frontendUrl}/verify-email?token=${token}&email=${encodeURIComponent(user.email)}`;
             await sendVerificationEmail(user.email, verifyLink, user.name);
         },
     },
@@ -28,8 +28,8 @@ export const auth = betterAuth({
         enabled: true,
         requireEmailVerification: true,
         sendResetPassword: async ({ user, url, token }) => {
-            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-            const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5174";
+            const resetLink = `${frontendUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
             await sendPasswordResetEmail(user.email, resetLink);
         },
     },

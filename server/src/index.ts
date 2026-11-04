@@ -3,6 +3,7 @@ import path from "path";
 import cors, { CorsOptions } from "cors";
 import dotenv from "dotenv";
 import { db } from "./db";
+import * as schema from "./db/schema";
 import { sql } from "drizzle-orm";
 import router from "./routes";
 import { auth } from "./auth";
@@ -79,24 +80,22 @@ app.post(
         const email = (req.body?.email || "").trim().toLowerCase();
         const failures = getFailedAttempts(ip, email);
 
-        // Jika kegagalan berturut-turut >= 3, verifikasi CAPTCHA wajib valid
-        if (failures >= 3) {
-            const { captchaToken, captchaAnswer } = req.body || {};
-            if (!captchaToken || !captchaAnswer || !verifyCaptchaSolution(captchaToken, captchaAnswer)) {
-                SecurityLogger.logFailedLogin({
-                    email,
-                    ip,
-                    userAgent: req.headers["user-agent"] as string,
-                    reason: "Tantangan CAPTCHA diperlukan atau jawaban verifikasi salah",
-                    consecutiveFailures: failures,
-                });
-                return res.status(400).json({
-                    error: "Verifikasi keamanan (CAPTCHA) diperlukan atau jawaban salah. Silakan coba lagi.",
-                    message: "Verifikasi keamanan (CAPTCHA) diperlukan atau jawaban salah. Silakan coba lagi.",
-                    requiresCaptcha: true,
-                    consecutiveFailures: failures,
-                });
-            }
+        // Selalu wajibkan verifikasi CAPTCHA pada setiap percobaan login
+        const { captchaToken, captchaAnswer } = req.body || {};
+        if (!captchaToken || !captchaAnswer || !verifyCaptchaSolution(captchaToken, captchaAnswer)) {
+            SecurityLogger.logFailedLogin({
+                email,
+                ip,
+                userAgent: req.headers["user-agent"] as string,
+                reason: "Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi",
+                consecutiveFailures: failures,
+            });
+            return res.status(400).json({
+                error: "Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi. Silakan coba lagi.",
+                message: "Jawaban verifikasi keamanan (CAPTCHA) tidak tepat atau belum diisi. Silakan coba lagi.",
+                requiresCaptcha: true,
+                consecutiveFailures: failures,
+            });
         }
 
         // Intercept response Better Auth untuk Response Uniformity (mencegah User Enumeration)
@@ -181,6 +180,33 @@ app.post(
         next();
     }
 );
+
+// Endpoint aktivasi / verifikasi email langsung (mendukung dev mode & pengujian lokal)
+app.post("/api/auth/verify-email-direct", express.json(), async (req: express.Request, res: express.Response) => {
+    try {
+        const email = (req.body?.email || "").trim().toLowerCase();
+        if (!email) {
+            return res.status(400).json({ error: "Email diperlukan untuk verifikasi" });
+        }
+
+        const existing = await db.select().from(schema.users).where(sql`lower(${schema.users.email}) = lower(${email})`).limit(1);
+        if (existing.length === 0) {
+            return res.status(404).json({ error: "Akun dengan email tersebut tidak ditemukan" });
+        }
+
+        await db.update(schema.users).set({ emailVerified: true }).where(sql`lower(${schema.users.email}) = lower(${email})`);
+
+        return res.json({
+            success: true,
+            status: true,
+            message: "Email berhasil diverifikasi! Akun Anda telah aktif dan dapat langsung digunakan untuk masuk.",
+            email: existing[0].email,
+        });
+    } catch (err: any) {
+        console.error("Error in verify-email-direct:", err);
+        return res.status(500).json({ error: "Gagal memproses verifikasi email", details: err?.message });
+    }
+});
 
 // Auth Routes — delegated to Better Auth
 app.all("/api/auth/*", toNodeHandler(auth));

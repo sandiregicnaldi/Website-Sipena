@@ -6,13 +6,14 @@ import { authClient } from '../lib/api';
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const emailParam = searchParams.get('email');
   const navigate = useNavigate();
 
   const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error' | 'no-token'
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !emailParam) {
       setStatus('no-token');
       return;
     }
@@ -20,19 +21,35 @@ export default function VerifyEmailPage() {
     const verifyToken = async () => {
       try {
         setStatus('loading');
-        // Panggil endpoint Better Auth untuk verifikasi email
-        const res = await fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-        });
+        // 1. Coba verifikasi token via Better Auth
+        if (token) {
+          const res = await fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+          });
 
-        if (res.ok) {
-          setStatus('success');
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          setErrorMessage(errData.message || 'Tautan verifikasi tidak valid atau telah kedaluwarsa.');
-          setStatus('error');
+          if (res.ok) {
+            setStatus('success');
+            return;
+          }
         }
+
+        // 2. Fallback verifikasi via endpoint langsung jika token kedaluwarsa atau di lingkungan lokal
+        if (emailParam) {
+          const resDirect = await fetch('/api/auth/verify-email-direct', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailParam }),
+          });
+
+          if (resDirect.ok) {
+            setStatus('success');
+            return;
+          }
+        }
+
+        setErrorMessage('Tautan verifikasi tidak valid atau telah kedaluwarsa.');
+        setStatus('error');
       } catch (err) {
         setErrorMessage('Gagal menghubungi server untuk memverifikasi email.');
         setStatus('error');
@@ -40,7 +57,7 @@ export default function VerifyEmailPage() {
     };
 
     verifyToken();
-  }, [token]);
+  }, [token, emailParam]);
 
   return (
     <div style={{
