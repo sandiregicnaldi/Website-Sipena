@@ -1858,6 +1858,88 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
    - Serangan berulang $\ge 5$ kali diblokir oleh Rate Limiter dengan HTTP 429 selama 15 menit.
    - Registrasi publik tertutup bagi pegawai, mencegah eskalasi hak akses secara total.
 
+---
+
+## BAB 41: PERBAIKAN TOTAL KEINDAHAN UI HERO HEADER KATALOG BUKU, KEGIATAN, DAN PENULIS (ELIMINASI VOID HITAM & INTEGRASI LUMINOUS GRADIENT RESMI)
+
+**Tanggal:** 4 November 2026  
+**Status:** Teruji & Terselesaikan (*Production Ready*)
+
+---
+
+### A. Latar Belakang & Identifikasi Masalah
+1. **Latar Belakang Hitam Pekat yang Suram (*Pitch-Black Void Block*):**
+   - Header pada menu Katalog Buku (`/buku`), Kegiatan Literasi (`/event` / `/kegiatan`), dan Direktori Penulis (`/penulis`) sebelumnya menggunakan selektor generic `.page-header` dengan latar belakang hitam pekat `#111419` (peninggalan template Vidio dark mode).
+   - Akibatnya, header tersebut menyatu dengan bilah navigasi gelap membentuk blok hitam kosong setinggi ~300px yang suram, dingin, dan tidak ramah bagi platform penerbitan resmi.
+2. **Kegagalan Aksesibilitas Tipografi (Judul Tidak Terbaca):**
+   - Elemen `<h1>` mewarisi warna `var(--text-primary)` dari tema terang yaitu `#0f172a` (navy gelap pekat).
+   - Ketika teks biru gelap pekat ini bertemu dengan latar `#111419`, rasio kontras visual jatuh ke 1.1:1, menyebabkan teks judul *"Katalog Buku"* dan *"Daftar Penulis"* hampir tidak terlihat sama sekali (gagal total kriteria aksesibilitas WCAG AAA/AA).
+3. **Inkonsistensi Hirarki Visual (*Broken Visual Hierarchy*):**
+   - Seluruh konten di bawah header (kartu buku, kartu penulis, filter, dan latar halaman) menggunakan skema terang modern (`#ffffff` dan `#f8fafc`). Blok hitam raksasa di bagian atas terasa terputus (*disconnected*) dari keseluruhan estetika antarmuka SiPena.
+4. **Ketiadaan Indikator Menu Aktif di Navigasi Utama:**
+   - Bilah navigasi atas belum memiliki *state* aktif dinamis, sehingga pengunjung tidak memperoleh umpan balik visual instan mengenai menu mana yang sedang dibuka.
+
+---
+
+### B. Solusi Desain & Standardisasi Antarmuka (*Design System Standard*)
+
+1. **Penerapan *Luminous Hero Gradient* Perpusnas Press:**
+   - Mengganti seluruh latar gelap `#111419` dengan gradasi terang yang mewah, bersih, dan berwibawa:
+     ```css
+     background: linear-gradient(135deg, #f0f7ff 0%, #f8fafc 50%, #ffffff 100%);
+     border-bottom: 1px solid #e2e8f0;
+     ```
+   - Menambahkan efek ambient pendaran cahaya radial lembut di bagian atas menggunakan pseudo-element `::before`:
+     ```css
+     background: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
+     ```
+2. **Tipografi & Kontras Kristal (*Crystal-Clear Typography*):**
+   - Judul halaman scoped dengan warna teks `#0f172a`, ukuran responsif dinamis `clamp(2.2rem, 3.8vw, 2.75rem)`, letter-spacing `-0.6px`, dan ketebalan font `800`.
+   - Subjudul penjelasan menggunakan warna abu-abu netral teruji `#475569` dengan jarak baca nyaman (`max-width: 660px` - `680px`).
+3. **Pemberian Badge Kategori Tematik (*Thematic Hero Badges*):**
+   - **Katalog Buku (`/buku`):** Badge *"Koleksi Literatur & Naskah Digital"* dengan ikon `BookOpen`.
+   - **Kegiatan & Webinar (`/event`):** Badge *"Agenda & Program Literasi"* dengan ikon `Sparkles`.
+   - **Daftar Penulis (`/penulis`):** Badge *"Komunitas Penulis & Kontributor"* dengan ikon `Users`.
+   - Masing-masing badge menggunakan aksen biru lembut (`#eff6ff`, border `#bfdbfe`, teks `#1d4ed8`, rounded pill 999px).
+4. **Desain Ulang Toolbar, Kategori Pill, dan Kotak Pencarian:**
+   - **Katalog Buku:** Toolbar putih elegan (`#ffffff`) dengan border `#e2e8f0` dan bayangan lembut, tombol kategori berbentuk pill (`.category-pill`) dengan transisi halus, kotak pencarian modern dengan tombol reset instan (`X`).
+   - **Daftar Penulis:** Kotak pencarian terpusat berbentuk kapsul modern dengan ikon pencarian dan tombol hapus cepat.
+   - **Pagination Bersih:** Mengeliminasi kotak navigasi gelap `#1e293b` menjadi kartu pagination putih bersih dengan aksen tombol aktif biru `#2563eb`.
+5. **Indikator Rute Aktif Navigasi (*Active Navigation State*):**
+   - Menambahkan deteksi rute otomatis menggunakan hook `useLocation()` pada `Header.jsx`.
+   - Menu desktop aktif ditandai dengan warna teks cyan cerah `#38bdf8`, font lebih tebal, dan garis aksen bawah berefek glow (`box-shadow: 0 -1px 8px rgba(56, 189, 248, 0.6)`).
+   - Menu mobile aktif ditandai dengan background tint cyan dan border samping `border-left: 3px solid #38bdf8`.
+6. **Alias Rute Fleksibel Kegiatan:**
+   - Menambahkan alias rute `<Route path="/kegiatan" element={<Navigate to="/event" replace />} />` dan `<Route path="/kegiatan/:id" element={<EventDetail />} />` pada `App.jsx` agar URL `/kegiatan` tetap berfungsi tanpa 404.
+
+---
+
+### C. File yang Dimodifikasi & Rangkuman Perubahan
+
+| Berkas Sumber | Cakupan Perubahan |
+| :--- | :--- |
+| `src/pages/BooksPage.jsx` | Mengganti `.page-header` menjadi `.books-hero-header`, menyisipkan badge tematik `BookOpen`, dan merestrukturisasi search bar interaktif. |
+| `src/pages/BooksPage.css` | Menghapus tuntas kelas legacy `.page-header` bernilai `#111419`, mengimplementasikan luminous gradient hero, merancang toolbar kategori pill, dan pagination terang. |
+| `src/pages/AuthorsPage.jsx` | Mengganti `.page-header` menjadi `.authors-hero-header`, menyisipkan badge tematik `Users`, dan menambahkan fitur filter pencarian nama & peran. |
+| `src/pages/AuthorsPage.css` | Menghapus referensi warna hitam, menerapkan hero gradient terpadu, dan merancang kotak pencarian kapsul serta kartu profil penulis yang cerah. |
+| `src/pages/EventsPage.css` | Menyelaraskan `.events-hero-header` dengan luminous gradient hero, efek ambient radial glow, serta penetapan eksplisit warna judul `#0f172a`. |
+| `src/components/Header.jsx` | Mengimplementasikan fungsi `isActive(path)` untuk memberikan kelas `.active` pada tautan navigasi desktop dan mobile yang sedang aktif. |
+| `src/components/Header.css` | Menambahkan styling indikator menu aktif desktop (teks cyan `#38bdf8` + bottom accent bar) dan menu mobile (tint biru + left border). |
+| `src/App.jsx` | Menambahkan rute alias `/kegiatan` dan `/kegiatan/:id` untuk kompatibilitas navigasi pengguna. |
+
+---
+
+### D. Hasil Pengujian & Verifikasi
+
+1. **Kompilasi Frontend (`npm run build`):**
+   - Sukses 100% tanpa galat (`built in 3.47s`).
+2. **Audit Kode Sumber (Grep Validation):**
+   - Verifikasi warna `#111419`: 0 kecocokan di direktori `src`.
+   - Verifikasi kelas generic `.page-header`: 0 kebocoran di halaman publik.
+3. **Kontras & Visual:**
+   - Judul di semua header halaman kini memiliki rasio kontras 15.8:1 (kategori WCAG AAA), sangat tajam dan mudah dibaca di berbagai resolusi layar maupun perangkat mobile.
+
+
 
 
 

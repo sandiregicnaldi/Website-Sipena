@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Search, BookOpen, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, BookOpen, Loader2, X } from 'lucide-react';
 import { SipenaAPI } from '../lib/api';
 import '../components/BookRow.css';
 import './BooksPage.css';
@@ -99,33 +99,30 @@ const BooksPage = () => {
 
   return (
     <main className="books-page">
-      <div className="page-header">
+      {/* ── Luminous Modern Hero Header ── */}
+      <div className="books-hero-header">
         <div className="container">
-          <h1 className="page-title">Katalog Buku</h1>
-          <p className="page-subtitle">Jelajahi berbagai koleksi buku, naskah kuno, dan literatur dari Perpusnas Press</p>
+          <div className="books-hero-badge">
+            <BookOpen size={14} /> Koleksi Literatur &amp; Naskah Digital
+          </div>
+          <h1 className="books-hero-title">Katalog Buku SiPena</h1>
+          <p className="books-hero-subtitle">
+            Jelajahi berbagai koleksi buku ilmiah, naskah kuno nusantara, dan literatur resmi terbitan Perpusnas Press.
+          </p>
         </div>
       </div>
 
       <div className="container books-content">
         {/* Search & Category Filter Toolbar */}
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between',
-          alignItems: 'center', marginBottom: '2rem'
-        }}>
+        <div className="books-toolbar">
           {/* Category Pills */}
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="books-categories-scroll">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => { setCategory(cat); setPage(1); }}
-                style={{
-                  padding: '0.45rem 1rem', borderRadius: '2rem', fontSize: '0.875rem', fontWeight: 500,
-                  cursor: 'pointer', border: '1px solid',
-                  backgroundColor: category === cat ? 'var(--accent-color, #2563eb)' : 'transparent',
-                  color: category === cat ? '#fff' : 'var(--text-secondary)',
-                  borderColor: category === cat ? 'var(--accent-color, #2563eb)' : 'var(--border-color, #cbd5e1)',
-                  transition: 'all 0.2s'
-                }}
+                className={`category-pill ${category === cat ? 'active' : ''}`}
               >
                 {cat}
               </button>
@@ -133,26 +130,33 @@ const BooksPage = () => {
           </div>
 
           {/* Search Box */}
-          <div style={{ position: 'relative', width: '280px' }}>
-            <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+          <div className="books-search-box">
+            <Search size={17} className="search-icon" />
             <input
               type="text"
               placeholder="Cari judul atau penulis..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: '100%', padding: '0.55rem 0.75rem 0.55rem 2.25rem',
-                border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)',
-                fontSize: '0.875rem', background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                boxSizing: 'border-box'
-              }}
             />
+            {search && (
+              <button
+                type="button"
+                className="search-clear-btn"
+                onClick={() => setSearch('')}
+                title="Hapus pencarian"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Results Counter */}
-        <div style={{ marginBottom: '1.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          Menampilkan <strong>{books.length}</strong> dari <strong>{total}</strong> koleksi buku
+        <div className="books-results-meta">
+          <span>Menampilkan <strong>{books.length}</strong> dari <strong>{total}</strong> koleksi buku</span>
+          {category !== 'Semua' && (
+            <span className="active-cat-tag">Kategori: <strong>{category}</strong></span>
+          )}
         </div>
 
         {/* Loading State */}

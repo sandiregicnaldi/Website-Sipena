@@ -18,6 +18,11 @@ const Header = () => {
 
   const closeMenu = () => setMenuOpen(false);
 
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
   return (
     <header className="header">
       <div className="container header-inner">
@@ -31,13 +36,13 @@ const Header = () => {
           </Link>
           <nav className="main-nav">
             <ul className="nav-list">
-              <li><Link to="/"                 className="nav-item">Home</Link></li>
-              <li><Link to="/buku"             className="nav-item">Buku</Link></li>
-              <li><Link to="/penulis"          className="nav-item">Penulis</Link></li>
-              <li><Link to="/event"            className="nav-item">Kegiatan</Link></li>
-              <li><Link to="/panduan-penerbitan" className="nav-item">Panduan</Link></li>
-              <li><Link to="/tentang"          className="nav-item">Tentang</Link></li>
-              <li><Link to="/faq"              className="nav-item">FAQ</Link></li>
+              <li><Link to="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>Home</Link></li>
+              <li><Link to="/buku" className={`nav-item ${isActive('/buku') ? 'active' : ''}`}>Buku</Link></li>
+              <li><Link to="/penulis" className={`nav-item ${isActive('/penulis') ? 'active' : ''}`}>Penulis</Link></li>
+              <li><Link to="/event" className={`nav-item ${isActive('/event') || isActive('/kegiatan') ? 'active' : ''}`}>Kegiatan</Link></li>
+              <li><Link to="/panduan-penerbitan" className={`nav-item ${isActive('/panduan-penerbitan') ? 'active' : ''}`}>Panduan</Link></li>
+              <li><Link to="/tentang" className={`nav-item ${isActive('/tentang') ? 'active' : ''}`}>Tentang</Link></li>
+              <li><Link to="/faq" className={`nav-item ${isActive('/faq') ? 'active' : ''}`}>FAQ</Link></li>
             </ul>
           </nav>
         </div>
@@ -100,13 +105,13 @@ const Header = () => {
       {menuOpen && (
         <div className="mobile-menu">
           <nav className="mobile-nav">
-            <Link to="/"                  className="mobile-nav-item" onClick={closeMenu}>Home</Link>
-            <Link to="/buku"              className="mobile-nav-item" onClick={closeMenu}>Buku</Link>
-            <Link to="/penulis"           className="mobile-nav-item" onClick={closeMenu}>Penulis</Link>
-            <Link to="/event"             className="mobile-nav-item" onClick={closeMenu}>Kegiatan</Link>
-            <Link to="/panduan-penerbitan" className="mobile-nav-item" onClick={closeMenu}>Panduan</Link>
-            <Link to="/tentang"           className="mobile-nav-item" onClick={closeMenu}>Tentang</Link>
-            <Link to="/faq"               className="mobile-nav-item" onClick={closeMenu}>FAQ</Link>
+            <Link to="/" className={`mobile-nav-item ${isActive('/') ? 'active' : ''}`} onClick={closeMenu}>Home</Link>
+            <Link to="/buku" className={`mobile-nav-item ${isActive('/buku') ? 'active' : ''}`} onClick={closeMenu}>Buku</Link>
+            <Link to="/penulis" className={`mobile-nav-item ${isActive('/penulis') ? 'active' : ''}`} onClick={closeMenu}>Penulis</Link>
+            <Link to="/event" className={`mobile-nav-item ${isActive('/event') || isActive('/kegiatan') ? 'active' : ''}`} onClick={closeMenu}>Kegiatan</Link>
+            <Link to="/panduan-penerbitan" className={`mobile-nav-item ${isActive('/panduan-penerbitan') ? 'active' : ''}`} onClick={closeMenu}>Panduan</Link>
+            <Link to="/tentang" className={`mobile-nav-item ${isActive('/tentang') ? 'active' : ''}`} onClick={closeMenu}>Tentang</Link>
+            <Link to="/faq" className={`mobile-nav-item ${isActive('/faq') ? 'active' : ''}`} onClick={closeMenu}>FAQ</Link>
 
             <div className="mobile-menu-divider" />
 

@@ -68,15 +68,34 @@
 .nav-item {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #a0a0a0;
+  color: #94a3b8;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
   position: relative;
   padding: 1.25rem 0; /* Tall enough to center and catch clicks */
+  display: inline-flex;
+  align-items: center;
 }
 
-.nav-item:hover, .nav-item.active {
+.nav-item:hover {
   color: #ffffff;
+}
+
+.nav-item.active {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #38bdf8;
+  border-radius: 3px 3px 0 0;
+  box-shadow: 0 -1px 8px rgba(56, 189, 248, 0.6);
 }
 
 /* ── RIGHT: Search & Actions ──────────────────── */
@@ -297,6 +316,14 @@
 .mobile-nav-item:hover {
   background-color: rgba(255, 255, 255, 0.05);
   color: #ffffff;
+}
+
+.mobile-nav-item.active {
+  color: #38bdf8;
+  background-color: rgba(56, 189, 248, 0.08);
+  font-weight: 700;
+  border-left: 3px solid #38bdf8;
+  padding-left: 1.5rem;
 }
 
 .mobile-terbitkan {
