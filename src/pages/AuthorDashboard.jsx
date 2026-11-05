@@ -79,21 +79,27 @@ const AuthorDashboard = () => {
   const [loadingKegiatan, setLoadingKegiatan] = useState(false);
 
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const qTab = searchParams.get('tab');
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState(location.state?.tab || 'biodata');
+  const [activeTab, setActiveTab] = useState(location.state?.tab || qTab || 'biodata');
   const [submittingNaskah, setSubmittingNaskah] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [cropModal, setCropModal] = useState({
     isOpen: false,
     imageSrc: null,
     fileName: 'foto-profil.jpg',
   });
 
-  // Responsif jika ada perpindahan tab melalui navigation state
+  // Responsif jika ada perpindahan tab melalui navigation state atau URL query (?tab=...)
   useEffect(() => {
+    const tabFromQuery = new URLSearchParams(location.search).get('tab');
     if (location.state?.tab) {
       setActiveTab(location.state.tab);
+    } else if (tabFromQuery) {
+      setActiveTab(tabFromQuery);
     }
-  }, [location.state?.tab]);
+  }, [location.state?.tab, location.search]);
 
   // Fungsi muat sertifikat kegiatan
   const fetchUserCertificates = useCallback(async () => {
@@ -230,10 +236,26 @@ const AuthorDashboard = () => {
     }
   };
 
-  const handleCropConfirm = (croppedFile, croppedDataUrl) => {
-    setForm(prev => ({ ...prev, fotoProfil: croppedDataUrl }));
+  const handleCropConfirm = async (croppedFile, croppedDataUrl) => {
     setCropModal(prev => ({ ...prev, isOpen: false, imageSrc: null }));
-    showToast({ message: 'Foto profil berhasil dipotong. Jangan lupa klik "Simpan Perubahan"!', type: 'success' });
+    // Tampilkan preview foto yang telah dipotong
+    setForm(prev => ({ ...prev, fotoProfil: croppedDataUrl }));
+
+    // Langsung unggah foto ke server via endpoint khusus avatar
+    try {
+      setIsUploadingPhoto(true);
+      showToast({ message: 'Mengunggah foto profil ke server...', type: 'info' });
+      const uploadRes = await SipenaAPI.uploadAvatar(croppedFile);
+      if (uploadRes?.url) {
+        setForm(prev => ({ ...prev, fotoProfil: uploadRes.url }));
+        showToast({ message: 'Foto profil berhasil diunggah! Jangan lupa klik "Simpan Perubahan"!', type: 'success' });
+      }
+    } catch (err) {
+      console.warn('Gagal unggah foto saat crop, akan disimpan saat klik Simpan Perubahan:', err);
+      showToast({ message: 'Foto profil berhasil dipotong. Jangan lupa klik "Simpan Perubahan"!', type: 'info' });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const handleAddKarya = () => {
@@ -261,9 +283,9 @@ const AuthorDashboard = () => {
       await updateProfile(form);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-      showToast({ message: 'Profil dan biodata berhasil diperbarui!', type: 'success' });
+      showToast({ message: 'Profil dan biodata berhasil diperbarui secara permanen!', type: 'success' });
     } catch (err) {
-      showToast({ message: 'Gagal memperbarui profil: ' + err.message, type: 'error' });
+      showToast({ message: 'Gagal memperbarui profil: ' + (err.message || 'Terjadi kesalahan sistem'), type: 'error' });
     }
   };
 
@@ -560,8 +582,8 @@ const AuthorDashboard = () => {
                   </div>
                 )}
                 <div className="photo-overlay">
-                  <Camera size={20} />
-                  <span>Ganti Foto</span>
+                  {isUploadingPhoto ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+                  <span>{isUploadingPhoto ? 'Mengunggah...' : 'Ganti Foto'}</span>
                 </div>
               </div>
               <input
@@ -1140,8 +1162,15 @@ const AuthorDashboard = () => {
                         </div>
                       )}
                       <div>
-                        <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current.click()} style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <Camera size={16} /> Ganti Foto Profil
+                        <button 
+                          type="button" 
+                          className="btn btn-outline" 
+                          onClick={() => fileInputRef.current.click()} 
+                          disabled={isUploadingPhoto}
+                          style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                        >
+                          {isUploadingPhoto ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+                          {isUploadingPhoto ? 'Mengunggah Foto...' : 'Ganti Foto Profil'}
                         </button>
                         <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>Format JPG, PNG atau WebP (Disarankan rasio 1:1)</p>
                       </div>

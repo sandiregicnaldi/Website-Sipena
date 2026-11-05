@@ -209,7 +209,7 @@ const AuthorProfile = () => {
                 <h2 className="author-role-large">{authorData.role}</h2>
               </div>
               {isCurrentUser && (
-                <Link to="/dasbor-penulis?tab=karya" className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Link to="/profil-saya?tab=karya" state={{ tab: 'karya' }} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Edit3 size={15} /> Edit Profil Saya
                 </Link>
               )}

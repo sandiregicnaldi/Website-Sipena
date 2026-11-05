@@ -53,6 +53,13 @@ export const SipenaAPI = {
             headers: { 'Content-Type': 'multipart/form-data' }
         }).then(res => res.data);
     },
+    uploadAvatar: (file) => {
+        const fd = new FormData();
+        fd.append('avatar', file);
+        return api.post('/upload/avatar', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }).then(res => res.data);
+    },
 
     // Events
     getEvents: () => api.get('/sipena/events').then(res => res.data),

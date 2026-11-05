@@ -8,8 +8,9 @@ const uploadDir = path.join(process.cwd(), "uploads");
 const coversDir = path.join(uploadDir, "covers");
 const documentsDir = path.join(uploadDir, "documents");
 const certificatesDir = path.join(uploadDir, "certificates");
+const avatarsDir = path.join(uploadDir, "avatars");
 
-[uploadDir, coversDir, documentsDir, certificatesDir].forEach(d => {
+[uploadDir, coversDir, documentsDir, certificatesDir, avatarsDir].forEach(d => {
     if (!fs.existsSync(d)) {
         fs.mkdirSync(d, { recursive: true });
     }
@@ -39,6 +40,37 @@ const coverStorage = multer.diskStorage({
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname).toLowerCase() || '.png';
         cb(null, 'cover-' + uniqueSuffix + ext);
+    }
+});
+
+// Storage for Profile Avatar (PNG, JPG, JPEG, WEBP, max 5MB)
+const avatarStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        if (!fs.existsSync(avatarsDir)) {
+            fs.mkdirSync(avatarsDir, { recursive: true });
+        }
+        cb(null, avatarsDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+        cb(null, 'avatar-' + uniqueSuffix + ext);
+    }
+});
+
+const uploadAvatarMulter = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const allowedExts = ['.png', '.jpg', '.jpeg', '.webp'];
+        const allowedMimes = ['image/png', 'image/x-png', 'image/jpeg', 'image/jpg', 'image/webp'];
+        const isValid = allowedMimes.includes(file.mimetype) || allowedExts.includes(ext);
+        if (isValid) {
+            cb(null, true);
+        } else {
+            cb(new Error("Hanya berkas gambar format .PNG, .JPG, atau .WEBP yang diperbolehkan untuk foto profil"));
+        }
     }
 });
 
@@ -221,6 +253,21 @@ export const UploadController = {
         }
     },
 
+    uploadAvatar: (req: Request, res: Response, next: any) => {
+        uploadAvatarMulter.any()(req, res, (err) => {
+            if (err) {
+                if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: "Ukuran foto profil maksimal 5 MB" });
+                }
+                return res.status(400).json({ error: err.message || "Gagal mengunggah foto profil" });
+            }
+            if ((req as any).files && Array.isArray((req as any).files) && (req as any).files.length > 0) {
+                req.file = (req as any).files[0];
+            }
+            next();
+        });
+    },
+
     async handleUploadCertificate(req: Request, res: Response) {
         try {
             if (!req.file) {
@@ -231,6 +278,19 @@ export const UploadController = {
         } catch (error: any) {
             console.error("Upload certificate error:", error);
             res.status(500).json({ error: error.message || "Gagal mengunggah berkas template sertifikat" });
+        }
+    },
+
+    async handleUploadAvatar(req: Request, res: Response) {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: "Tidak ada berkas foto profil yang diunggah" });
+            }
+            const fileUrl = `/api/uploads/avatars/${req.file.filename}`;
+            res.json({ url: fileUrl, filename: req.file.originalname, size: req.file.size });
+        } catch (error: any) {
+            console.error("Upload avatar error:", error);
+            res.status(500).json({ error: error.message || "Gagal mengunggah foto profil" });
         }
     }
 };

@@ -71,6 +71,7 @@ function App() {
                       <Route path="/kegiatan"    element={<Navigate to="/event" replace />} />
                       <Route path="/kegiatan/:id" element={<EventDetail />} />
                       <Route path="/profil-saya" element={<AuthorDashboard />} />
+                      <Route path="/dasbor-penulis" element={<Navigate to="/profil-saya" replace />} />
                       <Route path="/dashboard"   element={<Navigate to="/profil-saya" replace />} />
                       <Route path="/penulis/dashboard" element={<Navigate to="/profil-saya" replace />} />
                       <Route path="/tentang"            element={<TentangKami />} />

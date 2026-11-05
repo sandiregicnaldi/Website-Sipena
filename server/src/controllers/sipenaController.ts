@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import { db } from "../db";
 import { appSettings, books, manuscripts, events, eventParticipants, bookRatings, bookDownloads, bookReads, users, notifications, sessions, projects, stages } from "../db/schema";
 import { eq, and, sql, desc, ilike, or, count, inArray } from "drizzle-orm";
@@ -1492,6 +1494,30 @@ export const SipenaEventsController = {
 };
 
 // ── PENULIS (AUTHORS) ──
+function saveAvatarIfBase64(imageStr: any, userId: string): string | undefined {
+    if (!imageStr || typeof imageStr !== "string") return imageStr;
+    if (imageStr.startsWith("data:image/")) {
+        try {
+            const matches = imageStr.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+            if (matches) {
+                const rawExt = matches[1].toLowerCase();
+                const ext = rawExt === "jpeg" ? ".jpg" : `.${rawExt}`;
+                const buffer = Buffer.from(matches[2], "base64");
+                const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
+                if (!fs.existsSync(avatarsDir)) {
+                    fs.mkdirSync(avatarsDir, { recursive: true });
+                }
+                const filename = `avatar-${userId}-${Date.now()}${ext}`;
+                fs.writeFileSync(path.join(avatarsDir, filename), buffer);
+                return `/api/uploads/avatars/${filename}`;
+            }
+        } catch (err) {
+            console.error("Failed to decode base64 avatar in sipenaController:", err);
+        }
+    }
+    return imageStr;
+}
+
 export const SipenaAuthorsController = {
     getAll: async (req: Request, res: Response) => {
         try {
@@ -1566,7 +1592,11 @@ export const SipenaAuthorsController = {
                 return res.status(401).json({ error: "Silakan login terlebih dahulu" });
             }
 
-            const { bio, profesi, domisili, website, karyaEksternal, image, token, name } = req.body;
+            const {
+                bio, profesi, domisili, website, karyaEksternal, image, fotoProfil, token, name, namaLengkap,
+                tempatLahir, tanggalLahir, pekerjaan, instansi, alamat, alamatLengkap,
+                provinsi, kota, kecamatan, kelurahan, phone
+            } = req.body;
 
             const isInstantToken = token && typeof token === "string" && token.trim().toUpperCase() === "PERPUSNAS-PENULIS-2026";
             const newRole = isInstantToken ? "penulis" : "calon_penulis";
@@ -1578,13 +1608,38 @@ export const SipenaAuthorsController = {
                 updatedAt: new Date()
             };
 
-            if (name) updateData.name = name;
+            const authorName = name || namaLengkap;
+            if (authorName) updateData.name = authorName;
             if (bio !== undefined) updateData.bio = bio;
             if (profesi !== undefined) updateData.profesi = profesi;
             if (domisili !== undefined) updateData.domisili = domisili;
             if (website !== undefined) updateData.website = website;
-            if (karyaEksternal !== undefined) updateData.karyaEksternal = karyaEksternal;
-            if (image !== undefined) updateData.image = image;
+
+            if (karyaEksternal !== undefined) {
+                let parsed = karyaEksternal;
+                if (typeof parsed === "string") {
+                    try { parsed = JSON.parse(parsed); } catch (e) {}
+                }
+                updateData.karyaEksternal = parsed;
+            }
+
+            const rawImage = image || fotoProfil;
+            if (rawImage !== undefined) {
+                updateData.image = saveAvatarIfBase64(rawImage, userId);
+            }
+
+            // Biodata fields
+            if (tempatLahir !== undefined) updateData.tempatLahir = tempatLahir;
+            if (tanggalLahir !== undefined) updateData.tanggalLahir = tanggalLahir;
+            if (pekerjaan !== undefined) updateData.pekerjaan = pekerjaan;
+            if (instansi !== undefined) updateData.instansi = instansi;
+            if (alamatLengkap !== undefined) updateData.alamatLengkap = alamatLengkap;
+            else if (alamat !== undefined) updateData.alamatLengkap = alamat;
+            if (provinsi !== undefined) updateData.provinsi = provinsi;
+            if (kota !== undefined) updateData.kota = kota;
+            if (kecamatan !== undefined) updateData.kecamatan = kecamatan;
+            if (kelurahan !== undefined) updateData.kelurahan = kelurahan;
+            if (phone !== undefined) updateData.phone = phone;
 
             const [updated] = await db
                 .update(users)
@@ -1596,6 +1651,7 @@ export const SipenaAuthorsController = {
                 success: true,
                 role: updated.role,
                 status: updated.status,
+                user: updated,
                 isVerifiedAuthor: updated.role === "penulis",
                 instantApproved: isInstantToken,
                 message: isInstantToken 
@@ -1615,17 +1671,48 @@ export const SipenaAuthorsController = {
                 return res.status(401).json({ error: "Unauthorized" });
             }
 
-            const { bio, profesi, domisili, website, karyaEksternal, image, name } = req.body;
+            const {
+                bio, profesi, domisili, website, karyaEksternal, image, fotoProfil, name, namaLengkap,
+                tempatLahir, tanggalLahir, pekerjaan, status, instansi, alamat, alamatLengkap,
+                provinsi, kota, kecamatan, kelurahan, phone
+            } = req.body;
+
             const updateData: Record<string, any> = {
                 updatedAt: new Date()
             };
-            if (name !== undefined) updateData.name = name;
+
+            const authorName = name || namaLengkap;
+            if (authorName !== undefined) updateData.name = authorName;
             if (bio !== undefined) updateData.bio = bio;
             if (profesi !== undefined) updateData.profesi = profesi;
             if (domisili !== undefined) updateData.domisili = domisili;
             if (website !== undefined) updateData.website = website;
-            if (karyaEksternal !== undefined) updateData.karyaEksternal = karyaEksternal;
-            if (image !== undefined) updateData.image = image;
+
+            if (karyaEksternal !== undefined) {
+                let parsed = karyaEksternal;
+                if (typeof parsed === "string") {
+                    try { parsed = JSON.parse(parsed); } catch (e) {}
+                }
+                updateData.karyaEksternal = parsed;
+            }
+
+            const rawImage = image || fotoProfil;
+            if (rawImage !== undefined) {
+                updateData.image = saveAvatarIfBase64(rawImage, userId);
+            }
+
+            // Biodata fields
+            if (tempatLahir !== undefined) updateData.tempatLahir = tempatLahir;
+            if (tanggalLahir !== undefined) updateData.tanggalLahir = tanggalLahir;
+            if (pekerjaan !== undefined) updateData.pekerjaan = pekerjaan;
+            if (instansi !== undefined) updateData.instansi = instansi;
+            if (alamatLengkap !== undefined) updateData.alamatLengkap = alamatLengkap;
+            else if (alamat !== undefined) updateData.alamatLengkap = alamat;
+            if (provinsi !== undefined) updateData.provinsi = provinsi;
+            if (kota !== undefined) updateData.kota = kota;
+            if (kecamatan !== undefined) updateData.kecamatan = kecamatan;
+            if (kelurahan !== undefined) updateData.kelurahan = kelurahan;
+            if (phone !== undefined) updateData.phone = phone;
 
             const [updated] = await db
                 .update(users)
