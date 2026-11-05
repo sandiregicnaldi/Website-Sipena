@@ -45,6 +45,8 @@
 38. [Separasi Kolom Banner Kegiatan vs Template Sertifikat & Live Interactive Canvas Preview Posisi Nama Peserta](#bab-38-separasi-kolom-banner-kegiatan-vs-template-sertifikat--live-interactive-canvas-preview-posisi-nama-peserta)
 39. [Kustomisasi Ukuran Font & Jenis Font pada Preview Template Sertifikat dan Generasi PDF](#bab-39-kustomisasi-ukuran-font--jenis-font-pada-preview-template-sertifikat-dan-generasi-pdf)
 40. [Sistem Pertahanan Anti-Brute Force, Smart Role-Based Auth, dan Registrasi Tertutup Pegawai (Closed Provisioning Model)](#bab-40-sistem-pertahanan-anti-brute-force-smart-role-based-auth-dan-registrasi-tertutup-pegawai-closed-provisioning-model)
+41. [Penyempurnaan Sistem Keamanan Otentikasi, Desain Minimalis CAPTCHA, & Otomasi Kredensial](#bab-41-penyempurnaan-sistem-keamanan-otentikasi-desain-minimalis-captcha--otomasi-kredensial)
+42. [Perbaikan Visibilitas Statistik Buku Beranda & Manajemen Kedaluwarsa Sesi / Auto-Logout Inaktivitas](#bab-42-perbaikan-visibilitas-statistik-buku-beranda--manajemen-kedaluwarsa-sesi--auto-logout-inaktivitas)
 
 ---
 
@@ -2045,6 +2047,85 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
    - Endpoint `POST /api/auth/verify-email-direct` $\rightarrow$ Berhasil memvalidasi akun uji (`anggota.baru@sipena.id`) menjadi aktif (HTTP 200).
 3. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat.
 4. **Kompilasi Backend (`npx tsc --noEmit`):** Bersih 100% tanpa galat tipe TypeScript.
+
+---
+
+## BAB 42: Perbaikan Visibilitas Statistik Buku Beranda & Manajemen Kedaluwarsa Sesi / Auto-Logout Inaktivitas
+
+### A. Latar Belakang & Identifikasi Masalah
+1. **Statistik Jumlah Pembaca & Pengunduh Tak Terlihat di Menu Beranda (Home):**
+   - Pada baris buku *"Baru Terbit"* (`BookRow.jsx`), kontainer metadata memiliki gaya sebaris (*inline style*) `color: 'rgba(255, 255, 255, 0.65)'`.
+   - Ketika latar belakang kartu buku (`.row-card`) diubah menjadi putih bersih (`#ffffff`), teks statistik pembaca dan unduhan menjadi putih transparan sehingga benar-benar tidak kontras / tak kasat mata bagi pengguna.
+   - Selain itu, pemetaan buku dinamis pada `src/pages/Home.jsx` dan data bawaan `DEFAULT_NEW_BOOKS` belum menyediakan fallback data rating dan jumlah interaksi secara seragam.
+2. **Sesi Login Masih Nyangkut Setelah Jeda Panjang (>12 Jam):**
+   - Sistem otentikasi Better Auth memiliki konfigurasi masa berlaku sesi bawaan (*default session TTL*) selama 7 hari (`3600 * 24 * 7` detik).
+   - Akibatnya, pengguna yang meninggalkan peramban semalaman (lebih dari 12 jam) tetap dalam kondisi *logged in* saat membuka kembali website keesokan paginya, karena cookie dan entri tabel `session` di basis data PostgreSQL masih dianggap valid.
+   - Belum terdapat sistem pemantau inaktivitas di sisi klien (*client-side inactivity guard*) maupun penjadwal pembersihan otomatis (*periodic database garbage collection*) untuk memusnahkan sesi kedaluwarsa.
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Perbaikan Kontras & Tipografi Statistik Buku Beranda (`src/components/BookRow.jsx` & `src/pages/Home.jsx`):**
+   - Mengubah warna teks statistik dari putih transparan menjadi warna teks slate yang kontras: `color: '#64748b'`, `fontSize: '0.75rem'`, dan `fontWeight: 500`.
+   - Angka statistik dibungkus dengan tag `<strong>` tebal dan dilengkapi atribut pembantu (*native tooltip*) `title="Jumlah pembaca"` serta `title="Jumlah unduhan"`.
+   - Menambahkan visualisasi rating bintang berwarna amber emas (`★ {book.ratingAvg.toFixed(1)}`) apabila buku memiliki nilai rating > 0.
+   - Memperbarui `DEFAULT_NEW_BOOKS` pada `src/pages/Home.jsx` dengan nilai awal `readCount: 0, downloadCount: 0`, serta memastikan mapping `res.data` memetakan `ratingAvg: Number(b.ratingAvg || b.rating || 0)`.
+
+2. **Pembatasan Masa Berlaku Sesi 4 Jam & Sliding Refresh 1 Jam (`server/src/auth.ts`):**
+   - Menambahkan konfigurasi blok `session` pada inisialisasi Better Auth di peladen backend:
+     ```typescript
+     session: {
+         expiresIn: 60 * 60 * 4, // 4 jam (mencegah login nyangkut berhari-hari)
+         updateAge: 60 * 60 * 1, // Diperpanjang 1 jam saat pengguna aktif berinteraksi
+         cookieCache: {
+             enabled: true,
+             maxAge: 60 * 60 * 4,
+         },
+     },
+     ```
+   - Menyelaraskan atribut cookie bawaan pada `advanced.defaultCookieAttributes`:
+     ```typescript
+     defaultCookieAttributes: {
+         sameSite: 'lax' as const,
+         secure: false, // Set true di produksi HTTPS
+         maxAge: 60 * 60 * 4, // 4 jam
+     },
+     ```
+   - Dengan konfigurasi ini, jika pengguna tidak membuka atau tidak aktif menggunakan website selama jeda semalaman (>4 jam), cookie dan sesi akan otomatis kedaluwarsa.
+
+3. **Sistem Pengawal Inaktivitas Sisi Klien (*Client-Side Inactivity Guard*) (`src/context/AuthContext.jsx`):**
+   - Menggunakan kunci `sipena_last_active_at` pada `localStorage` untuk mencatat waktu interaksi pengguna.
+   - Memasang pendengar peristiwa antarmuka (`mousedown`, `keydown`, `scroll`, `touchstart`) dengan mekanisme throttle (pembaruan paling cepat sekali setiap 60 detik agar tidak membebani operasi peramban).
+   - Memasang penangan peristiwa `visibilitychange`: ketika peramban dibuka kembali di keesokan harinya dan tab menjadi aktif (`document.visibilityState === 'visible'`), sistem mengecek selisih waktu (`Date.now() - lastActive`). Jika telah melampaui ambang batas 4 jam (`4 * 3600 * 1000` ms), sistem segera memanggil `authClient.signOut()`, menghapus kunci penyimpanan, dan memuat ulang antarmuka ke kondisi *guest / logged out*.
+   - Mengintegrasikan pembaruan cap waktu saat `login()` berhasil dan pembersihan cap waktu saat `logout()` ditekan.
+
+4. **Pembersihan Berkala Sesi Kedaluwarsa di Basis Data (*Periodic Cleanup Worker*) (`server/src/index.ts`):**
+   - Menambahkan job interval yang berjalan setiap 30 menit pada server Express:
+     ```typescript
+     const cleanupExpiredSessions = async () => {
+         try {
+             await db.delete(schema.sessions).where(sql`${schema.sessions.expiresAt} < NOW()`);
+         } catch (err) {
+             console.warn("[session-cleanup] Gagal membersihkan sesi kedaluwarsa:", err);
+         }
+     };
+     cleanupExpiredSessions();
+     setInterval(cleanupExpiredSessions, 30 * 60 * 1000);
+     ```
+   - Memastikan tabel `session` di PostgreSQL tetap bersih dan tidak menyimpan sampah rekaman sesi masa lalu.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+1. **Verifikasi Tampilan Statistik Beranda:**
+   - Ikon mata 👁️ (jumlah pembaca) dan ikon unduh 📥 (jumlah pengunduh) kini tampil tajam, proporsional, dan sangat mudah dibaca dengan warna abu-abu slate kontras (`#64748b`) di atas kartu putih.
+2. **Verifikasi Keamanan Sesi & Timeout:**
+   - Konfigurasi `expiresIn: 4 jam` dan `updateAge: 1 jam` memastikan sesi diperpanjang secara cerdas hanya ketika pengguna aktif bekerja.
+   - Jika pengguna menutup peramban dan meninggalkannya lebih dari 12 jam (atau lebih dari 4 jam), sistem di sisi klien langsung mengidentifikasi inaktivitas dan sesi di sisi server telah gugur, mencegah akun pengguna tertinggal dalam keadaan login.
+3. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat.
+4. **Kompilasi Backend (`npx tsc --noEmit`):** Bersih 100% tanpa galat.
+
 
 
 

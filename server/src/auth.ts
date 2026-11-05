@@ -6,6 +6,14 @@ import { sendPasswordResetEmail, sendVerificationEmail } from "./lib/resend";
 
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5000",
+    session: {
+        expiresIn: 60 * 60 * 4, // 4 jam (mencegah login nyangkut berhari-hari)
+        updateAge: 60 * 60 * 1, // Diperpanjang 1 jam saat pengguna aktif
+        cookieCache: {
+            enabled: true,
+            maxAge: 60 * 60 * 4,
+        },
+    },
     database: drizzleAdapter(db, {
         provider: "pg",
         schema: {
@@ -120,6 +128,7 @@ export const auth = betterAuth({
         defaultCookieAttributes: {
             sameSite: 'lax' as const,
             secure: false, // Set to true in production with HTTPS
+            maxAge: 60 * 60 * 4, // 4 jam
         },
     },
     onAPIError: {

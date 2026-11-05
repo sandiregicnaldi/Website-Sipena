@@ -1,5 +1,8 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { authClient, SipenaAPI } from '../lib/api';
+
+const SESSION_INACTIVITY_LIMIT_MS = 4 * 60 * 60 * 1000; // 4 jam batas inaktivitas
+const LAST_ACTIVE_KEY = 'sipena_last_active_at';
 
 const AuthContext = createContext(null);
 
@@ -7,7 +10,64 @@ export const AuthProvider = ({ children }) => {
   // Gunakan session dari Better Auth (akan otomatis membaca cookie SSO)
   const { data: session, isPending } = authClient.useSession();
 
+  // Pengamanan Inaktivitas Sesi: logout otomatis jika tidak aktif > 4 jam
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const checkInactivity = async () => {
+      const lastActiveStr = localStorage.getItem(LAST_ACTIVE_KEY);
+      const now = Date.now();
+      if (lastActiveStr) {
+        const lastActive = Number(lastActiveStr);
+        if (now - lastActive > SESSION_INACTIVITY_LIMIT_MS) {
+          console.warn('[AuthContext] Sesi kedaluwarsa karena tidak aktif > 4 jam. Melakukan logout otomatis.');
+          localStorage.removeItem(LAST_ACTIVE_KEY);
+          await authClient.signOut();
+          window.location.reload();
+          return;
+        }
+      }
+      localStorage.setItem(LAST_ACTIVE_KEY, String(now));
+    };
+
+    checkInactivity();
+
+    let lastRecord = Date.now();
+    const handleActivity = () => {
+      const now = Date.now();
+      // Throttle update localStorage setiap 60 detik agar hemat IO
+      if (now - lastRecord > 60 * 1000) {
+        lastRecord = now;
+        localStorage.setItem(LAST_ACTIVE_KEY, String(now));
+      }
+    };
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkInactivity();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, handleActivity));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [session?.user]);
+
   // Mapping user dari session backend (Dasbor Penerbitan)
+  let parsedKarya = session?.user?.karyaEksternal || [];
+  if (typeof parsedKarya === 'string') {
+    try {
+      parsedKarya = JSON.parse(parsedKarya);
+    } catch (e) {
+      parsedKarya = [];
+    }
+  }
+
   const user = session?.user ? {
     id: session.user.id,
     email: session.user.email,
@@ -27,6 +87,7 @@ export const AuthProvider = ({ children }) => {
     status: session.user.status || '',       // Di LoginPage pakai user.status
     instansi: session.user.instansi || '',
     alamat: session.user.alamatLengkap || '', // AuthorDashboard pakai user.alamat
+    alamatLengkap: session.user.alamatLengkap || '',
     provinsi: session.user.provinsi || '',
     kota: session.user.kota || '',
     kecamatan: session.user.kecamatan || '',
@@ -37,7 +98,7 @@ export const AuthProvider = ({ children }) => {
     website: session.user.website || '',
     image: session.user.image || null,
     fotoProfil: session.user.image || null,
-    karyaEksternal: session.user.karyaEksternal || [],
+    karyaEksternal: Array.isArray(parsedKarya) ? parsedKarya : [],
     isApplicant: session.user.role === 'calon_penulis',
   } : null;
 
@@ -69,6 +130,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       await authClient.getSession();
+      localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
       return data.user || data;
     } catch (err) {
       if (err.status !== 401 && err.status !== 400 && err.status !== 429) {
@@ -106,8 +168,46 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
+      let finalImageUrl = profileData.fotoProfil || profileData.image;
+
+      // 1. Simpan ke database Sipena terlebih dahulu (termasuk konversi gambar ke server & semua biodata)
+      const sipenaRes = await SipenaAPI.updateAuthorProfile({
+        name: profileData.namaLengkap || profileData.name,
+        namaLengkap: profileData.namaLengkap || profileData.name,
+        bio: profileData.bio,
+        profesi: profileData.profesi,
+        domisili: profileData.domisili,
+        website: profileData.website,
+        image: finalImageUrl,
+        fotoProfil: finalImageUrl,
+        karyaEksternal: profileData.karyaEksternal,
+        tempatLahir: profileData.tempatLahir,
+        tanggalLahir: profileData.tanggalLahir,
+        pekerjaan: profileData.pekerjaan || profileData.status,
+        status: profileData.status,
+        instansi: profileData.instansi,
+        alamat: profileData.alamat || profileData.alamatLengkap,
+        alamatLengkap: profileData.alamat || profileData.alamatLengkap,
+        provinsi: profileData.provinsi,
+        kota: profileData.kota,
+        kecamatan: profileData.kecamatan,
+        kelurahan: profileData.kelurahan,
+        phone: profileData.phone,
+      });
+
+      // Gunakan URL gambar bersih yang dikembalikan server (misal /api/uploads/avatars/...)
+      if (sipenaRes?.user?.image) {
+        finalImageUrl = sipenaRes.user.image;
+      }
+
+      // 2. Sinkronkan dengan Better Auth (hanya kirim URL bersih, bukan base64 raksasa)
       await authClient.updateUser({
         name: profileData.namaLengkap || profileData.name,
+        image: finalImageUrl,
+        bio: profileData.bio,
+        profesi: profileData.profesi,
+        domisili: profileData.domisili,
+        website: profileData.website,
         tempatLahir: profileData.tempatLahir,
         tanggalLahir: profileData.tanggalLahir,
         pekerjaan: profileData.pekerjaan || profileData.status,
@@ -117,26 +217,10 @@ export const AuthProvider = ({ children }) => {
         kota: profileData.kota,
         kecamatan: profileData.kecamatan,
         kelurahan: profileData.kelurahan,
-        bio: profileData.bio,
-        profesi: profileData.profesi,
-        domisili: profileData.domisili,
-        image: profileData.fotoProfil || profileData.image,
-        website: profileData.website,
-        karyaEksternal: profileData.karyaEksternal,
-      });
+      }).catch(err => console.warn('[BetterAuth] updateUser sync:', err));
 
-      // Juga sinkronkan ke endpoint author-profile jika ada data profil kepenulisan
-      if (profileData.bio !== undefined || profileData.profesi !== undefined || profileData.domisili !== undefined || profileData.karyaEksternal !== undefined || profileData.fotoProfil !== undefined) {
-        await SipenaAPI.updateAuthorProfile({
-          name: profileData.namaLengkap || profileData.name,
-          bio: profileData.bio,
-          profesi: profileData.profesi,
-          domisili: profileData.domisili,
-          website: profileData.website,
-          image: profileData.fotoProfil || profileData.image,
-          karyaEksternal: profileData.karyaEksternal,
-        }).catch(err => console.warn('Sync to author profile endpoint:', err));
-      }
+      // 3. Segarkan sesi pengguna di Better Auth
+      await authClient.getSession();
     } catch (err) {
       console.error("Gagal memperbarui profil", err);
       throw err;
@@ -144,6 +228,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async (redirectPath = '/') => {
+    localStorage.removeItem(LAST_ACTIVE_KEY);
     await authClient.signOut();
     window.location.href = redirectPath; // Refresh state
   };

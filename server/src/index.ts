@@ -668,5 +668,16 @@ runMigrations().then(async () => {
         
         // Mulai job auto-archive proyek secara background
         startAutoArchiveJob();
+
+        // Mulai pembersihan sesi yang kedaluwarsa secara berkala (setiap 30 menit)
+        const cleanupExpiredSessions = async () => {
+            try {
+                await db.delete(schema.sessions).where(sql`${schema.sessions.expiresAt} < NOW()`);
+            } catch (err) {
+                console.warn("[session-cleanup] Gagal membersihkan sesi kedaluwarsa:", err);
+            }
+        };
+        cleanupExpiredSessions();
+        setInterval(cleanupExpiredSessions, 30 * 60 * 1000);
     });
 });

@@ -8,16 +8,16 @@ import { SipenaAPI } from '../lib/api';
 import './Home.css';
 
 const DEFAULT_NEW_BOOKS = [
-  { id: 1, title: 'Syair Ulama Saleh', author: 'Penulis Anonim', color: '#1e293b' },
-  { id: 2, title: 'Alih Bahasa Rapport von het Vernigen', author: 'Johannes de Hartogh', color: '#b91c1c' },
-  { id: 3, title: 'USANA, SAGARA, BANAWA', author: 'Pande Putu Abdi Jaya', color: '#1d4ed8' },
-  { id: 4, title: 'Hikayat Tuanku nan Muda Pagaruyung', author: 'M. Yusuf', color: '#047857' },
-  { id: 5, title: 'Mari Mengenal Lebih Dekat HATIBALI', author: 'Perpusnas Press', color: '#6d28d9' },
-  { id: 14, title: 'Babad Diponegoro', author: 'Kyai Mojo', color: '#0f766e' },
-  { id: 15, title: 'Sejarah Nasional Indonesia', author: 'Sartono Kartodirdjo', color: '#c2410c' },
-  { id: 16, title: 'Kesusastraan Melayu Klasik', author: 'Liaw Yock Fang', color: '#6d28d9' },
-  { id: 17, title: 'Kitab Primbon Jawa', author: 'Kanjeng Pangeran', color: '#1d4ed8' },
-  { id: 18, title: 'Serat Centhini', author: 'Paku Buwana V', color: '#b91c1c' },
+  { id: 1, title: 'Syair Ulama Saleh', author: 'Penulis Anonim', color: '#1e293b', readCount: 0, downloadCount: 0 },
+  { id: 2, title: 'Alih Bahasa Rapport von het Vernigen', author: 'Johannes de Hartogh', color: '#b91c1c', readCount: 0, downloadCount: 0 },
+  { id: 3, title: 'USANA, SAGARA, BANAWA', author: 'Pande Putu Abdi Jaya', color: '#1d4ed8', readCount: 0, downloadCount: 0 },
+  { id: 4, title: 'Hikayat Tuanku nan Muda Pagaruyung', author: 'M. Yusuf', color: '#047857', readCount: 0, downloadCount: 0 },
+  { id: 5, title: 'Mari Mengenal Lebih Dekat HATIBALI', author: 'Perpusnas Press', color: '#6d28d9', readCount: 0, downloadCount: 0 },
+  { id: 14, title: 'Babad Diponegoro', author: 'Kyai Mojo', color: '#0f766e', readCount: 0, downloadCount: 0 },
+  { id: 15, title: 'Sejarah Nasional Indonesia', author: 'Sartono Kartodirdjo', color: '#c2410c', readCount: 0, downloadCount: 0 },
+  { id: 16, title: 'Kesusastraan Melayu Klasik', author: 'Liaw Yock Fang', color: '#6d28d9', readCount: 0, downloadCount: 0 },
+  { id: 17, title: 'Kitab Primbon Jawa', author: 'Kanjeng Pangeran', color: '#1d4ed8', readCount: 0, downloadCount: 0 },
+  { id: 18, title: 'Serat Centhini', author: 'Paku Buwana V', color: '#b91c1c', readCount: 0, downloadCount: 0 },
 ];
 
 const CATEGORY_COLORS = {
@@ -53,6 +53,7 @@ const Home = () => {
             color: CATEGORY_COLORS[b.category] || '#1e293b',
             readCount: b.readCount || 0,
             downloadCount: b.downloadCount || 0,
+            ratingAvg: Number(b.ratingAvg || b.rating || 0),
           })));
         }
       })

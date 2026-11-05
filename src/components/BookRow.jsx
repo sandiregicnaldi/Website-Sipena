@@ -60,10 +60,20 @@ const BookRow = ({ title, books = [], viewAllLink = '/buku' }) => {
                   <p className="row-book-title">{book.title}</p>
                   <p className="row-book-author">{book.author}</p>
                   {(book.readCount !== undefined || book.downloadCount !== undefined) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.65)', marginTop: '0.25rem' }}>
-                      <span>👁️ {book.readCount || 0}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem', fontWeight: 500 }}>
+                      <span title="Jumlah pembaca" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        👁️ <strong>{book.readCount || 0}</strong>
+                      </span>
                       <span>•</span>
-                      <span>📥 {book.downloadCount || 0}</span>
+                      <span title="Jumlah unduhan" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        📥 <strong>{book.downloadCount || 0}</strong>
+                      </span>
+                      {book.ratingAvg > 0 && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: '#d97706', fontWeight: 600 }}>★ {book.ratingAvg.toFixed(1)}</span>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
