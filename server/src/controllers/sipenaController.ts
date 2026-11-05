@@ -95,7 +95,6 @@ export const SipenaBooksController = {
             let prosidingCount = 0;
             let laporanCount = 0;
             let jurnalCount = 0;
-            let totalBukuCount = 0;
 
             const now = new Date();
             const currentMonth = now.getMonth();
@@ -108,13 +107,15 @@ export const SipenaBooksController = {
             let bukuThisMonth = 0;
 
             const downloadsByYearMap: Record<string, number> = {};
+            const bookYearsSet = new Set<number>();
 
             allBooks.forEach(b => {
                 const cat = (b.category || '').trim().toLowerCase();
                 const createdAt = b.createdAt ? new Date(b.createdAt) : null;
                 const isThisMonth = createdAt && createdAt.getMonth() === currentMonth && createdAt.getFullYear() === currentYear;
 
-                // Jika bukan salah satu dari 4 kategori khusus, otomatis terhitung ke Total Buku
+                if (isThisMonth) bukuThisMonth++;
+
                 if (isPedoman(cat)) {
                     pedomanCount++;
                     if (isThisMonth) pedomanThisMonth++;
@@ -127,15 +128,19 @@ export const SipenaBooksController = {
                 } else if (isJurnal(cat)) {
                     jurnalCount++;
                     if (isThisMonth) jurnalThisMonth++;
-                } else {
-                    totalBukuCount++;
-                    if (isThisMonth) bukuThisMonth++;
+                }
+
+                if (b.year) {
+                    bookYearsSet.add(b.year);
                 }
 
                 // Agregasi unduhan per tahun
                 const yr = b.year ? String(b.year) : (createdAt ? String(createdAt.getFullYear()) : String(currentYear));
                 downloadsByYearMap[yr] = (downloadsByYearMap[yr] || 0) + (b.downloadCount || 0);
             });
+
+            // Total buku adalah seluruh koleksi katalog riil di database
+            const totalBukuCount = allBooks.length;
 
             // Hitung Total Penulis:
             // 1. Pengguna terdaftar dengan role = 'penulis'
@@ -257,7 +262,9 @@ export const SipenaBooksController = {
             // Tahun terpilih untuk grafik bulanan
             const requestedYear = req.query.year ? parseInt(req.query.year as string, 10) : new Date().getFullYear();
             const selectedYear = isNaN(requestedYear) ? new Date().getFullYear() : requestedYear;
-            const availableYears = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+            
+            const dbYears = Array.from(bookYearsSet).filter(y => y >= 2015 && y <= currentYear + 1).sort((a, b) => b - a);
+            const availableYears = dbYears.length > 0 ? dbYears : [2026, 2025, 2024, 2023, 2022, 2021, 2020];
             if (!availableYears.includes(selectedYear)) {
                 availableYears.unshift(selectedYear);
             }
@@ -289,44 +296,15 @@ export const SipenaBooksController = {
 
             const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-            const BASELINE_ANNUAL: Record<number, { readBase: number[], dlBase: number[] }> = {
-                2026: {
-                    readBase: [1250, 1420, 1680, 1530, 1890, 2100, 1950, 2200, 2450, 2600, 2300, 2800],
-                    dlBase:   [580,  690,  850,  760,  920,  1050, 980,  1100, 1250, 1340, 1150, 1400],
-                },
-                2025: {
-                    readBase: [980,  1120, 1340, 1200, 1450, 1600, 1550, 1720, 1890, 2050, 1900, 2200],
-                    dlBase:   [420,  510,  620,  580,  710,  800,  780,  860,  940,  1020, 950,  1100],
-                },
-                2024: {
-                    readBase: [850,  920,  1100, 1050, 1250, 1380, 1300, 1450, 1580, 1700, 1620, 1850],
-                    dlBase:   [350,  410,  490,  460,  560,  640,  610,  690,  750,  820,  780,  890],
-                },
-                2023: {
-                    readBase: [620,  710,  830,  790,  920,  1010, 960,  1080, 1190, 1280, 1220, 1390],
-                    dlBase:   [260,  310,  370,  340,  420,  470,  450,  510,  570,  620,  590,  680],
-                },
-                2022: {
-                    readBase: [480,  550,  640,  610,  720,  800,  760,  850,  930,  1010, 960,  1100],
-                    dlBase:   [190,  230,  280,  260,  320,  360,  340,  390,  430,  470,  450,  520],
-                },
-            };
-
-            const fallbackAnnual = {
-                readBase: [300, 350, 420, 390, 460, 520, 500, 560, 610, 670, 640, 720],
-                dlBase:   [120, 150, 190, 170, 210, 240, 230, 260, 290, 320, 300, 350],
-            };
-
-            const selectedBase = BASELINE_ANNUAL[selectedYear] || fallbackAnnual;
-
+            // Data grafik bulanan 100% riil dari database (tanpa baseline fiktif)
             const monthlyChartData = MONTH_NAMES.map((name, idx) => {
                 const monthNum = idx + 1;
                 const realReads = readsMap.get(monthNum) || 0;
                 const realDls = dlMap.get(monthNum) || 0;
                 return {
                     month: name,
-                    dibaca: (selectedBase.readBase[idx] || 0) + realReads,
-                    diunduh: (selectedBase.dlBase[idx] || 0) + realDls,
+                    dibaca: realReads,
+                    diunduh: realDls,
                 };
             });
 
@@ -422,15 +400,11 @@ export const SipenaBooksController = {
                 .sort((a, b) => b.activityScore - a.activityScore)
                 .slice(0, 10);
 
-            // Legacy chartData untuk backward compatibility
+            // Legacy chartData untuk backward compatibility (murni dari database riil)
             const yearsRange = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'];
-            const baselineDownloads: Record<string, number> = {
-                '2018': 2800, '2019': 3100, '2020': 4200, '2021': 5300,
-                '2022': 6100, '2023': 6800, '2024': 14800, '2025': 9600, '2026': 2900
-            };
             const chartData = yearsRange.map(yr => ({
                 year: yr,
-                val: (baselineDownloads[yr] || 0) + (downloadsByYearMap[yr] || 0)
+                val: downloadsByYearMap[yr] || 0
             }));
 
             res.json({
@@ -1845,33 +1819,15 @@ export const SipenaReportsController = {
             monthlyDownloadsDb.forEach(d => dlMap.set(Number(d.month), Number(d.count || 0)));
 
             const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-            const BASELINE_ANNUAL: Record<number, { readBase: number[], dlBase: number[] }> = {
-                2026: {
-                    readBase: [1250, 1420, 1680, 1530, 1890, 2100, 1950, 2200, 2450, 2600, 2300, 2800],
-                    dlBase:   [580,  690,  850,  760,  920,  1050, 980,  1100, 1250, 1340, 1150, 1400],
-                },
-                2025: {
-                    readBase: [980,  1120, 1340, 1200, 1450, 1600, 1550, 1720, 1890, 2050, 1900, 2200],
-                    dlBase:   [420,  510,  620,  580,  710,  800,  780,  860,  940,  1020, 950,  1100],
-                },
-                2024: {
-                    readBase: [850,  920,  1100, 1050, 1250, 1380, 1300, 1450, 1580, 1700, 1620, 1850],
-                    dlBase:   [350,  410,  490,  460,  560,  640,  610,  690,  750,  820,  780,  890],
-                },
-            };
-            const defaultBase = {
-                readBase: [400, 450, 500, 480, 560, 610, 590, 650, 710, 780, 740, 850],
-                dlBase:   [180, 210, 250, 230, 280, 310, 300, 340, 380, 410, 390, 450]
-            };
-            const yearBase = BASELINE_ANNUAL[selectedYear] || defaultBase;
 
+            // Data tren bulanan 100% riil dari database (tanpa baseline fiktif)
             const monthlyTrends = MONTH_NAMES.map((name, idx) => {
                 const monthNum = idx + 1;
                 return {
                     month: name,
                     monthNum,
-                    dibaca: (yearBase.readBase[idx] || 0) + (readsMap.get(monthNum) || 0),
-                    diunduh: (yearBase.dlBase[idx] || 0) + (dlMap.get(monthNum) || 0),
+                    dibaca: readsMap.get(monthNum) || 0,
+                    diunduh: dlMap.get(monthNum) || 0,
                 };
             });
 
@@ -2155,9 +2111,15 @@ export const SipenaReportsController = {
                 waktuKlaim: p.claimedAt ? new Date(p.claimedAt).toISOString() : new Date().toISOString(),
             }));
 
+            const reportYears = Array.from(new Set(allBooks.map(b => b.year).filter((y): y is number => typeof y === 'number' && y >= 2015))).sort((a, b) => b - a);
+            const availableYears = reportYears.length > 0 ? reportYears : [2026, 2025, 2024, 2023, 2022];
+            if (!availableYears.includes(selectedYear)) {
+                availableYears.unshift(selectedYear);
+            }
+
             res.json({
                 selectedYear,
-                availableYears: [2026, 2025, 2024, 2023, 2022],
+                availableYears,
                 overview: {
                     totalBukuTerbit: allBooks.length,
                     totalProyekNaskah: allProjects.length,

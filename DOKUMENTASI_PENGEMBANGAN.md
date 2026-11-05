@@ -2271,6 +2271,80 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
    - Dasbor Admin (`/admin/kegiatan`) menampilkan tombol pembuatan kegiatan pertama yang berfungsi secara normal.
 3. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat dalam 1m 54s.
 
+---
+
+## BAB 45: Pembersihan Data & Berkas Buku Dummy Serta Penyelarasan Akurasi Dasbor Admin SiPena 100% Sesuai Database PostgreSQL
+
+### A. Latar Belakang & Identifikasi Permasalahan
+1. **Keberadaan Buku Dummy & Sampel Testing:**
+   - Selama proses migrasi database dan pengujian antarmuka sebelumnya, terdapat 36 rekaman buku dummy di tabel `books`:
+     - 30 buku sampel dari *seeding* awal sistem (`file_url: '/sample.pdf'`).
+     - 3 buku sampel pengujian awal (`file_url: '/default-pdf.pdf'`).
+     - 3 buku pengujian berkas dummy dari tahapan (`file_url` mengarah ke berkas `/api/uploads/documents/dummy-*.pdf`).
+   - Sementara itu, koleksi buku riil hasil migrasi berjumlah tepat **1.527 buku** (memiliki `file_url` resmi `/file pdf buku/...` dan sampul `/covers/...`).
+   - Berkas fisik dummy di server (`server/uploads/documents/dummy-*.pdf`) berjumlah 9 file berukuran ~8 MB yang tidak diperlukan lagi.
+2. **Ketidakakuratan Data pada Dasbor Admin SiPena:**
+   - **Injeksi Angka Fiktif Bulanan (`BASELINE_ANNUAL`):** Pada `server/src/controllers/sipenaController.ts` (fungsi `getStats` dan `getComprehensiveReport`), terdapat konstanta `BASELINE_ANNUAL` yang secara sewenang-wenang menambahkan ribuan angka palsu (misal Jan: +1.250 pembaca, +580 unduhan, dst.) ke setiap bulan pada grafik Recharts.
+   - **Injeksi Angka Unduhan Tahunan (`baselineDownloads`):** Konstanta lama yang menyuntikkan angka fiktif tahunan (misal `2024: 14800`, `2025: 9600`).
+   - **Kalkulasi Kartu "Total Buku":** Sebelumnya kartu pertama mengurangi 4 kategori publikasi khusus (Pedoman, Prosiding, Laporan, Jurnal) dari total buku, sehingga memunculkan angka 1.401 alih-alih 1.527 koleksi keseluruhan.
+   - **Sumbu Y Grafik Tidak Proporsional:** Di `AdminDashboard.jsx`, sumbu Y `BarChart` dipatok kaku dengan `domain={[0, 10000]}` dan `ticks={[0, 100, 500, 1000, 5000, 10000]}` sehingga aktivitas riil bulanan yang bernilai puluhan menjadi nyaris tidak terlihat.
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Eksekusi Pembersihan Database & Berkas Fisik Dummy:**
+   - Menjalankan transaksi aman penghapusan 36 buku dummy:
+     ```sql
+     DELETE FROM books WHERE file_url NOT LIKE '%file pdf buku%';
+     ```
+   - Mekanisme *foreign key* `ON DELETE CASCADE` secara otomatis membersihkan 3 log `book_reads`, 4 log `book_downloads`, dan 5 rating `book_ratings` yang terafiliasi dengan buku dummy tersebut.
+   - Mengonfirmasi sisa buku di database adalah tepat **1.527 buku riil**.
+   - Menghapus 9 berkas fisik `dummy-*.pdf` di direktori `server/uploads/documents/`.
+
+2. **Penyelarasan Backend Controller (`server/src/controllers/sipenaController.ts`):**
+   - **`SipenaBooksController.getStats`**:
+     - Menghapus objek konstanta `BASELINE_ANNUAL` dan `fallbackAnnual`.
+     - Mengubah perhitungan `monthlyChartData` murni 100% dari agregasi database riil (`readsMap` dan `dlMap`).
+     - Menghapus `baselineDownloads` pada objek `chartData`.
+     - Kartu statistik 1 (`Total Buku`) kini menampilkan seluruh koleksi riil database: `allBooks.length` = **1.527**.
+     - Kartu kategori khusus dihitung akurat: `Pedoman / Standar` (42), `Prosiding` (2), `Laporan` (54), `Majalah / Jurnal` (28).
+     - Kartu `Total Penulis` menampilkan jumlah riil penulis unik terbitan buku digabung penulis terdaftar (1.442).
+     - Menghasilkan daftar `availableYears` secara dinamis dari tahun terbit buku di database.
+   - **`SipenaReportsController.getComprehensiveReport`**:
+     - Menghapus konstanta `BASELINE_ANNUAL` dan `defaultBase`.
+     - Mengubah `monthlyTrends` menjadi murni data riil database.
+     - Menyediakan `availableYears` dinamis dari koleksi buku.
+
+3. **Penyelarasan Frontend Admin (`src/pages/admin/AdminDashboard.jsx`):**
+   - Mengubah `DEFAULT_MONTHLY_DATA` menjadi `dibaca: 0, diunduh: 0` untuk semua bulan agar tidak ada data dummy yang berkedip saat pemuatan awal.
+   - Menghapus `domain={[0, 10000]}` dan ticks statis pada `YAxis`, menggantinya dengan penskalaan adaptif Recharts (`allowDecimals={false}`) sehingga grafik batang otomatis proporsional dan jelas terlihat berapapun volume interaksinya.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+
+1. **Verifikasi Integritas Database PostgreSQL:**
+   - Total buku di tabel `books`: **1.527** (Buku dummy tersisa: 0).
+   - Seluruh 1.527 berkas PDF riil di `/file pdf buku/...` dan sampul di `/covers/...` utuh dan berfungsi normal.
+   - Direktori `server/uploads/documents/` bersih dari berkas dummy.
+2. **Verifikasi Endpoint Live Backend (`http://localhost:5001/api/sipena/stats`):**
+   - `Total Buku`: 1.527
+   - `Pedoman / Standar`: 42
+   - `Prosiding`: 2
+   - `Laporan`: 54
+   - `Majalah / Jurnal`: 28
+   - `Total Penulis`: 1.442
+   - `monthlyChartData`: Bersih dari suntikan 1.250 pembaca fiktif, murni menampilkan data riil database.
+3. **Verifikasi Endpoint Laporan Terpadu (`/api/sipena/reports/overview`):**
+   - `totalBukuTerbit`: 1.527
+   - `totalUnduhan`: 1.276 (sesuai `SUM(download_count)`)
+   - `totalPembaca`: 25.450 (sesuai `SUM(read_count)`)
+4. **Kompilasi Produksi Frontend & Backend:**
+   - Frontend Vite build: Sukses dalam 1m 15s (0 galat).
+   - Backend TypeScript build (`tsc`): Sukses tanpa galat.
+
+
 
 
 

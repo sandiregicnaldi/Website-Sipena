@@ -79,18 +79,18 @@ const ROLE_BADGE = {
 };
 
 const DEFAULT_MONTHLY_DATA = [
-  { month: 'Jan', dibaca: 1250, diunduh: 580 },
-  { month: 'Feb', dibaca: 1420, diunduh: 690 },
-  { month: 'Mar', dibaca: 1680, diunduh: 850 },
-  { month: 'Apr', dibaca: 1530, diunduh: 760 },
-  { month: 'Mei', dibaca: 1890, diunduh: 920 },
-  { month: 'Jun', dibaca: 2100, diunduh: 1050 },
-  { month: 'Jul', dibaca: 1950, diunduh: 980 },
-  { month: 'Agu', dibaca: 2200, diunduh: 1100 },
-  { month: 'Sep', dibaca: 2450, diunduh: 1250 },
-  { month: 'Okt', dibaca: 2600, diunduh: 1340 },
-  { month: 'Nov', dibaca: 2300, diunduh: 1150 },
-  { month: 'Des', dibaca: 2800, diunduh: 1400 },
+  { month: 'Jan', dibaca: 0, diunduh: 0 },
+  { month: 'Feb', dibaca: 0, diunduh: 0 },
+  { month: 'Mar', dibaca: 0, diunduh: 0 },
+  { month: 'Apr', dibaca: 0, diunduh: 0 },
+  { month: 'Mei', dibaca: 0, diunduh: 0 },
+  { month: 'Jun', dibaca: 0, diunduh: 0 },
+  { month: 'Jul', dibaca: 0, diunduh: 0 },
+  { month: 'Agu', dibaca: 0, diunduh: 0 },
+  { month: 'Sep', dibaca: 0, diunduh: 0 },
+  { month: 'Okt', dibaca: 0, diunduh: 0 },
+  { month: 'Nov', dibaca: 0, diunduh: 0 },
+  { month: 'Des', dibaca: 0, diunduh: 0 },
 ];
 
 // Custom Tooltip Recharts
@@ -288,8 +288,7 @@ const AdminDashboard = () => {
                 tickLine={false}
               />
               <YAxis
-                domain={[0, 10000]}
-                ticks={[0, 100, 500, 1000, 5000, 10000]}
+                allowDecimals={false}
                 tickFormatter={(v) => {
                   if (v === 0) return '0';
                   if (v >= 1000) return `${(v / 1000).toLocaleString('id-ID')}k`;

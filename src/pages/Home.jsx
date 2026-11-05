@@ -37,10 +37,15 @@ const CATEGORY_COLORS = {
   'Umum': '#475569'
 };
 
+const AVATAR_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777', '#0891b2'];
+
 const Home = () => {
   const [newBooks, setNewBooks] = useState(DEFAULT_NEW_BOOKS);
+  const [featuredAuthors, setFeaturedAuthors] = useState([]);
+  const [loadingAuthors, setLoadingAuthors] = useState(true);
 
   useEffect(() => {
+    // 1. Ambil Buku Terbaru
     SipenaAPI.getBooks({ limit: 10 })
       .then(res => {
         const items = res?.data || (Array.isArray(res) ? res : []);
@@ -60,25 +65,30 @@ const Home = () => {
       .catch(err => {
         console.warn('Failed to fetch dynamic books for Home, using fallback:', err);
       });
-  }, []);
 
-  const authors = [
-    {
-      id: 1,
-      name: 'Rahmat Alfian Hadidharna',
-      bio: 'Akrab dipanggil Rahmat, lahir di Kulon Progo. Memulai pendidikan di TK Pertiwi kemudian melanjutkan studi.',
-      hasPhoto: false,
-      color: '#3b82f6'
-    },
-    {
-      id: 2,
-      name: 'Dinda Marlina Carolina',
-      bio: 'Lahir di Desa Parnapa. Menyukai dunia sastra dan penulisan sejak kecil.',
-      hasPhoto: true,
-      photoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=150&q=80',
-      color: '#ec4899'
-    }
-  ];
+    // 2. Ambil Penulis dengan Karya Terbanyak untuk Halaman Utama
+    SipenaAPI.getAuthors({ limit: 4 })
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          setFeaturedAuthors(res.map((a, idx) => ({
+            id: a.id,
+            name: a.name,
+            bio: a.bioPreview || a.bio || 'Penulis dan akademisi berprestasi yang aktif berkontribusi dalam penerbitan naskah literatur digital Perpusnas Press.',
+            role: a.profesi || 'Penulis Perpusnas Press',
+            photoUrl: a.image || '',
+            hasPhoto: !!a.image,
+            totalBooks: a.totalBooks || 0,
+            color: AVATAR_COLORS[idx % AVATAR_COLORS.length]
+          })));
+        }
+      })
+      .catch(err => {
+        console.warn('Failed to fetch featured authors for Home:', err);
+      })
+      .finally(() => {
+        setLoadingAuthors(false);
+      });
+  }, []);
 
   return (
     <main className="home-page">
@@ -97,7 +107,7 @@ const Home = () => {
 
       {/* ── PENULIS PILIHAN ──────────────────────── */}
       <div className="home-section">
-        <FeaturedAuthors authors={authors} />
+        <FeaturedAuthors authors={featuredAuthors} loading={loadingAuthors} />
       </div>
 
       {/* ── CTA SELENGKAPNYA ─────────────────────── */}
