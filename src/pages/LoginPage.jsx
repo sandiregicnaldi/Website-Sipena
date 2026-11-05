@@ -289,22 +289,8 @@ const LoginPage = () => {
       return '/admin';
     }
 
-    // 3. Jika pengguna adalah Penulis
-    const isAuthor = resolvedUser && (
-      resolvedUser.role === 'penulis' ||
-      resolvedUser.isVerifiedAuthor === true
-    );
-    if (isAuthor) {
-      if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin') && !fromPath.startsWith('/manajemen')) {
-        return fromPath;
-      }
-      return '/profil-saya';
-    }
-
-    // 4. Untuk pengguna umum / pengunjung publik
-    if (fromPath && fromPath !== '/' && fromPath !== '/login' && !fromPath.startsWith('/admin') && !fromPath.startsWith('/manajemen')) {
-      return fromPath;
-    }
+    // 3. Untuk Penulis dan Pengunjung Publik:
+    // Halaman yang pertama tampil setelah berhasil login adalah halaman home/beranda ('/') bukan profil saya
     return '/';
   };
 
@@ -520,7 +506,7 @@ const LoginPage = () => {
               </span>
             </p>
             <p style={{ color: '#94a3b8', fontSize: '0.82rem', marginBottom: '1.5rem' }}>
-              Mengalihkan Anda secara otomatis ke dasbor...
+              {dest === '/' ? 'Mengalihkan Anda secara otomatis ke beranda...' : 'Mengalihkan Anda secara otomatis ke dasbor...'}
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
@@ -529,7 +515,7 @@ const LoginPage = () => {
                 className="btn btn-primary"
                 style={{ padding: '0.65rem 1.5rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
               >
-                Lanjut ke Dasbor <ArrowRight size={16} />
+                {dest === '/' ? 'Lanjut ke Beranda' : 'Lanjut ke Dasbor'} <ArrowRight size={16} />
               </button>
               <button
                 type="button"
