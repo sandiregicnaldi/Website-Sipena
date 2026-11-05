@@ -45,6 +45,8 @@ Dokumentasi lengkap dan kronologi pengembangan sistem SiPena serta integrasi Man
 21. **Bab 40**: Sistem Pertahanan Anti-Brute Force (Rate Limiting 5x/15m, Visual Math CAPTCHA, scrypt Hashing, Response Uniformity, Security Audit Log), Smart Role-Based Auth & Session Switcher, serta Registrasi Tertutup Pegawai (*Closed Provisioning Model*).
 22. **Bab 41**: Penyempurnaan Sistem Keamanan Otentikasi, CAPTCHA Selalu Aktif (*Always-On*), Desain CAPTCHA Ringkas (*Single Inline Row*), Otomasi Kredensial Peramban & 'Ingat Saya', Fitur Aktivasi Instan Akun Pengujian (*Dev Direct Verification*), Fitur Auto-Solve Kredensial Testing, dan Perbaikan *Rules of Hooks* pada Dasbor Penulis (`AuthorDashboard.jsx`).
 23. **Bab 42**: Perbaikan Visibilitas Statistik Buku Beranda (Jumlah Baca & Unduh Kontras pada Kartu Putih), Konfigurasi Batas Waktu Sesi 4 Jam & Sliding Refresh 1 Jam (`auth.ts`), Sistem Pengawal Inaktivitas Sisi Klien (*Client-Side Inactivity Guard* `AuthContext.jsx`), dan Pembersihan Berkala Sesi Kedaluwarsa di Basis Data (`index.ts`).
+24. **Bab 43**: Persistensi Foto Profil Penulis & Sinkronisasi Komprehensif Seluruh Kolom Biodata ke PostgreSQL (`uploadController.ts` & `sipenaController.ts`), Dukungan Konversi Otomatis Base64 ke File Fisik Server, serta Penyelarasan Pasca-Login Beranda (`/`).
+25. **Bab 44**: Pembersihan Data Dummy Kegiatan di Basis Data PostgreSQL (`events` & `event_participants`), serta Perancangan Antarmuka *Empty State* ("Belum Ada Kegiatan") yang Elegan, Modern, dan Clean pada Menu Beranda, Halaman Katalog `/event`, Dasbor Admin, dan Tab Profil Saya.
 
 ---
 *Silakan buka [DOKUMENTASI_PENGEMBANGAN.md](./DOKUMENTASI_PENGEMBANGAN.md) untuk detail teknis, tabel skema, dan panduan pengujian alur kerja.*

@@ -5,6 +5,8 @@ import AdminPagination from '../../components/AdminPagination';
 import ImageCropModal from '../../components/ImageCropModal';
 
 const KATEGORI_BUKU_OPTIONS = [
+  'Naskah Kuno Nusantara',
+  'Non Fiksi',
   'Anak-anak',
   'Biografi & Memoar',
   'Ekonomi & Management',
@@ -18,7 +20,9 @@ const KATEGORI_BUKU_OPTIONS = [
   'Pedoman / Standar',
   'Prosiding',
   'Laporan',
-  'Majalah / Jurnal'
+  'Majalah / Jurnal',
+  'Religi',
+  'Perjalanan'
 ];
 
 const KATEGORI_KHUSUS = [

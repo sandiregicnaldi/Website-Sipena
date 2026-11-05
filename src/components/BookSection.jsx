@@ -40,7 +40,11 @@ const BookSection = ({ title, books, showDownloads }) => {
                       src={book.coverUrl || book.cover}
                       alt={book.title}
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallbackSpan = e.currentTarget.parentElement?.querySelector('.book-title-overlay');
+                        if (fallbackSpan) fallbackSpan.style.display = 'block';
+                      }}
                     />
                   ) : null}
                   <span className="book-title-overlay" style={(book.coverUrl || book.cover) ? { display: 'none' } : {}}>{book.title}</span>

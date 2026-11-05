@@ -47,6 +47,8 @@
 40. [Sistem Pertahanan Anti-Brute Force, Smart Role-Based Auth, dan Registrasi Tertutup Pegawai (Closed Provisioning Model)](#bab-40-sistem-pertahanan-anti-brute-force-smart-role-based-auth-dan-registrasi-tertutup-pegawai-closed-provisioning-model)
 41. [Penyempurnaan Sistem Keamanan Otentikasi, Desain Minimalis CAPTCHA, & Otomasi Kredensial](#bab-41-penyempurnaan-sistem-keamanan-otentikasi-desain-minimalis-captcha--otomasi-kredensial)
 42. [Perbaikan Visibilitas Statistik Buku Beranda & Manajemen Kedaluwarsa Sesi / Auto-Logout Inaktivitas](#bab-42-perbaikan-visibilitas-statistik-buku-beranda--manajemen-kedaluwarsa-sesi--auto-logout-inaktivitas)
+43. [Persistensi Foto Profil Penulis, Sinkronisasi Komprehensif Biodata, & Penyelarasan Pasca-Login Beranda](#bab-43-persistensi-foto-profil-penulis-sinkronisasi-komprehensif-biodata--penyelarasan-pasca-login-beranda)
+44. [Pembersihan Data Dummy Kegiatan & Perancangan Tampilan Elegan Modern Kegiatan Belum Ada (Empty State)](#bab-44-pembersihan-data-dummy-kegiatan--perancangan-tampilan-elegan-modern-kegiatan-belum-ada-empty-state)
 
 ---
 
@@ -2202,6 +2204,73 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
 3. **Kompilasi Frontend & Backend:**
    - `npm run build` frontend berhasil dibangun dalam 1.93 detik (0 galat).
    - `npm run build` backend TypeScript (`tsc`) selesai tanpa galat (0 galat).
+
+---
+
+## BAB 44: Pembersihan Data Dummy Kegiatan & Perancangan Tampilan Elegan Modern Kegiatan Belum Ada (Empty State)
+
+### A. Latar Belakang & Identifikasi Kebutuhan
+1. **Penghapusan Seluruh Data Dummy Kegiatan:**
+   - Sebelumnya basis data PostgreSQL menyimpan sejumlah data kegiatan pengujian contoh (seperti *Workshop Penulisan Buku Populer 2026*, *Bedah Buku & Diskusi Literasi*, *Seminar Nasional Kebijakan ISBN*, dan *Tes*).
+   - Seluruh data kegiatan dan relasi partisipasi klaim sertifikat dummy perlu dibersihkan secara tuntas agar sistem berada dalam status bersih (*production-ready clean state*).
+2. **Kebutuhan Tampilan Kosong (*Empty State*) yang Elegan, Modern, dan Bersih:**
+   - Ketika belum ada kegiatan yang terdaftar, tampilan lama hanya mengandalkan kotak garis putus-putus (*dashed box*) sederhana dengan teks datar abu-abu yang terlihat kurang menarik secara visual.
+   - Sesuai arahan, sistem membutuhkan perancangan antarmuka *empty state* baru yang elegan, modern, bersih (*clean*), dan berkelas di seluruh titik penayangan:
+     - **Menu Beranda (*Home Page*):** Bagian *Kegiatan Perpusnas Press*.
+     - **Halaman Publik Kegiatan (`/event`):** Katalog lengkap agenda literasi.
+     - **Dasbor Admin Kegiatan (`/admin/kegiatan`):** Tabel kelola kegiatan & sertifikat.
+     - **Profil & Dasbor Pengguna (`/profil-saya?tab=kegiatan`):** Riwayat sertifikat kegiatan saya.
+     - **Halaman Detail Kegiatan (`/event/:id`):** Penanganan kegiatan yang tidak ditemukan/dihapus.
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Eksekusi Pembersihan Data Dummy di PostgreSQL:**
+   - Menjalankan perintah pembersihan aman pada tabel relasional:
+     ```sql
+     DELETE FROM event_participants;
+     DELETE FROM events;
+     ```
+   - Seluruh 4 kegiatan contoh dan 3 rekaman partisipasi berhasil dihapus permanen. Endpoint `GET /api/sipena/events` kini mengembalikan array kosong `[]` (0 data).
+
+2. **Perancangan Empty State Beranda (`src/components/EventSection.jsx` & `EventSection.css`):**
+   - Menghilangkan kotak bergaris putus-putus usang dan menggantinya dengan komponen kartu modern `.event-empty-card`:
+     - **Latar Belakang & Kontainer:** Gradien linear putih ke slate lembut (`linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)`) dengan radius melengkung 20px, border halus `rgba(226, 232, 240, 0.9)`, dan bayangan kedalaman lembut (*ambient soft shadow*).
+     - **Efek Cahaya Visual (*Radial Glow*):** Penambahan elemen `.event-empty-glow` di latar belakang atas dengan blur lembut bernuansa biru Perpusnas.
+     - **Ikon Konsentris & Animasi Halus:** Ikon `Calendar` berada di dalam wadah persegi melengkung bergradien biru dengan cincin bayangan lembut ganda (*layered soft ring shadow*), disertai badge bintang kecil berkilau animasi denyut lembut (`.event-empty-sparkle`).
+     - **Badge Status:** Pil status modern `[ ⏱️ Jadwal Mendatang ]` berlatar biru muda pastel.
+     - **Tipografi:** Judul tegas *"Belum Ada Agenda Kegiatan Aktif"* dengan paragraf bernada informatif dan bersahabat.
+     - **Tombol Aksi Terintegrasi (*Call to Action*):**
+       - Tombol Utama: *"Jelajahi Koleksi Buku"* (gradien biru dengan ikon buku dan panah).
+       - Tombol Kedua: *"Tentang Perpusnas Press"* (gaya *outline* bersih).
+
+3. **Perancangan Dual Empty State Katalog Publik (`src/pages/EventsPage.jsx` & `EventsPage.css`):**
+   - Memisahkan logika antara kondisi **Sistem Kosong Total** dengan **Pencarian/Filter Nihil**:
+     - **Saat Belum Ada Kegiatan sama sekali (`events.length === 0`):** Menampilkan kartu terpusat berskala penuh `.events-empty-state-modern` berukuran 680px dengan badge agenda literasi, ikon kalender 32px bercincin konsentris, dan navigasi cepat menuju Beranda atau Katalog Buku.
+     - **Saat Tidak Ada Hasil Pencarian/Filter (`filteredEvents.length === 0`):** Menampilkan wadah `.events-empty-state-search` dengan ikon pencarian minimalis dan tombol *"Reset Filter & Pencarian"*.
+
+4. **Penyempurnaan Antarmuka Tabel Admin (`src/pages/admin/AdminKegiatan.jsx`):**
+   - Menggantikan baris tabel teks datar lama menjadi kartu sambutan pengelola yang elegan di dalam kolom tabel `colspan="8"`:
+     - Ikon kalender biru modern dengan bayangan lembut.
+     - Judul *"Belum Ada Kegiatan Terdaftar"*.
+     - Tombol aksi primer **`+ Tambah Kegiatan Pertama`** yang secara instan membuka modal formulir penambahan kegiatan baru.
+
+5. **Penyelarasan Tab Profil Pengguna & Halaman Detail:**
+   - **`AuthorDashboard.jsx` (Tab Kegiatan):** Mengganti kartu bergaris putus-putus dengan kartu bergradien elegan, ikon medali piagam bersinar, dan tombol pintas ke jadwal kegiatan.
+   - **`EventDetail.jsx`:** Menyelaraskan tampilan not-found saat mengakses ID kegiatan yang telah dihapus menjadi kartu terpusat berkelas dengan tombol kembali ke daftar kegiatan.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+1. **Verifikasi Respon Backend:**
+   - Pemanggilan kueri `GET /api/sipena/events` mengembalikan respon HTTP 200 dengan payload `[]` (0 entri).
+2. **Verifikasi Visual Antarmuka:**
+   - Halaman Beranda (`/`) menampilkan kartu kosong modern, clean, dan proporsional tanpa merusak estetika tata letak halaman.
+   - Halaman Katalog Kegiatan (`/event`) menampilkan kartu representatif yang rapi dan memandu pengguna.
+   - Dasbor Admin (`/admin/kegiatan`) menampilkan tombol pembuatan kegiatan pertama yang berfungsi secara normal.
+3. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat dalam 1m 54s.
+
 
 
 

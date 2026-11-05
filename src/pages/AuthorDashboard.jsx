@@ -1060,16 +1060,26 @@ const AuthorDashboard = () => {
                   </div>
                 ) : kegiatanList.length === 0 ? (
                   <div style={{
-                    padding: '3rem 2rem', textAlign: 'center', background: '#f8fafc',
-                    borderRadius: 'var(--radius-lg)', border: '1px dashed #cbd5e1', marginTop: '1rem'
+                    padding: '3.5rem 2rem', textAlign: 'center', background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                    borderRadius: '20px', border: '1px solid rgba(226, 232, 240, 0.9)', marginTop: '1rem',
+                    boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center'
                   }}>
-                    <Award size={36} color="#94a3b8" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
-                    <h4 style={{ margin: '0 0 0.5rem', color: '#1e293b' }}>Belum Ada Sertifikat Kegiatan</h4>
-                    <p style={{ margin: '0 0 1.25rem', color: '#64748b', fontSize: '0.875rem', maxWidth: '460px', marginLeft: 'auto', marginRight: 'auto' }}>
-                      Anda belum mengklaim sertifikat kehadiran untuk kegiatan apapun. Ikuti seminar &amp; webinar literasi Perpusnas Press dan dapatkan sertifikat resmi.
+                    <div style={{
+                      width: '60px', height: '60px', borderRadius: '18px',
+                      background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                      border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#2563eb', marginBottom: '1.25rem',
+                      boxShadow: '0 8px 16px -4px rgba(37, 99, 235, 0.15), 0 0 0 6px rgba(239, 246, 255, 0.8)'
+                    }}>
+                      <Award size={28} />
+                    </div>
+                    <h4 style={{ margin: '0 0 0.4rem', color: '#0f172a', fontSize: '1.15rem', fontWeight: 700 }}>Belum Ada Sertifikat Kegiatan</h4>
+                    <p style={{ margin: '0 0 1.5rem', color: '#64748b', fontSize: '0.9rem', maxWidth: '480px', lineHeight: 1.6 }}>
+                      Anda belum mengklaim sertifikat kehadiran untuk kegiatan apapun. Ikuti seminar &amp; webinar literasi resmi Perpusnas Press dan klaim sertifikat kehadiran Anda.
                     </p>
-                    <Link to="/event" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
-                      Lihat Jadwal Kegiatan SiPena
+                    <Link to="/event" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.65rem 1.25rem', borderRadius: '10px' }}>
+                      <Calendar size={15} />
+                      <span>Lihat Jadwal Kegiatan SiPena</span>
                     </Link>
                   </div>
                 ) : (

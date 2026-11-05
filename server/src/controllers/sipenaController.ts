@@ -1521,22 +1521,71 @@ function saveAvatarIfBase64(imageStr: any, userId: string): string | undefined {
 export const SipenaAuthorsController = {
     getAll: async (req: Request, res: Response) => {
         try {
-            const authorList = await db
-                .select({
-                    id: users.id,
-                    name: users.name,
-                    email: users.email,
-                    role: users.role,
-                    bio: users.bio,
-                    profesi: users.profesi,
-                    domisili: users.domisili,
-                    website: users.website,
-                    image: users.image,
-                    karyaEksternal: users.karyaEksternal,
-                })
-                .from(users)
-                .where(eq(users.role, "penulis"));
-            res.json(authorList);
+            const limitParam = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+            const limitClause = limitParam && !isNaN(limitParam) && limitParam > 0 ? sql`LIMIT ${limitParam}` : sql``;
+
+            const result: any = await db.execute(sql`
+                WITH author_books AS (
+                  SELECT 
+                    u.id,
+                    u.name,
+                    u.email,
+                    u.role,
+                    u.bio,
+                    u.profesi,
+                    u.domisili,
+                    u.website,
+                    u.image,
+                    u.karya_eksternal,
+                    COUNT(DISTINCT b.id)::int AS total_books
+                  FROM "user" u
+                  LEFT JOIN books b 
+                    ON (b.author_id = u.id OR (u.name IS NOT NULL AND length(trim(u.name)) > 3 AND b.author_name ILIKE '%' || trim(u.name) || '%'))
+                  WHERE u.role = 'penulis'
+                  GROUP BY u.id, u.name, u.email, u.role, u.bio, u.profesi, u.domisili, u.website, u.image, u.karya_eksternal
+                ),
+                deduped AS (
+                  SELECT DISTINCT ON (LOWER(TRIM(name)))
+                    id,
+                    name,
+                    email,
+                    role,
+                    bio,
+                    profesi,
+                    domisili,
+                    website,
+                    image,
+                    karya_eksternal,
+                    total_books
+                  FROM author_books
+                  ORDER BY LOWER(TRIM(name)), total_books DESC, (image IS NOT NULL) DESC
+                )
+                SELECT * FROM deduped
+                ORDER BY total_books DESC, (image IS NOT NULL) DESC, name ASC
+                ${limitClause};
+            `);
+
+            const cleanBio = (text: string | null) => {
+                if (!text) return "";
+                return text.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+            };
+
+            const rows = (result.rows || []).map((row: any) => ({
+                id: row.id,
+                name: row.name,
+                email: row.email,
+                role: row.role,
+                bio: row.bio,
+                bioPreview: cleanBio(row.bio),
+                profesi: row.profesi,
+                domisili: row.domisili,
+                website: row.website,
+                image: row.image,
+                karyaEksternal: row.karya_eksternal,
+                totalBooks: parseInt(row.total_books, 10) || 0
+            }));
+
+            res.json(rows);
         } catch (error) {
             console.error("SipenaAuthorsController.getAll error:", error);
             res.status(500).json({ error: "Failed to fetch authors" });

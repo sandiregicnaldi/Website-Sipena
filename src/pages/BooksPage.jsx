@@ -7,6 +7,8 @@ import './BooksPage.css';
 
 const CATEGORIES = [
   'Semua',
+  'Naskah Kuno Nusantara',
+  'Non Fiksi',
   'Anak-anak',
   'Biografi & Memoar',
   'Ekonomi & Management',
@@ -20,10 +22,14 @@ const CATEGORIES = [
   'Pedoman / Standar',
   'Prosiding',
   'Laporan',
-  'Majalah / Jurnal'
+  'Majalah / Jurnal',
+  'Religi',
+  'Perjalanan'
 ];
 
 const CATEGORY_COLORS = {
+  'Naskah Kuno Nusantara': '#78350f',
+  'Non Fiksi': '#334155',
   'Anak-anak': '#0ea5e9',
   'Biografi & Memoar': '#8b5cf6',
   'Ekonomi & Management': '#059669',
@@ -38,6 +44,8 @@ const CATEGORY_COLORS = {
   'Prosiding': '#dc2626',
   'Laporan': '#059669',
   'Majalah / Jurnal': '#0891b2',
+  'Religi': '#0284c7',
+  'Perjalanan': '#14b8a6',
   // Backward compatibility
   'Sastra': '#1e3a8a',
   'Sejarah': '#b91c1c',
@@ -184,7 +192,11 @@ const BooksPage = () => {
                         src={book.coverUrl}
                         alt={book.title}
                         className="row-cover-img"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallbackSpan = e.currentTarget.parentElement?.querySelector('.row-cover-title');
+                          if (fallbackSpan) fallbackSpan.style.display = 'block';
+                        }}
                       />
                     ) : null}
                     <span className="row-cover-title" style={book.coverUrl ? { display: 'none' } : {}}>{book.title}</span>
@@ -213,36 +225,57 @@ const BooksPage = () => {
           </div>
         )}
 
-        {/* Real Dynamic Pagination */}
-        {totalPages > 1 && (
-          <div className="pagination" style={{ marginTop: '2.5rem' }}>
-            <button
-              className="page-btn"
-              disabled={page <= 1}
-              onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo(0, 0); }}
-            >
-              <ChevronLeft size={16} />
-            </button>
+        {/* Real Dynamic Pagination with Windowing */}
+        {totalPages > 1 && (() => {
+          const getPageNumbers = () => {
+            if (totalPages <= 7) {
+              return Array.from({ length: totalPages }, (_, i) => i + 1);
+            }
+            if (page <= 4) {
+              return [1, 2, 3, 4, 5, '...', totalPages];
+            }
+            if (page >= totalPages - 3) {
+              return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            }
+            return [1, '...', page - 1, page, page + 1, '...', totalPages];
+          };
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          return (
+            <div className="pagination" style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
               <button
-                key={p}
-                className={`page-btn ${p === page ? 'active' : ''}`}
-                onClick={() => { setPage(p); window.scrollTo(0, 0); }}
+                className="page-btn"
+                disabled={page <= 1}
+                onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo(0, 0); }}
+                title="Halaman Sebelumnya"
               >
-                {p}
+                <ChevronLeft size={16} />
               </button>
-            ))}
 
-            <button
-              className="page-btn"
-              disabled={page >= totalPages}
-              onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo(0, 0); }}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        )}
+              {getPageNumbers().map((p, idx) => (
+                p === '...' ? (
+                  <span key={`dots-${idx}`} style={{ padding: '0.4rem 0.6rem', color: '#64748b', fontWeight: 600 }}>...</span>
+                ) : (
+                  <button
+                    key={p}
+                    className={`page-btn ${p === page ? 'active' : ''}`}
+                    onClick={() => { setPage(p); window.scrollTo(0, 0); }}
+                  >
+                    {p}
+                  </button>
+                )
+              ))}
+
+              <button
+                className="page-btn"
+                disabled={page >= totalPages}
+                onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo(0, 0); }}
+                title="Halaman Berikutnya"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          );
+        })()}
       </div>
     </main>
   );

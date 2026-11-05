@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Calendar, MapPin, ArrowRight, Clock, Users, 
-  Award, Video, Search, Sparkles, X 
+  Award, Video, Search, Sparkles, X, BookOpen
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext';
 import './EventsPage.css';
@@ -159,17 +159,50 @@ const EventsPage = () => {
             ))}
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="events-empty-state">
-            <Calendar size={52} color="#94a3b8" style={{ marginBottom: '1rem' }} />
-            <h3>Tidak Ada Kegiatan Ditemukan</h3>
-            <p>
-              {searchQuery 
-                ? `Tidak ada kegiatan yang sesuai dengan pencarian "${searchQuery}".`
-                : activeTab !== 'Semua' 
-                  ? `Belum ada kegiatan dengan status "${activeTab}".`
-                  : 'Belum ada agenda kegiatan yang dijadwalkan saat ini.'}
-            </p>
-            {(searchQuery || activeTab !== 'Semua') && (
+          events.length === 0 ? (
+            <div className="events-empty-state-modern">
+              <div className="events-empty-glow" aria-hidden="true" />
+              <div className="events-empty-icon-wrap">
+                <div className="events-empty-icon-inner">
+                  <Calendar size={32} className="events-empty-icon" />
+                </div>
+                <span className="events-empty-sparkle" title="Segera hadir">
+                  <Sparkles size={14} />
+                </span>
+              </div>
+
+              <div className="events-empty-badge">
+                <Clock size={13} />
+                <span>Katalog Agenda &amp; Webinar</span>
+              </div>
+
+              <h2 className="events-empty-title">Belum Ada Agenda Kegiatan Aktif</h2>
+              <p className="events-empty-desc">
+                Saat ini belum ada jadwal workshop, webinar literasi, atau bedah naskah yang sedang dibuka oleh Perpusnas Press. Seluruh agenda resmi mendatang akan segera diumumkan di halaman ini.
+              </p>
+
+              <div className="events-empty-actions">
+                <Link to="/" className="btn-events-empty-secondary">
+                  <ArrowRight size={15} style={{ transform: 'rotate(180deg)' }} />
+                  <span>Kembali ke Beranda</span>
+                </Link>
+                <Link to="/buku" className="btn-events-empty-primary">
+                  <BookOpen size={16} />
+                  <span>Jelajahi Koleksi Buku</span>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="events-empty-state-search">
+              <div className="events-search-empty-icon">
+                <Search size={28} />
+              </div>
+              <h3 className="events-search-empty-title">Tidak Ada Kegiatan Ditemukan</h3>
+              <p className="events-search-empty-desc">
+                {searchQuery 
+                  ? `Tidak ada kegiatan yang sesuai dengan kata kunci "${searchQuery}".`
+                  : `Belum ada agenda kegiatan dengan kategori status "${activeTab}".`}
+              </p>
               <button 
                 type="button" 
                 className="btn btn-outline" 
@@ -177,8 +210,8 @@ const EventsPage = () => {
               >
                 Reset Filter &amp; Pencarian
               </button>
-            )}
-          </div>
+            </div>
+          )
         ) : (
           <div className="events-catalog-grid">
             {filteredEvents.map(ev => {

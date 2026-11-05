@@ -450,7 +450,49 @@ const AdminKegiatan = () => {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>Tidak ada kegiatan ditemukan.</td></tr>
+                <tr>
+                  <td colSpan="8" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                    <div style={{ maxWidth: '420px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div style={{
+                        width: '56px', height: '56px', borderRadius: '16px',
+                        background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                        border: '1px solid #bfdbfe',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#2563eb', marginBottom: '1rem',
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.12)'
+                      }}>
+                        <Calendar size={26} />
+                      </div>
+                      <h4 style={{ margin: '0 0 0.4rem', color: '#0f172a', fontSize: '1.05rem', fontWeight: 700 }}>
+                        {events.length === 0 ? 'Belum Ada Kegiatan Terdaftar' : 'Kegiatan Tidak Ditemukan'}
+                      </h4>
+                      <p style={{ margin: '0 0 1.25rem', color: '#64748b', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                        {events.length === 0
+                          ? 'Belum ada agenda kegiatan atau webinar yang dibuat. Tambahkan kegiatan baru untuk membuka pendaftaran dan klaim sertifikat peserta.'
+                          : 'Tidak ada data kegiatan yang cocok dengan kata kunci pencarian.'}
+                      </p>
+                      {events.length === 0 ? (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => setModal({ mode: 'tambah', data: EMPTY_FORM })}
+                          style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                        >
+                          <Plus size={16} /> Tambah Kegiatan Pertama
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => setSearch('')}
+                          style={{ fontSize: '0.85rem' }}
+                        >
+                          Reset Pencarian
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 paginatedKegiatan.map((e, i) => {
                   const isManualOpen = e.isClaimOpen === true || e.claimOpensAt === 'open';

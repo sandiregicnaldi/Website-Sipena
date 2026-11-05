@@ -46,7 +46,11 @@ const BookRow = ({ title, books = [], viewAllLink = '/buku' }) => {
                       src={book.coverUrl || book.cover}
                       alt={book.title}
                       className="row-cover-img"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallbackSpan = e.currentTarget.parentElement?.querySelector('.row-cover-title');
+                        if (fallbackSpan) fallbackSpan.style.display = 'block';
+                      }}
                     />
                   ) : null}
                   <span className="row-cover-title" style={(book.coverUrl || book.cover) ? { display: 'none' } : {}}>{book.title}</span>

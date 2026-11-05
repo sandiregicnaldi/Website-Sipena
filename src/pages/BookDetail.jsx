@@ -12,6 +12,8 @@ const CATEGORY_COLORS = {
   'Biografi & Memoar': '#8b5cf6',
   'Ekonomi & Management': '#059669',
   'Fiksi': '#e11d48',
+  'Naskah Kuno Nusantara': '#78350f',
+  'Non Fiksi': '#334155',
   'Hukum & Politik': '#4f46e5',
   'Humaniora': '#d97706',
   'Inkubator Literasi': '#2563eb',
@@ -22,6 +24,8 @@ const CATEGORY_COLORS = {
   'Prosiding': '#dc2626',
   'Laporan': '#059669',
   'Majalah / Jurnal': '#0891b2',
+  'Religi': '#0284c7',
+  'Perjalanan': '#14b8a6',
   'Sastra': '#1e3a8a',
   'Sejarah': '#b91c1c',
   'Budaya': '#047857',
@@ -190,7 +194,8 @@ const BookDetail = () => {
       }
 
       // Open PDF file (custom or sample)
-      window.open(book?.fileUrl || '/sample.pdf', '_blank');
+      const pdfTarget = book?.fileUrl ? encodeURI(book.fileUrl) : '/sample.pdf';
+      window.open(pdfTarget, '_blank');
 
       // Trigger rating modal only if user has not yet rated
       if (!hasRated && !book?.hasRated) {
@@ -292,7 +297,11 @@ const BookDetail = () => {
                   src={book.coverUrl}
                   alt={book.title}
                   className="book-detail-cover-img"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallbackSpan = e.currentTarget.parentElement?.querySelector('.book-detail-title-mock');
+                    if (fallbackSpan) fallbackSpan.style.display = 'block';
+                  }}
                 />
               ) : null}
               <span className="book-detail-title-mock" style={book.coverUrl ? { display: 'none' } : {}}>{book.title}</span>
@@ -575,7 +584,7 @@ const BookDetail = () => {
                     </div>
                   ) : (
                     <iframe 
-                      src={`${book.fileUrl || '/sample.pdf'}#toolbar=1&navpanes=0&scrollbar=1`} 
+                      src={`${encodeURI(book.fileUrl || '/sample.pdf')}#toolbar=1&navpanes=0&scrollbar=1`} 
                       title="PDF Viewer"
                       width="100%" 
                       height="100%"
@@ -825,7 +834,7 @@ const BookDetail = () => {
           {/* Iframe Viewport */}
           <div style={{ flex: 1, width: '100%', height: 'calc(100% - 56px)', backgroundColor: '#334155' }}>
             <iframe
-              src={`${book.fileUrl || '/sample.pdf'}#toolbar=1&navpanes=0&scrollbar=1`}
+              src={`${encodeURI(book.fileUrl || '/sample.pdf')}#toolbar=1&navpanes=0&scrollbar=1`}
               title={`Baca ${book.title}`}
               width="100%"
               height="100%"

@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowRight, ChevronLeft, ChevronRight, Calendar, 
-  Clock, MapPin, Video, Award, Sparkles 
+  Clock, MapPin, Video, Award, Sparkles, BookOpen, Info
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext';
 import './EventSection.css';
@@ -114,15 +114,40 @@ const EventSection = () => {
               ))}
             </div>
           ) : displayEvents.length === 0 ? (
-            <div className="event-empty-box">
-              <Calendar size={40} color="var(--text-tertiary)" style={{ marginBottom: '0.75rem' }} />
-              <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: '0 0 0.4rem' }}>Belum Ada Kegiatan</h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0 0 1rem' }}>
-                Nantikan agenda kegiatan, workshop penulisan, dan peluncuran buku terbaru di Portal SiPena.
-              </p>
-              <Link to="/buku" className="btn btn-outline" style={{ fontSize: '0.85rem' }}>
-                Jelajahi Buku Populer
-              </Link>
+            <div className="event-empty-container">
+              <div className="event-empty-card">
+                <div className="event-empty-glow" aria-hidden="true" />
+                <div className="event-empty-icon-wrap">
+                  <div className="event-empty-icon-inner">
+                    <Calendar size={28} className="event-empty-icon" />
+                  </div>
+                  <span className="event-empty-sparkle" title="Segera hadir">
+                    <Sparkles size={13} />
+                  </span>
+                </div>
+
+                <div className="event-empty-badge">
+                  <Clock size={13} />
+                  <span>Jadwal Mendatang</span>
+                </div>
+
+                <h3 className="event-empty-title">Belum Ada Agenda Kegiatan Aktif</h3>
+                <p className="event-empty-desc">
+                  Agenda webinar, workshop penulisan naskah, dan bedah buku literasi dari Perpusnas Press sedang dipersiapkan. Jadwal kegiatan terbaru akan segera diumumkan di sini.
+                </p>
+
+                <div className="event-empty-actions">
+                  <Link to="/buku" className="btn-event-empty-primary">
+                    <BookOpen size={16} />
+                    <span>Jelajahi Koleksi Buku</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                  <Link to="/tentang" className="btn-event-empty-secondary">
+                    <Info size={16} />
+                    <span>Tentang Perpusnas Press</span>
+                  </Link>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="event-grid" ref={scrollRef}>

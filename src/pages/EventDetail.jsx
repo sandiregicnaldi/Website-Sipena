@@ -101,13 +101,33 @@ const EventDetail = () => {
 
   if (!event) {
     return (
-      <div style={{ padding: '6rem 2rem', textAlign: 'center' }}>
-        <h2>Kegiatan Tidak Ditemukan</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Kegiatan yang Anda cari mungkin telah dihapus atau tautan tidak valid.</p>
-        <Link to="/event" className="btn btn-primary">
-          <ArrowLeft size={16} /> Kembali ke Daftar Kegiatan
-        </Link>
-      </div>
+      <main className="event-detail-page" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }}>
+        <div style={{
+          maxWidth: '520px', width: '100%', textAlign: 'center',
+          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+          border: '1px solid rgba(226, 232, 240, 0.9)', borderRadius: '24px',
+          padding: '4rem 2rem', boxShadow: '0 10px 30px -4px rgba(15, 23, 42, 0.05)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center'
+        }}>
+          <div style={{
+            width: '68px', height: '68px', borderRadius: '20px',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+            border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#2563eb', marginBottom: '1.25rem',
+            boxShadow: '0 10px 20px -4px rgba(37, 99, 235, 0.16), 0 0 0 6px rgba(239, 246, 255, 0.8)'
+          }}>
+            <Calendar size={30} />
+          </div>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem', letterSpacing: '-0.3px' }}>Kegiatan Tidak Ditemukan</h2>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: 1.6, margin: '0 0 1.75rem' }}>
+            Kegiatan yang Anda cari mungkin telah ditarik, selesai, atau tautan yang dimasukkan tidak tepat.
+          </p>
+          <Link to="/event" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.7rem 1.35rem', borderRadius: '12px' }}>
+            <ArrowLeft size={16} />
+            <span>Kembali ke Daftar Kegiatan</span>
+          </Link>
+        </div>
+      </main>
     );
   }
 
