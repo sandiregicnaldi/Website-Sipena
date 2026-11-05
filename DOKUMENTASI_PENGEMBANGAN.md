@@ -2184,6 +2184,10 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
      ```
      sehingga setiap tautan lawas atau penanda peramban yang mengakses `/dasbor-penulis` langsung dialihkan dengan mulus ke `/profil-saya`.
 
+6. **Penyelarasan Pengalihan Pasca-Login ke Beranda Utama (`src/pages/LoginPage.jsx`):**
+   - Menyelaraskan fungsi `getDestinationPath()`: Baik akun dengan role **Penulis** (`penulis`) maupun **Pengunjung Publik** (`pengunjung`), halaman utama yang langsung tampil setelah berhasil login adalah halaman **Home / Beranda (`/`)**, bukan langsung ke `/profil-saya`.
+   - Menyesuaikan kartu dan teks navigasi `LoginPage` agar menginformasikan pengalihan otomatis ke beranda (*"Lanjut ke Beranda"*).
+
 ---
 
 ### C. Hasil Pengujian & Verifikasi Terpadu
