@@ -681,3 +681,4 @@ runMigrations().then(async () => {
         setInterval(cleanupExpiredSessions, 30 * 60 * 1000);
     });
 });
+// Trigger tsx watch reload for avatar upload and author profile routes

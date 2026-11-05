@@ -2126,6 +2126,80 @@ Pada `src/pages/admin/AdminKegiatan.jsx`:
 3. **Kompilasi Frontend (`npm run build`):** Sukses 100% tanpa galat.
 4. **Kompilasi Backend (`npx tsc --noEmit`):** Bersih 100% tanpa galat.
 
+---
+
+## BAB 43: PERBAIKAN PERSISTENSI FOTO PROFIL PENULIS, PENYELARASAN SELURUH BIODATA KE BASIS DATA POSTGRESQL, DAN PENANGANAN TAUTAN EDIT PROFIL SAYA
+
+### A. Latar Belakang & Identifikasi Masalah
+Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan menu publik penulis:
+1. **Foto Profil Tidak Tersimpan Permanen:**
+   - Ketika penulis memotong (*crop*) foto pada tab *"Profil Penulis Publik"* (`AuthorDashboard.jsx`), berkas diproses menjadi format Base64 Data URL (`data:image/...;base64,...`).
+   - Ukuran payload string Base64 gambar fotografi berukuran besar (ratusan KB hingga megabita) menyebabkan kegagalan atau pemangkasan saat dikirimkan langsung ke penyedia Better Auth (`authClient.updateUser`), sehingga berkas tidak tersimpan ke penyimpanan fisik server dan kolom `image` pada tabel `user` basis data PostgreSQL tetap bernilai `NULL`.
+   - Akibatnya, pada halaman publik penulis (`/penulis`) dan detail penulis (`/penulis/:id`), foto penulis tidak tampil dan hanya menampilkan inisial huruf standar ("P").
+2. **Kekhawatiran Kehilangan Data Biodata Pengguna:**
+   - Pengontrol pembaruan profil penulis sebelumnya (`SipenaAuthorsController.updateAuthorProfile`) hanya memperbarui kolom nama dan karya, tetapi mengabaikan seluruh kolom biodata pribadi seperti `tempatLahir`, `tanggalLahir`, `pekerjaan`, `instansi`, `alamatLengkap`, `provinsi`, `kota`, `kecamatan`, dan `kelurahan`. Jika pembaruan Better Auth mengalami kendala, data biodata tersebut tidak tersimpan secara permanen ke PostgreSQL.
+3. **Tombol "Edit Profil Saya" di Halaman Detail Penulis Tidak Berfungsi:**
+   - Pada `src/pages/AuthorProfile.jsx`, tombol *"Edit Profil Saya"* sebelumnya mengarah ke tautan mati `<Link to="/dasbor-penulis?tab=karya">`. Rute `/dasbor-penulis` tidak terdaftar pada `App.jsx` (halaman dasbor yang valid adalah `/profil-saya`), menyebabkan navigasi terputus atau galat 404.
+   - Selain itu, komponen `AuthorDashboard.jsx` sebelumnya hanya membaca penanda tab dari `location.state?.tab` dan mengabaikan parameter URL *query string* (`?tab=karya`).
+
+---
+
+### B. Langkah & Solusi Perbaikan Teknis
+
+1. **Penyediaan Penyimpanan Fisik & Endpoint Pengunggahan Avatar (`server/src/controllers/uploadController.ts` & `server/src/routes.ts`):**
+   - Membuat direktori khusus `uploads/avatars/` pada sistem berkas server.
+   - Menambahkan konfigurasi Multer `uploadAvatarMulter` dengan validasi ketat berkas gambar (`.png`, `.jpg`, `.jpeg`, `.webp`) dan batas ukuran maksimal 5 MB.
+   - Menyediakan rute API terautentikasi `POST /api/upload/avatar` yang mengembalikan URL publik statis (misal: `/api/uploads/avatars/avatar-1793861021139-34379146.png`).
+
+2. **Pembaruan Pengontrol Profil Penulis Komprehensif (`server/src/controllers/sipenaController.ts`):**
+   - **Mekanisme Pertahanan Ganda (*Base64 Auto-Converter*):** Menambahkan fungsi pembantu `saveAvatarIfBase64()`. Jika klien mengirimkan data gambar berupa Base64 Data URL, server secara otomatis mendekode buffer Base64 tersebut, menyimpannya langsung sebagai berkas fisik di `uploads/avatars/`, dan memperbarui nilai kolom `image` menjadi URL berkas statis yang ringkas dan aman.
+   - **Persistensi 100% Seluruh Biodata & Profil Kepenulisan:** Menyelaraskan *query update* `users` di PostgreSQL agar menyimpan secara permanen:
+     - Profil Kepenulisan: `name`, `bio`, `profesi`, `domisili`, `website`, `image`, `karyaEksternal` (dengan *safe parsing* JSON).
+     - Biodata Pribadi: `tempatLahir`, `tanggalLahir`, `pekerjaan`, `instansi`, `alamatLengkap`, `provinsi`, `kota`, `kecamatan`, `kelurahan`, dan `phone`.
+   - Mengaplikasikan penyelarasan yang sama pada `submitRequest` untuk pendaftaran/akselerasi penulis baru.
+
+3. **Penyempurnaan Alur Penyimpanan Sisi Klien (`src/context/AuthContext.jsx` & `src/lib/api.js`):**
+   - Menambahkan metode `SipenaAPI.uploadAvatar(file)` menggunakan `FormData` *multipart/form-data*.
+   - Memperbaiki alur `updateProfile(profileData)` di `AuthContext`:
+     1. Menyimpan seluruh data profil dan biodata secara langsung ke `SipenaAPI.updateAuthorProfile` guna menjamin persistensi permanen di tabel `user` PostgreSQL.
+     2. Menerima URL gambar bersih dari server dan menyinkronkannya ke Better Auth (`authClient.updateUser`) dengan muatan teks yang ringan (<1 KB).
+     3. Memanggil `authClient.getSession()` untuk memperbarui sesi pengguna di memori secara reaktif tanpa perlu *hard reload*.
+   - Memastikan pemetaan sesi `user.karyaEksternal` menangani data baik dalam format larik (*array*) maupun teks JSON (*stringified JSON*).
+
+4. **Peningkatan Interaktivitas Dasbor Penulis (`src/pages/AuthorDashboard.jsx`):**
+   - Mendukung pembacaan tab aktif baik dari `location.state?.tab` maupun parameter URL `?tab=karya`.
+   - Mengintegrasikan pengunggahan otomatis ke server saat pengguna selesai memotong gambar pada modal pemotong (`handleCropConfirm`).
+   - Menambahkan indikator status *loading spinner* pada tombol *"Ganti Foto Profil"* dan *overlay* foto bilah samping (*sidebar*) saat proses pengunggahan berlangsung.
+
+5. **Perbaikan Tautan Tombol & Penanganan Rute Alias (`src/pages/AuthorProfile.jsx` & `src/App.jsx`):**
+   - Memperbaiki tautan tombol pada `AuthorProfile.jsx`:
+     ```jsx
+     <Link to="/profil-saya?tab=karya" state={{ tab: 'karya' }} className="btn btn-outline btn-sm">
+       <Edit3 size={15} /> Edit Profil Saya
+     </Link>
+     ```
+   - Menambahkan rute pengalihan (*fallback redirect*) pada `App.jsx`:
+     ```jsx
+     <Route path="/dasbor-penulis" element={<Navigate to="/profil-saya" replace />} />
+     ```
+     sehingga setiap tautan lawas atau penanda peramban yang mengakses `/dasbor-penulis` langsung dialihkan dengan mulus ke `/profil-saya`.
+
+---
+
+### C. Hasil Pengujian & Verifikasi Terpadu
+1. **Pengujian Skrip Otomatisasi (`scratch/test_avatar_persistence.cjs`):**
+   - *Simulasi Login*: Akun `pengunjung@sipena.id` berhasil masuk dan mendapatkan *session cookie*.
+   - *Pengunggahan Berkas*: Mengunggah *avatar* ke `POST /api/upload/avatar` sukses HTTP 200, mengembalikan URL `/api/uploads/avatars/...`.
+   - *Pembaruan Data*: Memperbarui seluruh profil dan biodata via `PATCH /api/sipena/author-profile` sukses HTTP 200 dengan `success: true`.
+   - *Inspeksi Langsung PostgreSQL*: Kueri langsung ke tabel `user` membuktikan kolom `image`, `profesi`, `domisili`, `bio`, `website`, `tempat_lahir`, `tanggal_lahir`, `pekerjaan`, `instansi`, `alamat_lengkap`, `provinsi`, `kota`, `kecamatan`, `kelurahan`, dan `karya_eksternal` telah tersimpan secara permanen dan valid.
+   - *Verifikasi Endpoint Publik*: Endpoint `GET /api/sipena/authors` dan `GET /api/sipena/authors/:id` sukses mengembalikan URL foto profil dan data kepenulisan yang baru.
+2. **Uji Konversi Otomatis Base64 (*Defensive Fallback*):**
+   - Menguji pengiriman gambar berformat `data:image/png;base64,...` langsung ke endpoint profil. Server berhasil mengonversinya menjadi berkas fisik di `uploads/avatars/` dan mengembalikan URL statis.
+3. **Kompilasi Frontend & Backend:**
+   - `npm run build` frontend berhasil dibangun dalam 1.93 detik (0 galat).
+   - `npm run build` backend TypeScript (`tsc`) selesai tanpa galat (0 galat).
+
+
 
 
 
