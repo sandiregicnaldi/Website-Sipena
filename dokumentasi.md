@@ -49,7 +49,7 @@ Dokumentasi lengkap dan kronologi pengembangan sistem SiPena serta integrasi Man
 25. **Bab 44**: Pembersihan Data Dummy Kegiatan di Basis Data PostgreSQL (`events` & `event_participants`), serta Perancangan Antarmuka *Empty State* ("Belum Ada Kegiatan") yang Elegan, Modern, dan Clean pada Menu Beranda, Halaman Katalog `/event`, Dasbor Admin, dan Tab Profil Saya.
 26. **Bab 45**: Pembersihan Menyeluruh Seluruh Data Dummy Dokumen, Naskah, Sesi, dan Injeksi Statistik Angka Pembaca Fiktif di Basis Data PostgreSQL, Verifikasi Integritas Data Riil SiPena (1.527 Buku, 1.442 Penulis, 1.276 Unduhan, 25.450 Pembaca Riil), serta Penyelarasan Dasbor Admin & Laporan Terpadu.
 27. **Bab 46**: Penyeragaman Kerapian Kartu Buku: Multi-line Clamping Maksimal 2 Baris Nama Penulis, Tinggi Kartu Rata Sempurna 100%, serta Fitur Modal Interaktif Daftar Lengkap Penulis ("Selengkapnya" / `BookAuthorsModal.jsx`).
-28. **Bab 47**: Rekayasa Ulang Algoritma Rekomendasi "Buku Terkait" dengan Skoring Relevansi Berjenjang Tingkat Basis Data (4-Tier Relevance Ranking Query), Pengabaian Penulis Anonim, dan Eliminasi Keterbatasan *Candidate Pool* In-Memory.
+28. **Bab 47**: Rekayasa Ulang Algoritma Rekomendasi "Buku Terkait" Multi-Kriteria: Penulis Sama (Exact & Partial Word Match), Kemiripan Judul / Multi-Jilid via Ekstensi PostgreSQL `pg_trgm` & Indeks GIN, serta Kesesuaian Kategori Buku.
 
 ---
 *Silakan buka [DOKUMENTASI_PENGEMBANGAN.md](./DOKUMENTASI_PENGEMBANGAN.md) untuk detail teknis, tabel skema, dan panduan pengujian alur kerja.*
