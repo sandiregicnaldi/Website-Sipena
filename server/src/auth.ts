@@ -1,5 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { hashPassword, verifyPassword as defaultVerifyPassword } from "better-auth/crypto";
+import crypto from "crypto";
 import { db } from "./db";
 import * as schema from "./db/schema";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./lib/resend";
@@ -39,6 +41,18 @@ export const auth = betterAuth({
             const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5174";
             const resetLink = `${frontendUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
             await sendPasswordResetEmail(user.email, resetLink);
+        },
+        password: {
+            hash: (password: string) => hashPassword(password),
+            verify: async ({ hash, password }: { hash: string; password: string }) => {
+                // Mendukung hash legacy SHA-1 (40 karakter hex) dari sistem e-publishing lama
+                if (/^[a-fA-F0-9]{40}$/.test(hash)) {
+                    const sha1 = crypto.createHash("sha1").update(password).digest("hex").toUpperCase();
+                    return hash.toUpperCase() === sha1;
+                }
+                // Standar Better-Auth (scrypt)
+                return defaultVerifyPassword({ hash, password });
+            },
         },
     },
     socialProviders: {

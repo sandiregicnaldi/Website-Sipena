@@ -47,6 +47,9 @@ Dokumentasi lengkap dan kronologi pengembangan sistem SiPena serta integrasi Man
 23. **Bab 42**: Perbaikan Visibilitas Statistik Buku Beranda (Jumlah Baca & Unduh Kontras pada Kartu Putih), Konfigurasi Batas Waktu Sesi 4 Jam & Sliding Refresh 1 Jam (`auth.ts`), Sistem Pengawal Inaktivitas Sisi Klien (*Client-Side Inactivity Guard* `AuthContext.jsx`), dan Pembersihan Berkala Sesi Kedaluwarsa di Basis Data (`index.ts`).
 24. **Bab 43**: Persistensi Foto Profil Penulis & Sinkronisasi Komprehensif Seluruh Kolom Biodata ke PostgreSQL (`uploadController.ts` & `sipenaController.ts`), Dukungan Konversi Otomatis Base64 ke File Fisik Server, serta Penyelarasan Pasca-Login Beranda (`/`).
 25. **Bab 44**: Pembersihan Data Dummy Kegiatan di Basis Data PostgreSQL (`events` & `event_participants`), serta Perancangan Antarmuka *Empty State* ("Belum Ada Kegiatan") yang Elegan, Modern, dan Clean pada Menu Beranda, Halaman Katalog `/event`, Dasbor Admin, dan Tab Profil Saya.
+26. **Bab 45**: Pembersihan Menyeluruh Seluruh Data Dummy Dokumen, Naskah, Sesi, dan Injeksi Statistik Angka Pembaca Fiktif di Basis Data PostgreSQL, Verifikasi Integritas Data Riil SiPena (1.527 Buku, 1.442 Penulis, 1.276 Unduhan, 25.450 Pembaca Riil), serta Penyelarasan Dasbor Admin & Laporan Terpadu.
+27. **Bab 46**: Penyeragaman Kerapian Kartu Buku: Multi-line Clamping Maksimal 2 Baris Nama Penulis, Tinggi Kartu Rata Sempurna 100%, serta Fitur Modal Interaktif Daftar Lengkap Penulis ("Selengkapnya" / `BookAuthorsModal.jsx`).
+28. **Bab 47**: Rekayasa Ulang Algoritma Rekomendasi "Buku Terkait" dengan Skoring Relevansi Berjenjang Tingkat Basis Data (4-Tier Relevance Ranking Query), Pengabaian Penulis Anonim, dan Eliminasi Keterbatasan *Candidate Pool* In-Memory.
 
 ---
 *Silakan buka [DOKUMENTASI_PENGEMBANGAN.md](./DOKUMENTASI_PENGEMBANGAN.md) untuk detail teknis, tabel skema, dan panduan pengujian alur kerja.*

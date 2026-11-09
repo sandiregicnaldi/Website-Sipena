@@ -574,26 +574,47 @@ export const SipenaBooksController = {
                 return res.status(404).json({ error: "Book not found" });
             }
 
-            // Find other books (up to 20 candidate pool)
-            const otherBooks = await db.query.books.findMany({
-                where: sql`${books.id} != ${currentBook.id}`,
-                orderBy: (b, { desc }) => [desc(b.createdAt)],
-                limit: 20
-            });
+            const limitParam = req.query.limit ? parseInt(req.query.limit as string, 10) : 6;
+            const limit = Math.min(Math.max(isNaN(limitParam) ? 6 : limitParam, 1), 20);
 
-            const sorted = otherBooks.sort((a, b) => {
-                if (currentBook.authorName) {
-                    if (a.authorName === currentBook.authorName && b.authorName !== currentBook.authorName) return -1;
-                    if (a.authorName !== currentBook.authorName && b.authorName === currentBook.authorName) return 1;
-                }
-                if (currentBook.category) {
-                    if (a.category === currentBook.category && b.category !== currentBook.category) return -1;
-                    if (a.category !== currentBook.category && b.category === currentBook.category) return 1;
-                }
-                return 0;
-            }).slice(0, 4);
+            const authorId = currentBook.authorId || null;
+            const authorName = currentBook.authorName && currentBook.authorName !== 'Penulis Anonim' ? currentBook.authorName : null;
+            const category = currentBook.category || null;
 
-            res.json(sorted);
+            // Intelligent 4-tier ranking across all books:
+            // 1: Same Author AND Same Category
+            // 2: Same Author, Different Category
+            // 3: Same Category, Different Author
+            // 4: Fallback (other published books sorted by createdAt DESC)
+            const result: any = await db.execute(sql`
+                SELECT 
+                    id,
+                    title,
+                    author_id AS "authorId",
+                    author_name AS "authorName",
+                    category,
+                    cover_url AS "coverUrl",
+                    file_url AS "fileUrl",
+                    rating_avg AS "ratingAvg",
+                    rating_count AS "ratingCount",
+                    download_count AS "downloadCount",
+                    read_count AS "readCount",
+                    created_at AS "createdAt",
+                    CASE
+                        WHEN (${authorId}::text IS NOT NULL AND author_id = ${authorId})
+                             OR (${authorName}::text IS NOT NULL AND author_name = ${authorName})
+                          THEN (CASE WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 1 ELSE 2 END)
+                        WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 3
+                        ELSE 4
+                    END AS priority_score
+                FROM books
+                WHERE id != ${currentBook.id}
+                  AND (status = 'published' OR status IS NULL)
+                ORDER BY priority_score ASC, created_at DESC
+                LIMIT ${limit};
+            `);
+
+            res.json(result.rows || []);
         } catch (error) {
             console.error("[SipenaBooksController.getRelated] Error:", error);
             res.status(500).json({ error: "Failed to fetch related books" });

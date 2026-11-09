@@ -2413,6 +2413,77 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
    - Frontend Vite build: Sukses dalam 1m 26s (0 galat).
    - Backend TypeScript build (`tsc`): Sukses tanpa galat.
 
+---
+
+## BAB 47: Rekayasa Ulang Algoritma Rekomendasi "Buku Terkait" dengan Skoring Relevansi Berjenjang Tingkat Basis Data (4-Tier Relevance Ranking Query)
+
+### A. Latar Belakang & Identifikasi Permasalahan
+1. **Audit Patokan Penentuan "Buku Terkait":**
+   - Pengguna menanyakan patokan dan akurasi dari daftar "Buku Terkait" (*Related Books*) yang muncul pada halaman detail buku (`/buku/:id`).
+   - Berdasarkan hasil audit menyeluruh pada controller backend (`server/src/controllers/sipenaController.ts` fungsi `SipenaBooksController.getRelated`), ditemukan kelemahan logika:
+     - Query awal hanya mengambil **20 buku terbaru saja** (`limit: 20`, diurutkan `createdAt DESC`).
+     - Pengurutan berdasarkan kesesuaian Penulis (`authorName`) dan Kategori (`category`) dilakukan secara *in-memory* di memori server Node.js hanya pada 20 buku tersebut.
+     - Akibatnya: Jika terdapat buku lain yang memiliki kategori atau penulis yang sama persis namun buku tersebut berada di luar 20 buku terbaru (misalnya buku lama atau kategori khusus seperti "Inkubator Literasi"), buku tersebut **sama sekali tidak terambil dari basis data**.
+     - Sebagai imbasnya, sistem menampilkan buku dari kategori lain yang sama sekali tidak relevan (misalnya buku "Inkubator Literasi" justru menampilkan buku terkait berkategori "Non Fiksi").
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Rekayasa Kueri SQL Berjenjang (4-Tier Relevance Ranking Query):**
+   - Menggantikan *in-memory candidate pool* dengan kueri langsung ke seluruh tabel `books` di PostgreSQL.
+   - Mengimplementasikan logika perhitungan skor prioritas (`priority_score`) menggunakan ekspresi kondisional SQL `CASE WHEN`:
+     - **Tingkat 1 (Score 1 - Skor Tertinggi):** Penulis Sama **DAN** Kategori Sama.
+     - **Tingkat 2 (Score 2):** Penulis Sama, Kategori Berbeda.
+     - **Tingkat 3 (Score 3):** Kategori Sama, Penulis Berbeda.
+     - **Tingkat 4 (Score 4 - Fallback):** Buku terbitan lain di luar kategori/penulis yang sama sebagai cadangan pelengkap jika jumlah buku serupa kurang dari batas tampilan.
+   - **Logika SQL:**
+     ```sql
+     SELECT 
+         id,
+         title,
+         author_id AS "authorId",
+         author_name AS "authorName",
+         category,
+         cover_url AS "coverUrl",
+         file_url AS "fileUrl",
+         rating_avg AS "ratingAvg",
+         rating_count AS "ratingCount",
+         download_count AS "downloadCount",
+         read_count AS "readCount",
+         created_at AS "createdAt",
+         CASE
+             WHEN (${authorId}::text IS NOT NULL AND author_id = ${authorId})
+                  OR (${authorName}::text IS NOT NULL AND author_name = ${authorName})
+               THEN (CASE WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 1 ELSE 2 END)
+             WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 3
+             ELSE 4
+         END AS priority_score
+     FROM books
+     WHERE id != ${currentBook.id}
+       AND (status = 'published' OR status IS NULL)
+     ORDER BY priority_score ASC, created_at DESC
+     LIMIT ${limit};
+     ```
+2. **Penyelarasan Kolom & Kompatibilitas Antarmuka:**
+   - Kolom-kolom basis data snake_case dialiaskan secara presisi ke camelCase (`author_name AS "authorName"`, `cover_url AS "coverUrl"`, dst.) agar langsung bersesuaian dengan konsumsi frontend di `src/pages/BookDetail.jsx`.
+   - Mengabaikan nama `'Penulis Anonim'` dari pencocokan nama penulis agar tidak mengelompokkan buku yang sebenarnya bukan dari penulis yang sama.
+   - Mendukung parameter query dinamis `?limit=N` (standar 6 buku, batas aman 1–20) untuk mengoptimalkan tampilan carousel buku di `src/components/BookSection.jsx`.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+
+1. **Verifikasi Kueri terhadap Kategori Spesifik ("Inkubator Literasi"):**
+   - Sebelum perbaikan: Buku kategori "Inkubator Literasi" menampilkan 4 buku acak berkategori "Non Fiksi".
+   - Setelah perbaikan: Endpoint `GET /api/sipena/books/1afc0f65-3e14-4237-a47e-2c2d87d205ee/related` mengembalikan 6 buku yang **seluruhnya 100% berkategori "Inkubator Literasi"** dengan `priority_score: 3`.
+2. **Verifikasi Kueri terhadap Kategori "Non Fiksi":**
+   - Endpoint `GET /api/sipena/books/644dd487-ce52-4608-9375-02f6a6e98690/related` mengembalikan 6 buku yang **seluruhnya 100% berkategori "Non Fiksi"**.
+3. **Kompilasi TypeScript & Build:**
+   - Backend TypeScript (`npx tsc --noEmit`): Lulus dengan kode 0 (0 error).
+   - Frontend Vite (`npm run build`): Lulus tanpa galat.
+
+
 
 
 
