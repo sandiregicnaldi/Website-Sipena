@@ -66,8 +66,8 @@ const Home = () => {
         console.warn('Failed to fetch dynamic books for Home, using fallback:', err);
       });
 
-    // 2. Ambil Penulis dengan Karya Terbanyak untuk Halaman Utama
-    SipenaAPI.getAuthors({ limit: 4 })
+    // 2. Ambil Penulis dengan Karya Terbanyak untuk Halaman Utama (Top 5 Penulis Terproduktif)
+    SipenaAPI.getAuthors({ limit: 5 })
       .then(res => {
         if (Array.isArray(res) && res.length > 0) {
           setFeaturedAuthors(res.map((a, idx) => ({

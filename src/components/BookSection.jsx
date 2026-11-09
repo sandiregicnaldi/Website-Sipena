@@ -31,7 +31,7 @@ const BookSection = ({ title, books = [], showDownloads }) => {
             <button className="slider-btn left" onClick={() => scroll('left')}><ChevronLeft size={24} /></button>
           )}
           
-          <div className="book-grid" ref={scrollRef}>
+          <div className={`book-grid ${books.length <= 4 ? 'is-centered' : ''}`} ref={scrollRef}>
           {books.map((book, index) => {
             const authorText = book.author || book.authorName || 'Penulis Anonim';
             const hasMultipleAuthors = isLongAuthor(authorText);

@@ -62,6 +62,11 @@
   scrollbar-width: none;
 }
 
+.book-grid.is-centered {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .book-grid::-webkit-scrollbar {
   display: none;
 }
@@ -75,6 +80,7 @@
   transition: var(--transition-normal);
   border: 1px solid var(--border-color);
   flex: 0 0 240px; /* Lebar statis untuk setiap kartu buku */
+  max-width: 260px;
 }
 
 .book-card:hover {
@@ -211,4 +217,37 @@
   font-size: 0.75rem;
   color: var(--accent-color);
   font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — Book Section
+═══════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+  .book-grid.is-centered {
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .book-section {
+    padding: 2.5rem 0;
+  }
+  .book-grid {
+    gap: 1.25rem;
+  }
+  .book-grid.is-centered {
+    justify-content: center;
+  }
+  .book-card {
+    flex: 0 0 calc(50% - 0.75rem);
+    max-width: calc(50% - 0.75rem);
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .book-card {
+    flex: 0 0 100%;
+    max-width: 260px;
+  }
 }
