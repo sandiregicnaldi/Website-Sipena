@@ -580,12 +580,12 @@ export const SipenaBooksController = {
             const authorId = currentBook.authorId || null;
             const authorName = currentBook.authorName && currentBook.authorName !== 'Penulis Anonim' ? currentBook.authorName : null;
             const category = currentBook.category || null;
+            const title = currentBook.title || '';
 
-            // Intelligent 4-tier ranking across all books:
-            // 1: Same Author AND Same Category
-            // 2: Same Author, Different Category
-            // 3: Same Category, Different Author
-            // 4: Fallback (other published books sorted by createdAt DESC)
+            // Algoritma Rekomendasi Buku Terkait Multi-Kriteria:
+            // 1. Penulis yang sama (Exact authorId/authorName atau partial word similarity)
+            // 2. Judul yang hampir mirip (Trigram similarity & word similarity via pg_trgm untuk menjaring Jilid 1, 2, seri terbitan)
+            // 3. Kategori buku yang sama
             const result: any = await db.execute(sql`
                 SELECT 
                     id,
@@ -600,17 +600,30 @@ export const SipenaBooksController = {
                     download_count AS "downloadCount",
                     read_count AS "readCount",
                     created_at AS "createdAt",
-                    CASE
-                        WHEN (${authorId}::text IS NOT NULL AND author_id = ${authorId})
-                             OR (${authorName}::text IS NOT NULL AND author_name = ${authorName})
-                          THEN (CASE WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 1 ELSE 2 END)
-                        WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 3
-                        ELSE 4
-                    END AS priority_score
+                    ROUND(similarity(title, ${title})::numeric, 3) AS "titleSim",
+                    (
+                        -- 1. Penulis yang sama (Bobot Utama Penulis)
+                        (CASE 
+                            WHEN (${authorId}::text IS NOT NULL AND author_id = ${authorId}) THEN 10.0
+                            WHEN (${authorName}::text IS NOT NULL AND author_name = ${authorName} AND author_name != 'Penulis Anonim') THEN 10.0
+                            WHEN (${authorName}::text IS NOT NULL AND author_name != 'Penulis Anonim' AND (word_similarity(${authorName}, author_name) >= 0.7 OR similarity(author_name, ${authorName}) >= 0.6)) THEN 7.0
+                            ELSE 0.0
+                        END)
+                        +
+                        -- 2. Judul yang hampir mirip (Bobot Utama Judul: Seri/Jilid 1 & 2 dsb.)
+                        (CASE 
+                            WHEN similarity(title, ${title}) >= 0.35 THEN similarity(title, ${title}) * 12.0
+                            WHEN word_similarity(${title}, title) >= 0.65 THEN word_similarity(${title}, title) * 8.0
+                            ELSE similarity(title, ${title}) * 2.0
+                        END)
+                        +
+                        -- 3. Kategori buku (Bobot Kategori)
+                        (CASE WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 3.0 ELSE 0.0 END)
+                    ) AS relevance_score
                 FROM books
                 WHERE id != ${currentBook.id}
                   AND (status = 'published' OR status IS NULL)
-                ORDER BY priority_score ASC, created_at DESC
+                ORDER BY relevance_score DESC, created_at DESC
                 LIMIT ${limit};
             `);
 

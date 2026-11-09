@@ -2415,29 +2415,34 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
 
 ---
 
-## BAB 47: Rekayasa Ulang Algoritma Rekomendasi "Buku Terkait" dengan Skoring Relevansi Berjenjang Tingkat Basis Data (4-Tier Relevance Ranking Query)
+## BAB 47: Rekayasa Ulang Algoritma Rekomendasi "Buku Terkait" Multi-Kriteria (Penulis Sama, Kesamaan Judul / Multi-Jilid via pg_trgm, & Kategori)
 
 ### A. Latar Belakang & Identifikasi Permasalahan
-1. **Audit Patokan Penentuan "Buku Terkait":**
-   - Pengguna menanyakan patokan dan akurasi dari daftar "Buku Terkait" (*Related Books*) yang muncul pada halaman detail buku (`/buku/:id`).
-   - Berdasarkan hasil audit menyeluruh pada controller backend (`server/src/controllers/sipenaController.ts` fungsi `SipenaBooksController.getRelated`), ditemukan kelemahan logika:
-     - Query awal hanya mengambil **20 buku terbaru saja** (`limit: 20`, diurutkan `createdAt DESC`).
-     - Pengurutan berdasarkan kesesuaian Penulis (`authorName`) dan Kategori (`category`) dilakukan secara *in-memory* di memori server Node.js hanya pada 20 buku tersebut.
-     - Akibatnya: Jika terdapat buku lain yang memiliki kategori atau penulis yang sama persis namun buku tersebut berada di luar 20 buku terbaru (misalnya buku lama atau kategori khusus seperti "Inkubator Literasi"), buku tersebut **sama sekali tidak terambil dari basis data**.
-     - Sebagai imbasnya, sistem menampilkan buku dari kategori lain yang sama sekali tidak relevan (misalnya buku "Inkubator Literasi" justru menampilkan buku terkait berkategori "Non Fiksi").
+1. **Audit Patokan Penentuan "Buku Terkait" & Masalah Buku Multi-Jilid:**
+   - Pengguna melaporkan bahwa saat membuka buku Jilid 1, buku Jilid 2 seringkali tidak muncul di daftar "Buku Terkait" (*Related Books*) pada halaman detail buku (`/buku/:id`).
+   - Pengguna menegaskan kembali 3 pilar penentuan buku terkait:
+     1. **Penulis yang sama** (*Same author*)
+     2. **Judul yang hampir mirip** (*Similar title* - seperti Jilid 1, Jilid 2, Volume, seri terbitan)
+     3. **Kategori buku** (*Same category*)
+2. **Akar Permasalahan Teknis:**
+   - Pada buku-buku antologi atau terbitan berseri (misal: *ANTOLOGI CERITA RAKYAT LAMPUNG*, *DENTING YANG MENEMBUS WAKTU*, *Kuliner Warisan di Meja Kekinian: Gastronomi nJombangan*, *Kisah Budaya Wonosobo*, *Batu di Perjumpaan Dua Zaman*), nama penulis ketua pada Jilid 1 dan Jilid 2 seringkali berbeda (contoh: *Pancaria Suhesti dkk.* pada Jilid 1 vs *Zulkarnain Zen dkk.* pada Jilid 2).
+   - Akibatnya, jika algoritma hanya mencocokkan penulis dan kategori tanpa memperhitungkan kemiripan teks judul (*title similarity*), buku Jilid 2 diperlakukan sama dengan ratusan buku lain di kategori yang sama, sehingga tenggelam dan tidak muncul di 6 slot teratas.
 
 ---
 
 ### B. Solusi & Perubahan Implementasi
 
-1. **Rekayasa Kueri SQL Berjenjang (4-Tier Relevance Ranking Query):**
-   - Menggantikan *in-memory candidate pool* dengan kueri langsung ke seluruh tabel `books` di PostgreSQL.
-   - Mengimplementasikan logika perhitungan skor prioritas (`priority_score`) menggunakan ekspresi kondisional SQL `CASE WHEN`:
-     - **Tingkat 1 (Score 1 - Skor Tertinggi):** Penulis Sama **DAN** Kategori Sama.
-     - **Tingkat 2 (Score 2):** Penulis Sama, Kategori Berbeda.
-     - **Tingkat 3 (Score 3):** Kategori Sama, Penulis Berbeda.
-     - **Tingkat 4 (Score 4 - Fallback):** Buku terbitan lain di luar kategori/penulis yang sama sebagai cadangan pelengkap jika jumlah buku serupa kurang dari batas tampilan.
-   - **Logika SQL:**
+1. **Aktivasi Ekstensi PostgreSQL Trigram (`pg_trgm`) & Indeks GIN:**
+   - Mengaktifkan ekstensi bawaan PostgreSQL `pg_trgm` secara otomatis pada saat server *boot* di `runMigrations()` (`server/src/index.ts`):
+     ```sql
+     CREATE EXTENSION IF NOT EXISTS pg_trgm;
+     CREATE INDEX IF NOT EXISTS idx_books_title_trgm ON books USING gin (title gin_trgm_ops);
+     CREATE INDEX IF NOT EXISTS idx_books_author_trgm ON books USING gin (author_name gin_trgm_ops);
+     ```
+   - Pemanfaatan fungsi `similarity(title1, title2)` dan `word_similarity(title1, title2)` memungkinkan pencocokan kesamaan judul secara presisi tinggi (misal: Jilid 1 vs Jilid 2 menghasilkan skor kemiripan antara $0.85$ hingga $0.95$).
+
+2. **Perumusan Skor Relevansi Terpadu (*Composite Relevance Scoring Formula*):**
+   - Diimplementasikan pada `SipenaBooksController.getRelated` (`server/src/controllers/sipenaController.ts`):
      ```sql
      SELECT 
          id,
@@ -2452,36 +2457,113 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
          download_count AS "downloadCount",
          read_count AS "readCount",
          created_at AS "createdAt",
-         CASE
-             WHEN (${authorId}::text IS NOT NULL AND author_id = ${authorId})
-                  OR (${authorName}::text IS NOT NULL AND author_name = ${authorName})
-               THEN (CASE WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 1 ELSE 2 END)
-             WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 3
-             ELSE 4
-         END AS priority_score
+         ROUND(similarity(title, ${title})::numeric, 3) AS "titleSim",
+         (
+             -- 1. Penulis yang sama (Bobot Utama Penulis)
+             (CASE 
+                 WHEN (${authorId}::text IS NOT NULL AND author_id = ${authorId}) THEN 10.0
+                 WHEN (${authorName}::text IS NOT NULL AND author_name = ${authorName} AND author_name != 'Penulis Anonim') THEN 10.0
+                 WHEN (${authorName}::text IS NOT NULL AND author_name != 'Penulis Anonim' AND (word_similarity(${authorName}, author_name) >= 0.7 OR similarity(author_name, ${authorName}) >= 0.6)) THEN 7.0
+                 ELSE 0.0
+             END)
+             +
+             -- 2. Judul yang hampir mirip (Bobot Utama Judul: Seri/Jilid 1 & 2 dsb.)
+             (CASE 
+                 WHEN similarity(title, ${title}) >= 0.35 THEN similarity(title, ${title}) * 12.0
+                 WHEN word_similarity(${title}, title) >= 0.65 THEN word_similarity(${title}, title) * 8.0
+                 ELSE similarity(title, ${title}) * 2.0
+             END)
+             +
+             -- 3. Kategori buku (Bobot Kategori)
+             (CASE WHEN (${category}::text IS NOT NULL AND category = ${category}) THEN 3.0 ELSE 0.0 END)
+         ) AS relevance_score
      FROM books
      WHERE id != ${currentBook.id}
        AND (status = 'published' OR status IS NULL)
-     ORDER BY priority_score ASC, created_at DESC
+     ORDER BY relevance_score DESC, created_at DESC
      LIMIT ${limit};
      ```
-2. **Penyelarasan Kolom & Kompatibilitas Antarmuka:**
-   - Kolom-kolom basis data snake_case dialiaskan secara presisi ke camelCase (`author_name AS "authorName"`, `cover_url AS "coverUrl"`, dst.) agar langsung bersesuaian dengan konsumsi frontend di `src/pages/BookDetail.jsx`.
-   - Mengabaikan nama `'Penulis Anonim'` dari pencocokan nama penulis agar tidak mengelompokkan buku yang sebenarnya bukan dari penulis yang sama.
-   - Mendukung parameter query dinamis `?limit=N` (standar 6 buku, batas aman 1–20) untuk mengoptimalkan tampilan carousel buku di `src/components/BookSection.jsx`.
+
+3. **Karakteristik Bobot:**
+   - **Seri Jilid 1 & Jilid 2 (Meskipun Penulis Berbeda):** `title_sim` $\approx 0.90$ memberikan kontribusi skor $\approx 10.8$, ditambah kategori $3.0$, menghasilkan skor total $\approx 13.8$ yang secara mutlak mengungguli buku lain dalam kategori yang sama ($\approx 3.0 - 3.5$).
+   - **Penulis yang Sama (Judul Berbeda):** Mendapatkan kontribusi skor $10.0$ (+ $3.0$ jika kategori sama) = $13.0$, langsung naik ke jajaran teratas.
+   - **Penulis Sama DAN Judul Mirip:** Skor kombinasi mencapai $> 23.0$ (skor tertinggi mutlak).
+   - **Kategori Sama:** Mengisi slot tersisa secara teratur berdasarkan tanggal terbit terbaru (`created_at DESC`).
+   - **Eksklusi 'Penulis Anonim':** Dicegah agar tidak saling mengelompokkan buku yang tidak saling berhubungan.
+
+---
+
+### C. Hasil Pengujian & Verifikasi Live
+
+1. **Uji Kasus Nyata Buku Multi-Jilid (Endpoint `GET /api/sipena/books/:id/related`):**
+   - **ANTOLOGI CERITA RAKYAT LAMPUNG JILID 1:**
+     - Hasil #1: **ANTOLOGI CERITA RAKYAT LAMPUNG JILID 2** (Relevance: $13.83$)
+   - **DENTING YANG MENEMBUS WAKTU JILID 2:**
+     - Hasil #1: **DENTING YANG MENEMBUS WAKTU JILID 1** (Relevance: $13.70$)
+   - **Kuliner Warisan di Meja Kekinian Gastronomi nJombangan Jilid 1:**
+     - Hasil #1: **Kuliner Warisan di Meja Kekinian: Gastronomi nJombangan Jilid 2** (Relevance: $14.23$)
+   - **Kisah Budaya Wonosobo Jilid 1:**
+     - Hasil #1: **Kisah Budaya Wonosobo Jilid 2** (Relevance: $13.50$)
+   - **Batu di Perjumpaan Dua Zaman: Jilid 1:**
+     - Hasil #1: **Batu di Perjumpaan Dua Zaman: Jilid 2** (Relevance: $8.16$)
+   - **Babad Cirebon Jilid 1:**
+     - Hasil #1: **Babad Cirebon jilid 2** (Relevance: $23.00$ - Penulis Sama + Judul Mirip)
+     - Hasil #2: **Babad Dermayu** (Relevance: $10.40$ - Penulis Sama)
+2. **Kompilasi TypeScript & Build:**
+   - Backend TypeScript (`npx tsc --noEmit`): Lulus dengan kode 0 (0 error).
+   - Frontend Vite (`npm run build`): Lulus tanpa galat.
+
+---
+
+## BAB 47: Perbaikan Pengamanan CAPTCHA (Pencegahan Auto-Fill) & Penambahan Fitur Toggle Tampilkan Kata Sandi
+
+### A. Latar Belakang & Identifikasi Masalah
+1. **Masalah CAPTCHA Terisi Otomatis (*Auto-Fill Bug*):**
+   - Saat pengguna memilih opsi pengujian kredensial (*Pilih Akun Testing*) pada halaman masuk (`LoginPage.jsx`), fungsi `fillCredentials` secara terprogram memanggil `captchaRef.current?.autoSolve()`. Hal ini menyebabkan jawaban tantangan matematika langsung terisi secara otomatis (misal: soal `3 + 6 = ?` otomatis terisi `9`), sehingga verifikasi interaktif menjadi hilang.
+   - Selain itu, elemen `<input>` jawaban pada komponen `CaptchaChallenge.jsx` belum dilengkapi atribut penangkal *browser autofill* / pengelola kata sandi pihak ketiga (*LastPass*, *1Password*, *Google Password Manager*), sehingga pada kondisi tertentu peramban salah mengidentifikasi kolom jawaban sebagai OTP/PIN sekunder.
+2. **Kebutuhan Tombol Tampilkan Kata Sandi (*Show/Hide Password Toggle*):**
+   - Kolom isian kata sandi di formulir masuk dan daftar belum memiliki tombol visibilitas (ikon mata). Pengguna kesulitan memeriksa kebenaran ketikan sandi mereka tanpa fitur ini.
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Pemberhentian Auto-Fill CAPTCHA & Pengetatan Proteksi Browser:**
+   - **`src/pages/LoginPage.jsx`**:
+     - Menghapus pemanggilan `captchaRef.current?.autoSolve()` dari fungsi `fillCredentials`. Saat pengguna mengeklik salah satu akun pengujian, hanya email dan kata sandi yang diisi, sedangkan CAPTCHA tetap wajib diselesaikan secara sadar dan manual oleh pengguna.
+   - **`src/components/CaptchaChallenge.jsx`**:
+     - Menghapus *method* `autoSolve` dari eksposur `useImperativeHandle` sehingga tidak ada kode eksternal yang dapat mengisi jawaban secara terprogram.
+     - Menambahkan atribut proteksi autofill pada `<input>`:
+       - `id="captcha-answer-field"` & `name="captcha_math_challenge"`
+       - `autoComplete="off"`
+       - `data-lpignore="true"` & `data-1p-ignore="true"`
+       - `data-form-type="other"`
+
+2. **Implementasi Tombol Tampilkan Kata Sandi Reusable:**
+   - **`src/pages/LoginPage.jsx` (`InputField`)**:
+     - Memperluas komponen `InputField` dengan state lokal `showPassword`.
+     - Jika `type === 'password'`, `InputField` merender tombol interaktif di sisi kanan kolom dengan ikon `Eye` / `EyeOff` dari `lucide-react`.
+     - Tipe input berganti secara dinamis antara `'password'` dan `'text'`.
+     - Mengatur `paddingRight: '2.85rem'` secara dinamis agar karakter kata sandi tidak tertutup oleh tombol mata.
+     - Berlaku secara konsisten pada form Masuk (Login) maupun form Pendaftaran Anggota (Register).
+   - **`src/pages/LoginPage.css`**:
+     - Menambahkan kelas `.password-toggle-btn` dengan pemosisian `absolute; right: 0.75rem; top: 50%; transform: translateY(-50%)`.
+     - Memberikan efek interaksi hover halus dengan aksen warna primer dan latar transparan.
 
 ---
 
 ### C. Hasil Pengujian & Verifikasi
 
-1. **Verifikasi Kueri terhadap Kategori Spesifik ("Inkubator Literasi"):**
-   - Sebelum perbaikan: Buku kategori "Inkubator Literasi" menampilkan 4 buku acak berkategori "Non Fiksi".
-   - Setelah perbaikan: Endpoint `GET /api/sipena/books/1afc0f65-3e14-4237-a47e-2c2d87d205ee/related` mengembalikan 6 buku yang **seluruhnya 100% berkategori "Inkubator Literasi"** dengan `priority_score: 3`.
-2. **Verifikasi Kueri terhadap Kategori "Non Fiksi":**
-   - Endpoint `GET /api/sipena/books/644dd487-ce52-4608-9375-02f6a6e98690/related` mengembalikan 6 buku yang **seluruhnya 100% berkategori "Non Fiksi"**.
-3. **Kompilasi TypeScript & Build:**
-   - Backend TypeScript (`npx tsc --noEmit`): Lulus dengan kode 0 (0 error).
-   - Frontend Vite (`npm run build`): Lulus tanpa galat.
+1. **Uji Fungsionalitas CAPTCHA:**
+   - Mengeklik tombol akun pengujian (Super Admin, Reviewer, Personil, Penulis, Pengunjung) kini hanya mengisi email dan kata sandi; kolom CAPTCHA tetap bersih (*empty state*) dan meminta jawaban manual dari pengguna.
+   - Peramban web tidak lagi mengisi nilai otomatis ke dalam kotak input CAPTCHA.
+2. **Uji Fungsionalitas Toggle Kata Sandi:**
+   - Mengklik ikon mata menampilkan teks kata sandi dalam bentuk teks terbuka dan ikon berganti menjadi `EyeOff`.
+   - Mengklik kembali menyembunyikan teks kata sandi menjadi titik sandi (*bullet dots*) dan ikon kembali menjadi `Eye`.
+   - Form pendaftaran (*Register*) juga menikmati fitur toggle kata sandi yang sama.
+3. **Kompilasi Produksi:**
+   - Frontend Vite Build (`npm run build`): Berhasil tanpa galat dalam 1m 9s (`dist/` terbarui).
+   - Backend TypeScript Build (`tsc`): Berhasil tanpa galat.
 
 
 

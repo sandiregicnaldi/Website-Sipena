@@ -2,30 +2,49 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
-import { Mail, Lock, ArrowRight, User, MapPin, Calendar, Briefcase, Building2, ChevronDown, ShieldAlert } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, MapPin, Calendar, Briefcase, Building2, ChevronDown, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import CaptchaChallenge from '../components/CaptchaChallenge';
 import './LoginPage.css';
 
 // ── Shared form components ──────────────────────────────────────────────────
 
-const InputField = ({ icon: Icon, label, type = 'text', name, id, placeholder, value, onChange, required, autoComplete }) => (
-  <div className="form-group">
-    <label htmlFor={id || name}>{label}</label>
-    <div className="input-with-icon">
-      <Icon size={18} className="input-icon" />
-      <input
-        type={type}
-        name={name}
-        id={id || name}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        required={required}
-        autoComplete={autoComplete}
-      />
+const InputField = ({ icon: Icon, label, type = 'text', name, id, placeholder, value, onChange, required, autoComplete }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === 'password';
+  const effectiveType = isPassword ? (showPassword ? 'text' : 'password') : type;
+
+  return (
+    <div className="form-group">
+      <label htmlFor={id || name}>{label}</label>
+      <div className="input-with-icon">
+        <Icon size={18} className="input-icon" />
+        <input
+          type={effectiveType}
+          name={name}
+          id={id || name}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          required={required}
+          autoComplete={autoComplete}
+          style={isPassword ? { paddingRight: '2.85rem' } : undefined}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            className="password-toggle-btn"
+            onClick={() => setShowPassword(prev => !prev)}
+            title={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+            aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const SelectField = ({ icon: Icon, label, name, value, onChange, options, required, disabled }) => (
   <div className="form-group">
@@ -257,10 +276,7 @@ const LoginPage = () => {
     setLoginError('');
     setCaptchaError('');
     setUnverifiedEmail('');
-    // Otomatis hitung dan isi jawaban CAPTCHA saat memilih akun testing
-    setTimeout(() => {
-      captchaRef.current?.autoSolve();
-    }, 50);
+    // Catatan: Jawaban CAPTCHA sengaja tidak diisi otomatis agar pengguna tetap menyelesaikan verifikasi secara manual
   };
 
   const getDestinationPath = (resolvedUser) => {

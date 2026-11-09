@@ -47,22 +47,8 @@ const CaptchaChallenge = forwardRef(({ onVerifyChange, isError, errorMessage }, 
   }, []);
 
   useImperativeHandle(ref, () => ({
-    autoSolve: () => {
-      if (challenge) {
-        const correct = challenge.localAnswer || String(challenge.num1 + challenge.num2);
-        setUserAnswer(correct);
-        if (onVerifyChange) {
-          onVerifyChange({
-            token: challenge.token,
-            answer: correct,
-            isComplete: true,
-            localAnswer: challenge.localAnswer,
-          });
-        }
-      }
-    },
     refresh: fetchChallenge,
-  }), [challenge, onVerifyChange]);
+  }), [fetchChallenge]);
 
   const handleInputChange = (e) => {
     const val = e.target.value.trim();
@@ -163,6 +149,12 @@ const CaptchaChallenge = forwardRef(({ onVerifyChange, isError, errorMessage }, 
           <input
             type="text"
             inputMode="numeric"
+            id="captcha-answer-field"
+            name="captcha_math_challenge"
+            autoComplete="off"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-form-type="other"
             placeholder="Jawaban angka"
             value={userAnswer}
             onChange={handleInputChange}

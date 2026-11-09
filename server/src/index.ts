@@ -342,6 +342,14 @@ async function runMigrations() {
         console.warn("[migration] books.read_count skipped:", (e as Error).message);
     }
     try {
+        await db.execute(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_books_title_trgm ON books USING gin (title gin_trgm_ops)`);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_books_author_trgm ON books USING gin (author_name gin_trgm_ops)`);
+        console.log("[migration] pg_trgm extension & trigram indexes on books(title, author_name) ensured");
+    } catch (e) {
+        console.warn("[migration] pg_trgm setup skipped:", (e as Error).message);
+    }
+    try {
         await db.execute(`
             CREATE TABLE IF NOT EXISTS app_settings (
                 key TEXT PRIMARY KEY,
