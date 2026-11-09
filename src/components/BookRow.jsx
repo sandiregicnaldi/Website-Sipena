@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import BookAuthorsModal, { isLongAuthor } from './BookAuthorsModal';
 import './BookRow.css';
 
 /**
@@ -9,6 +10,7 @@ import './BookRow.css';
  */
 const BookRow = ({ title, books = [], viewAllLink = '/buku' }) => {
   const scrollRef = useRef(null);
+  const [authorModal, setAuthorModal] = useState(null);
 
   const scroll = (dir) => {
     if (!scrollRef.current) return;
@@ -37,52 +39,78 @@ const BookRow = ({ title, books = [], viewAllLink = '/buku' }) => {
           </button>
 
           <div className="row-track" ref={scrollRef}>
-            {books.map((book, i) => (
-              <Link to={`/buku/${book.id || 1}`} key={i} className="row-card">
-                {/* Cover */}
-                <div className="row-cover" style={{ backgroundColor: book.color || '#1e3a8a' }}>
-                  {(book.coverUrl || book.cover) ? (
-                    <img
-                      src={book.coverUrl || book.cover}
-                      alt={book.title}
-                      className="row-cover-img"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const fallbackSpan = e.currentTarget.parentElement?.querySelector('.row-cover-title');
-                        if (fallbackSpan) fallbackSpan.style.display = 'block';
-                      }}
-                    />
-                  ) : null}
-                  <span className="row-cover-title" style={(book.coverUrl || book.cover) ? { display: 'none' } : {}}>{book.title}</span>
-                  {/* Hover overlay */}
-                  <div className="row-cover-overlay">
-                    <span className="overlay-play">▶ Baca</span>
+            {books.map((book, i) => {
+              const authorText = book.author || book.authorName || 'Penulis Anonim';
+              const hasMultipleAuthors = isLongAuthor(authorText);
+
+              return (
+                <Link to={`/buku/${book.id || 1}`} key={i} className="row-card">
+                  {/* Cover */}
+                  <div className="row-cover" style={{ backgroundColor: book.color || '#1e3a8a' }}>
+                    {(book.coverUrl || book.cover) ? (
+                      <img
+                        src={book.coverUrl || book.cover}
+                        alt={book.title}
+                        className="row-cover-img"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallbackSpan = e.currentTarget.parentElement?.querySelector('.row-cover-title');
+                          if (fallbackSpan) fallbackSpan.style.display = 'block';
+                        }}
+                      />
+                    ) : null}
+                    <span className="row-cover-title" style={(book.coverUrl || book.cover) ? { display: 'none' } : {}}>{book.title}</span>
+                    {/* Hover overlay */}
+                    <div className="row-cover-overlay">
+                      <span className="overlay-play">▶ Baca</span>
+                    </div>
                   </div>
-                </div>
-                {/* Info */}
-                <div className="row-info">
-                  <p className="row-book-title">{book.title}</p>
-                  <p className="row-book-author">{book.author}</p>
-                  {(book.readCount !== undefined || book.downloadCount !== undefined) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem', fontWeight: 500 }}>
-                      <span title="Jumlah pembaca" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                        👁️ <strong>{book.readCount || 0}</strong>
-                      </span>
-                      <span>•</span>
-                      <span title="Jumlah unduhan" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                        📥 <strong>{book.downloadCount || 0}</strong>
-                      </span>
-                      {book.ratingAvg > 0 && (
-                        <>
-                          <span>•</span>
-                          <span style={{ color: '#d97706', fontWeight: 600 }}>★ {book.ratingAvg.toFixed(1)}</span>
-                        </>
+                  {/* Info */}
+                  <div className="row-info">
+                    <p className="row-book-title">{book.title}</p>
+                    <div className="row-author-container">
+                      <p className="row-book-author" title={authorText}>{authorText}</p>
+                      {hasMultipleAuthors && (
+                        <button
+                          type="button"
+                          className="row-author-more-btn"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setAuthorModal({
+                              id: book.id,
+                              title: book.title,
+                              author: authorText,
+                              coverUrl: book.coverUrl || book.cover
+                            });
+                          }}
+                          title="Lihat seluruh daftar penulis"
+                        >
+                          Selengkapnya
+                        </button>
                       )}
                     </div>
-                  )}
-                </div>
-              </Link>
-            ))}
+                    {(book.readCount !== undefined || book.downloadCount !== undefined) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem', fontWeight: 500 }}>
+                        <span title="Jumlah pembaca" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          👁️ <strong>{book.readCount || 0}</strong>
+                        </span>
+                        <span>•</span>
+                        <span title="Jumlah unduhan" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          📥 <strong>{book.downloadCount || 0}</strong>
+                        </span>
+                        {book.ratingAvg > 0 && (
+                          <>
+                            <span>•</span>
+                            <span style={{ color: '#d97706', fontWeight: 600 }}>★ {book.ratingAvg.toFixed(1)}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
           <button className="row-nav-btn right" onClick={() => scroll('right')} aria-label="Geser kanan">
@@ -90,6 +118,13 @@ const BookRow = ({ title, books = [], viewAllLink = '/buku' }) => {
           </button>
         </div>
       </div>
+
+      {/* Modal Daftar Seluruh Penulis */}
+      <BookAuthorsModal
+        isOpen={!!authorModal}
+        data={authorModal}
+        onClose={() => setAuthorModal(null)}
+      />
     </section>
   );
 };

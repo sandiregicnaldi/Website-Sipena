@@ -2344,6 +2344,76 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
    - Frontend Vite build: Sukses dalam 1m 15s (0 galat).
    - Backend TypeScript build (`tsc`): Sukses tanpa galat.
 
+---
+
+## BAB 46: Penyeragaman Kerapian Kartu Buku: Pembatasan Maksimal 2 Baris Nama Penulis & Fitur Modal Daftar Lengkap Penulis ("Selengkapnya")
+
+### A. Latar Belakang & Identifikasi Permasalahan
+1. **Ketimpangan Tinggi Kartu Buku (*Uneven Card Heights*):**
+   - Pada sejumlah buku antologi, bunga rampai, naskah prosiding, dan terbitan kolaborasi (misal *Mambangkik Batang Tarandam*, *Cerita Seru dari Kampung Kampar*, *Pelangi di Natuna*), jumlah penulis terdaftar mencapai 10 hingga 30 orang dengan panjang teks antara 400 hingga 600 karakter.
+   - Sebelumnya, teks nama penulis pada kartu buku belum dibatasi (*unclamped*), menyebabkan kartu-kartu tersebut melar ke bawah hingga belasan baris secara vertikal.
+   - Hal ini merusak estetika dan kerapian tata letak antarmuka, terutama pada slider/carousel horizontal di halaman Beranda (*Home*) dan grid katalog buku, di mana kartu-kartu bersebelahan memiliki tinggi yang sangat timpang.
+2. **Kebutuhan Aksesibilitas Nama Penulis:**
+   - Meskipun tampilan kartu perlu dirapikan dengan batas maksimal 2 baris, seluruh nama penulis yang berkontribusi tetap harus dapat dilihat secara transparan dan lengkap oleh pengguna tanpa merusak struktur layout kartu di carousel.
+
+---
+
+### B. Solusi & Perubahan Implementasi
+
+1. **Pembuatan Komponen Modal Penulis Reusable (`src/components/BookAuthorsModal.jsx` & `BookAuthorsModal.css`):**
+   - **Dialog Minimalis & Elegan:** Menggunakan backdrop ber-blur halus (`backdrop-filter: blur(4px)`) dengan kartu dialog beranimasi *pop-in* lembut.
+   - **Pemecahan Nama Cerdas (*Smart Author Parser*):**
+     - Memecah string daftar penulis berdasarkan koma/titik koma.
+     - Mempertahankan kesatuan gelar akademik resmi Indonesia (seperti *S.E., M.E., S.Pd., M.Hum., Dr., Dra., Drs., Prof., Ph.D.*) agar tidak terpisah menjadi baris nama tersendiri.
+     - Mengabaikan kata singkatan seperti *"dkk."* secara rapi.
+   - **Penyajian Terstruktur:** Menampilkan daftar nama penulis bernomor urut lengkap dengan lingkaran inisial avatar modern.
+   - **Fitur Tambahan:**
+     - Tombol *"Salin Semua"* untuk menyalin seluruh daftar nama penulis ke clipboard peramban.
+     - Tombol *"Detail Buku"* untuk navigasi langsung ke halaman buku terkait.
+     - Aksesibilitas keyboard (`Escape` key listener) dan penguncian scroll latar belakang (*scroll lock*).
+
+2. **Penyelarasan Kartu Buku & Slider Horizontal (`src/components/BookRow.jsx` & `BookRow.css`):**
+   - Menetapkan aturan keras multi-line clamp maksimal 2 baris pada `.row-book-author`:
+     ```css
+     .row-book-author {
+       display: -webkit-box;
+       -webkit-line-clamp: 2;
+       -webkit-box-orient: vertical;
+       overflow: hidden;
+       text-overflow: ellipsis;
+       line-height: 1.35;
+       word-break: break-word;
+       margin: 0;
+     }
+     ```
+   - Menambahkan tinggi minimum seragam pada wadah judul (`.row-book-title`: `min-height: 2.7em`) dan wadah penulis (`.row-author-container`: `min-height: 3.4em`) sehingga setiap kartu pada baris slider memiliki **tinggi yang presisi dan sejajar sempurna 100%**.
+   - Menambahkan tombol interaktif `.row-author-more-btn` (**"Selengkapnya"**) jika buku memiliki penulis panjang (`isLongAuthor`), dengan penanganan `e.preventDefault()` dan `e.stopPropagation()` agar klik tidak memicu navigasi link kartu.
+
+3. **Penyelarasan Halaman Katalog Publik (`src/pages/BooksPage.jsx`):**
+   - Menyelaraskan kartu katalog buku (`books-grid`) dengan menerapkan pembatasan 2 baris dan tombol modal "Selengkapnya".
+
+4. **Penyelarasan Komponen Buku Terkait (`src/components/BookSection.jsx` & `BookSection.css`):**
+   - Menyeragamkan kartu slider "Buku Terkait" pada halaman detail buku dengan multi-line clamp 2 baris dan tombol modal penulis.
+
+5. **Penyelarasan Tabel Dasbor Admin (`src/pages/admin/AdminDashboard.css`):**
+   - Menambahkan clamp 1 baris (`-webkit-line-clamp: 1`) pada `.dashboard-book-author` agar baris tabel buku terpopuler di dasbor admin tetap ringkas dan rapi.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+
+1. **Uji Logika Parsing Penulis (`parseAuthorsList` & `isLongAuthor`):**
+   - String bergelar `"Jusman Sani, S.E., M.E, Nazwa Aurel Shalsabillah"` berhasil dipertahankan sebagai 2 nama lengkap terpisah dengan gelar utuh.
+   - Buku dengan penulis tunggal (*"Wini Fitriani"*) atau berakhiran dkk (*"Aan Fuah Fitriani, dkk."*) terdeteksi `isLongAuthor: false` sehingga tidak memunculkan tombol selengkapnya yang berlebih.
+   - Buku antologi dengan 10–30 penulis terdeteksi `isLongAuthor: true` dan sukses memunculkan tombol *"Selengkapnya"*.
+2. **Uji Tampilan & Presisi Antarmuka:**
+   - Semua kartu di baris *carousel* Beranda kini memiliki tinggi yang seragam dan rata secara horizontal tanpa ada kartu yang melar ke bawah.
+   - Mengklik tombol *"Selengkapnya"* membuka modal pop-up daftar lengkap penulis secara mulus tanpa membuat halaman berpindah ke detail buku.
+3. **Kompilasi Produksi:**
+   - Frontend Vite build: Sukses dalam 1m 26s (0 galat).
+   - Backend TypeScript build (`tsc`): Sukses tanpa galat.
+
+
 
 
 

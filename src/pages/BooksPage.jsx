@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Search, BookOpen, Loader2, X } from 'lucide-react';
 import { SipenaAPI } from '../lib/api';
+import BookAuthorsModal, { isLongAuthor } from '../components/BookAuthorsModal';
 import '../components/BookRow.css';
 import './BooksPage.css';
 
@@ -64,6 +65,7 @@ const BooksPage = () => {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Semua');
+  const [authorModal, setAuthorModal] = useState(null);
 
   const fetchBooks = async () => {
     try {
@@ -184,6 +186,9 @@ const BooksPage = () => {
           <div className="books-grid">
             {books.map((book) => {
               const bgColor = CATEGORY_COLORS[book.category] || '#1e3a8a';
+              const authorText = book.authorName || book.author || 'Penulis Anonim';
+              const hasMultipleAuthors = isLongAuthor(authorText);
+
               return (
                 <Link to={`/buku/${book.id}`} key={book.id} className="row-card">
                   <div className="row-cover" style={{ backgroundColor: bgColor }}>
@@ -206,7 +211,28 @@ const BooksPage = () => {
                   </div>
                   <div className="row-info">
                     <p className="row-book-title">{book.title}</p>
-                    <p className="row-book-author">{book.authorName || 'Penulis Anonim'}</p>
+                    <div className="row-author-container">
+                      <p className="row-book-author" title={authorText}>{authorText}</p>
+                      {hasMultipleAuthors && (
+                        <button
+                          type="button"
+                          className="row-author-more-btn"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setAuthorModal({
+                              id: book.id,
+                              title: book.title,
+                              author: authorText,
+                              coverUrl: book.coverUrl
+                            });
+                          }}
+                          title="Lihat seluruh daftar penulis"
+                        >
+                          Selengkapnya
+                        </button>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.35rem' }}>
                       <span title="Jumlah pembaca">👁️ {book.readCount || 0}</span>
                       <span>•</span>
@@ -277,6 +303,13 @@ const BooksPage = () => {
           );
         })()}
       </div>
+
+      {/* Modal Daftar Seluruh Penulis */}
+      <BookAuthorsModal
+        isOpen={!!authorModal}
+        data={authorModal}
+        onClose={() => setAuthorModal(null)}
+      />
     </main>
   );
 };
