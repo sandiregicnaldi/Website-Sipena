@@ -58,7 +58,28 @@ export default function Projects() {
     })
 
     if (filterStatus === 'review') {
-        filteredProjects.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        filteredProjects.sort((a, b) => {
+            const getStageTime = (proj) => {
+                const s = proj.stages?.find(stg => stg.status === 'review');
+                if (s?.submittedAt) {
+                    const t = new Date(s.submittedAt).getTime();
+                    if (!isNaN(t)) return t;
+                }
+                if (Array.isArray(s?.notes)) {
+                    const subNote = [...s.notes].reverse().find(n => n.text?.includes('[SUBMITTED]') && n.time);
+                    if (subNote) {
+                        const t = new Date(subNote.time).getTime();
+                        if (!isNaN(t)) return t;
+                    }
+                }
+                const fallback = new Date(proj.createdAt || 0).getTime();
+                return isNaN(fallback) ? 0 : fallback;
+            };
+            const timeA = getStageTime(a);
+            const timeB = getStageTime(b);
+            if (timeA !== timeB) return timeA - timeB;
+            return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        });
     }
 
     const getCurrentStage = (project) => {
@@ -292,11 +313,14 @@ export default function Projects() {
                                                     Menunggu Review
                                                 </span>
                                             </div>
-                                            {reviewStage.submittedAt && (
-                                                <span className="text-[10px] font-mono font-semibold text-amber-700 flex-shrink-0">
-                                                    Diajukan: {formatDate(reviewStage.submittedAt)}
-                                                </span>
-                                            )}
+                                            {(() => {
+                                                const subTime = reviewStage.submittedAt || (Array.isArray(reviewStage.notes) ? [...reviewStage.notes].reverse().find(n => n.text?.includes('[SUBMITTED]'))?.time : null);
+                                                return subTime ? (
+                                                    <span className="text-[10px] font-mono font-semibold text-amber-700 flex-shrink-0">
+                                                        Diajukan: {formatDate(subTime)}
+                                                    </span>
+                                                ) : null;
+                                            })()}
                                         </div>
                                     )}
 

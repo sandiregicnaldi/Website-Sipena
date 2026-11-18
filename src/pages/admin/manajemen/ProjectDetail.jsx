@@ -281,9 +281,9 @@ export default function ProjectDetail() {
     // PJ lookup: use enriched pj relation from API, with fallback
     const pj = activeStage?.pjId ? (activeStage.pj ? { id: activeStage.pj.id, name: activeStage.pj.name, avatar: activeStage.pj.avatarInitials || activeStage.pj.name?.substring(0, 2).toUpperCase() } : { id: activeStage.pjId, name: activeStage.pj?.name || 'Tunggu Penugasan...', avatar: '??' }) : null
     
-    // Collaborator / Co-PJ list lookup (maksimal 2 orang)
+    // Collaborator / Co-PJ list lookup (bebas berapapun jumlahnya)
     const activeCoPjIds = (activeStage?.coPjIds && Array.isArray(activeStage.coPjIds) && activeStage.coPjIds.length > 0)
-        ? activeStage.coPjIds.filter(id => id && id !== activeStage?.pjId).slice(0, 2)
+        ? activeStage.coPjIds.filter(id => id && id !== activeStage?.pjId)
         : (activeStage?.coPjId && activeStage.coPjId !== activeStage?.pjId ? [activeStage.coPjId] : [])
     
     const coPjList = activeCoPjIds.map((id, idx) => {
@@ -1032,7 +1032,7 @@ export default function ProjectDetail() {
         setAssignStageIdx(idx)
         setAssignPjId(stage?.pjId || '')
         const initCoPjIds = (stage?.coPjIds && Array.isArray(stage.coPjIds) && stage.coPjIds.length > 0)
-            ? stage.coPjIds.filter(id => id && id !== stage?.pjId).slice(0, 2)
+            ? stage.coPjIds.filter(id => id && id !== stage?.pjId)
             : (stage?.coPjId && stage.coPjId !== stage?.pjId ? [stage.coPjId] : [])
         setAssignCoPjIds(initCoPjIds)
         setAssignCoPjId(initCoPjIds[0] || '')
@@ -1068,7 +1068,7 @@ export default function ProjectDetail() {
         if (!assignPjId) return
         const stage = stages[assignStageIdx]
         const isFlexible = !['terbitan', 'medsos', 'keuangan'].includes(project.category)
-        const cleanCoPjIds = Array.from(new Set(assignCoPjIds.filter(id => id && id !== assignPjId))).slice(0, 2)
+        const cleanCoPjIds = Array.from(new Set(assignCoPjIds.filter(id => id && id !== assignPjId)))
         const parseDecimalScore = (val) => {
             if (val === undefined || val === null || val === '') return 0
             if (typeof val === 'number') return Math.max(0, val)
@@ -1830,6 +1830,15 @@ export default function ProjectDetail() {
                                         <span className="badge badge-outline" style={{ fontSize: '0.65rem', border: '1px solid var(--primary)', color: 'var(--primary)', fontWeight: 800 }}>
                                             ⭐ {getStageDynamicScore(project, activeStage, categoriesMap)} Poin
                                         </span>
+                                        {coPjList.length > 0 && (() => {
+                                            const totalPts = getStageDynamicScore(project, activeStage, categoriesMap);
+                                            const perPerson = Math.round((totalPts / (1 + coPjList.length)) * 100) / 100;
+                                            return (
+                                                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
+                                                    (dibagi rata: {perPerson} poin / orang)
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                     <div className="card-subtitle">Tahap {(selectedStageIdx !== null ? selectedStageIdx : activeStageIdx) + 1} dari {stages.length}</div>
                                 </div>
@@ -1843,7 +1852,19 @@ export default function ProjectDetail() {
                             {/* PJ Info */}
                             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem', fontSize: '0.8125rem' }}>
                                 <div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600 }}>PENANGGUNG JAWAB & KOLABORATOR</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600 }}>PENANGGUNG JAWAB & KOLABORATOR</div>
+                                        {(isAdmin || isProjectCreator || isFlexibleCategory || activeStage?.pjId === currentUser?.id) && activeStage?.status !== 'done' && activeStage?.status !== 'archived' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => openAssignModal(selectedStageIdx !== null ? selectedStageIdx : activeStageIdx)}
+                                                style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600, padding: 0 }}
+                                                title="Tambah atau kelola kolaborator tahapan"
+                                            >
+                                                ✎ Kelola
+                                            </button>
+                                        )}
+                                    </div>
                                     <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.125rem' }}>
                                         {pj ? (
                                             <>
@@ -3311,15 +3332,18 @@ export default function ProjectDetail() {
                                     </div>
                                 )
                             })()}
-                            {/* Multi-Select Kolaborator / Co-PJ (Maksimal 2 Orang) */}
+                            {/* Multi-Select Kolaborator / Rekan Kerja (Bebas Berapapun Jumlahnya) */}
                             <div className="form-group" style={{ marginTop: '0.75rem', marginBottom: '1rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                                     <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>
-                                        Kolaborator / Co-PJ (Maksimal 2 Orang)
+                                        Kolaborator / Rekan Kerja
                                     </label>
-                                    <span style={{ fontSize: '0.75rem', color: assignCoPjIds.length >= 2 ? '#b45309' : 'var(--text-muted)' }}>
-                                        {assignCoPjIds.length}/2 Terpilih
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {assignCoPjIds.length > 0 ? `${assignCoPjIds.length} Kolaborator Terpilih` : 'Opsional'}
                                     </span>
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                    Poin tahapan akan otomatis dibagi rata untuk PJ Utama dan seluruh Kolaborator ({1 + assignCoPjIds.length} personil).
                                 </div>
 
                                 {/* List badge kolaborator yang sudah dipilih */}
@@ -3371,8 +3395,8 @@ export default function ProjectDetail() {
                                     </div>
                                 )}
 
-                                {/* Dropdown penambahan kolaborator (jika masih kurang dari 2) */}
-                                {assignCoPjIds.length < 2 ? (
+                                {/* Dropdown penambahan kolaborator (tanpa batasan jumlah) */}
+                                {candidates.filter(c => c.id !== assignPjId && !assignCoPjIds.includes(c.id)).length > 0 ? (
                                     candidatesLoading ? (
                                         <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Memuat kandidat...</div>
                                     ) : (
@@ -3381,7 +3405,7 @@ export default function ProjectDetail() {
                                             onChange={e => {
                                                 const val = e.target.value
                                                 if (val && !assignCoPjIds.includes(val) && val !== assignPjId) {
-                                                    setAssignCoPjIds(prev => [...prev, val].slice(0, 2))
+                                                    setAssignCoPjIds(prev => [...prev, val])
                                                 }
                                             }}
                                         >
@@ -3399,8 +3423,8 @@ export default function ProjectDetail() {
                                         </select>
                                     )
                                 ) : (
-                                    <div style={{ fontSize: '0.72rem', color: '#059669', fontStyle: 'italic', background: '#ecfdf5', padding: '0.35rem 0.6rem', borderRadius: '6px' }}>
-                                        ✓ Batas maksimal 2 kolaborator telah tercapai.
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.25rem 0' }}>
+                                        Semua personil yang tersedia telah dipilih.
                                     </div>
                                 )}
                             </div>

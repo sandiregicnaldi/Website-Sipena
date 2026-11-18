@@ -163,24 +163,26 @@ export const RankingsController = {
 
                 const baseScore = score;
 
-                // Tentukan daftar kolaborator (maksimal 2 orang)
+                // Tentukan daftar kolaborator (bebas berapapun jumlahnya)
                 // Prioritas: coPjIds (array baru) bila berisi data, lalu fallback ke coPjId (field lama)
                 const coPjIdsArr = (stage.coPjIds && Array.isArray(stage.coPjIds) && (stage.coPjIds as string[]).length > 0)
                     ? (stage.coPjIds as string[]).filter((id: string) => id && id !== stage.pjId)
                     : (stage.coPjId && stage.coPjId !== stage.pjId ? [stage.coPjId] : []);
-                const collaboratorIds = Array.from(new Set(coPjIdsArr)).slice(0, 2);
+                const collaboratorIds = Array.from(new Set(coPjIdsArr));
                 const numCollaborators = collaboratorIds.length;
 
                 // Pembagian Poin: BAGI RATA untuk semua personil (PJ + Kolaborator)
                 // N personil total → masing-masing mendapat 1/N dari total poin tahapan
-                const totalParticipants = 1 + numCollaborators;
-                const equalPct = 1 / totalParticipants;
-                let pjScore = Math.round(baseScore * equalPct * 100) / 100;
-                let coPjScores: number[] = collaboratorIds.map(() => Math.round(baseScore * equalPct * 100) / 100);
-
+                const hasPj = !!(stage.pj && stage.pj.id);
+                const totalParticipants = (hasPj ? 1 : 0) + numCollaborators;
+                const equalScore = totalParticipants > 0 
+                    ? Math.round((baseScore / totalParticipants) * 100) / 100 
+                    : 0;
+                let pjScore = hasPj ? equalScore : 0;
+                let coPjScores: number[] = collaboratorIds.map(() => equalScore);
 
                 // Simpan perolehan skor untuk PJ Utama
-                if (stage.pj && stage.pj.id) {
+                if (hasPj && stage.pj) {
                     const pjId = stage.pj.id;
                     if (!rankingsMap[pjId]) {
                         rankingsMap[pjId] = { id: pjId, name: stage.pj.name || 'Unknown', totalScore: 0, completedStages: 0, details: [] };
@@ -207,11 +209,12 @@ export const RankingsController = {
                     }
                     rankingsMap[coId].totalScore += coScore;
                     rankingsMap[coId].completedStages += 1;
+                    const colabSuffix = numCollaborators === 1 ? '(Kolaborasi)' : `(Kolaborasi ${idx + 1})`;
                     rankingsMap[coId].details.push({
                         projectId: stage.project.id,
                         projectTitle: stage.project.title || 'Proyek Tanpa Judul',
                         category: catKey,
-                        stageLabel: `${stage.label || 'Tahap Tidak Diketahui'} (Kolaborasi ${idx + 1})`,
+                        stageLabel: `${stage.label || 'Tahap Tidak Diketahui'} ${colabSuffix}`,
                         scoreEarned: coScore,
                         date: completionDate.toISOString()
                     });

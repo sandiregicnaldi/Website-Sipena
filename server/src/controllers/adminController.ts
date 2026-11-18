@@ -59,10 +59,10 @@ export class AdminController {
             }
 
             const schema = z.object({
-                role: z.enum(["admin", "personil", "pegawai", "reviewer", "penulis", "pengunjung", "calon_penulis"]).optional(),
-                status: z.enum(["pending", "active", "disabled"]).optional(),
+                role: z.string().optional(),
+                status: z.string().optional(),
                 isReviewer: z.boolean().optional(),
-                skills: z.array(z.string()).optional(),
+                skills: z.array(z.string()).nullable().optional(),
                 bio: z.string().optional(),
                 profesi: z.string().optional(),
                 domisili: z.string().optional(),
@@ -164,7 +164,8 @@ export class AdminController {
             });
         } catch (e: any) {
             if (e.name === "ZodError") {
-                return res.status(400).json({ error: "Invalid input", details: e.errors });
+                const detailMsg = e.errors?.map((err: any) => `${err.path?.join('.') || 'field'}: ${err.message}`).join(', ') || 'Invalid input';
+                return res.status(400).json({ error: `Invalid input (${detailMsg})`, details: e.errors });
             }
             console.error("AdminController.updateUser error:", e);
             res.status(500).json({ error: e.message });

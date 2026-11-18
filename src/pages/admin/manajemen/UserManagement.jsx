@@ -87,9 +87,10 @@ export default function UserManagement() {
 
     const selectUser = (user) => {
         setSelectedUser(user)
-        setEditRole(user.role || 'personil')
-        setEditStatus(user.status || 'pending')
-        setEditSkills(user.skills || [])
+        const normalizedRole = user.role === 'admin' ? 'admin' : 'personil';
+        setEditRole(normalizedRole)
+        setEditStatus(user.status || 'active')
+        setEditSkills(Array.isArray(user.skills) ? user.skills : [])
         setEditIsReviewer(user.isReviewer === true || user.role === 'admin' || user.role === 'reviewer')
         setShowSkillPicker(false)
     }
@@ -511,7 +512,13 @@ export default function UserManagement() {
                                             )}
                                         </button>
                                         <button
-                                            onClick={() => { setEditRole(selectedUser.role || 'personil'); setEditStatus(selectedUser.status || 'pending'); setEditSkills(selectedUser.skills || []); setShowSkillPicker(false) }}
+                                            onClick={() => { 
+                                                const normalizedRole = selectedUser.role === 'admin' ? 'admin' : 'personil';
+                                                setEditRole(normalizedRole); 
+                                                setEditStatus(selectedUser.status || 'active'); 
+                                                setEditSkills(Array.isArray(selectedUser.skills) ? selectedUser.skills : []); 
+                                                setShowSkillPicker(false);
+                                            }}
                                             className="px-5 py-3.5 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-all"
                                         >
                                             Atur Ulang

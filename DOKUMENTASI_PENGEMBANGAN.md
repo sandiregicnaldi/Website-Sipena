@@ -49,6 +49,12 @@
 42. [Perbaikan Visibilitas Statistik Buku Beranda & Manajemen Kedaluwarsa Sesi / Auto-Logout Inaktivitas](#bab-42-perbaikan-visibilitas-statistik-buku-beranda--manajemen-kedaluwarsa-sesi--auto-logout-inaktivitas)
 43. [Persistensi Foto Profil Penulis, Sinkronisasi Komprehensif Biodata, & Penyelarasan Pasca-Login Beranda](#bab-43-persistensi-foto-profil-penulis-sinkronisasi-komprehensif-biodata--penyelarasan-pasca-login-beranda)
 44. [Pembersihan Data Dummy Kegiatan & Perancangan Tampilan Elegan Modern Kegiatan Belum Ada (Empty State)](#bab-44-pembersihan-data-dummy-kegiatan--perancangan-tampilan-elegan-modern-kegiatan-belum-ada-empty-state)
+45. [Rekayasa Algoritma Rekomendasi Buku Terkait Berbasis Bobot Multi-Tier SQL](#bab-45-rekayasa-algoritma-rekomendasi-buku-terkait-berbasis-bobot-multi-tier-sql)
+46. [Optimasi Kesamaan Judul Buku Multi-Jilid dengan pg_trgm & Trigram Similarity](#bab-46-optimasi-kesamaan-judul-buku-multi-jilid-dengan-pg_trgm--trigram-similarity)
+47. [Perbaikan Pengamanan CAPTCHA (Pencegahan Auto-Fill) & Penambahan Fitur Toggle Tampilkan Kata Sandi](#bab-47-perbaikan-pengamanan-captcha-pencegahan-auto-fill--penambahan-fitur-toggle-tampilkan-kata-sandi)
+48. [Migrasi Masal Opsi 2 (7.219 Akun Member/Pembaca) & Dukungan Dual-Hash Password (SHA-1 vs Scrypt)](#bab-48-migrasi-masal-opsi-2-7219-akun-memberpembaca--dukungan-dual-hash-password-sha-1-vs-scrypt)
+49. [Perbaikan Akurasi Penampilan Buku Karya Penulis (Eliminasi Substring Collisions & Relasi Presisi)](#bab-49-perbaikan-akurasi-penampilan-buku-karya-penulis-eliminasi-substring-collisions--relasi-presisi)
+50. [Penyelarasan Paritas Fitur Manajemen: Kolaborator Tanpa Batas, Pembagian Poin Rata, Otoritas PJ, & Pengurutan Antrean Review](#bab-50-penyelarasan-paritas-fitur-manajemen-kolaborator-tanpa-batas-pembagian-poin-rata-otoritas-pj--pengurutan-antrean-review)
 
 ---
 
@@ -2565,19 +2571,174 @@ Berdasarkan laporan pengujian pengguna pada halaman dasbor profil penulis dan me
    - Frontend Vite Build (`npm run build`): Berhasil tanpa galat dalam 1m 9s (`dist/` terbarui).
    - Backend TypeScript Build (`tsc`): Berhasil tanpa galat.
 
+---
 
+## BAB 48: Migrasi Masal Opsi 2 (7.219 Akun Member/Pembaca) & Dukungan Dual-Hash Password (SHA-1 vs Scrypt)
 
+### A. Latar Belakang & Identifikasi Masalah
+1. **Kebutuhan Migrasi Akun Pembaca:**
+   - Setelah suksesnya migrasi katalog buku dan penulis (Opsi 1: 1.527 buku & 326 penulis), sistem perlu memigrasikan basis pengguna pembaca/member dari file dump basis data lama (`migration/epublishing_LIVE_2026.sql`).
+   - Tabel `members` lama memiliki **9.765 baris data**.
+2. **Kendala Integritas Basis Data:**
+   - Tabel `members` lama **tidak memiliki batasan `UNIQUE` pada kolom `EmailAddress`**, sehingga terdapat 2.546 baris data yang emailnya terdaftar kembar/duplikat.
+   - Tabel `"user"` PostgreSQL SiPena memiliki aturan ketat `UNIQUE(email)`. Jika diimpor mentah, transaksi akan langsung gagal (*unique constraint violation*).
+3. **Kendala Enkripsi Kata Sandi (Password Hashing):**
+   - Sistem lama menggunakan algoritma **SHA-1** standar ASP.NET (40 karakter heksadesimal kapital).
+   - Better-Auth pada SiPena menggunakan format derivasi modern **Scrypt** (`salt:key`).
+   - Meminta 7.219 pengguna untuk melakukan *Reset Password* secara massal akan merusak pengalaman pengguna dan menimbulkan hambatan masuk (*barrier to entry*).
 
+---
 
+### B. Solusi & Perubahan Implementasi
 
+1. **Konfigurasi Dual-Hash Password Verifier pada Better-Auth:**
+   - **`server/src/auth.ts`**:
+     - Memasang hook `emailAndPassword.password.verify` kustom.
+     - Sistem mendeteksi format string hash:
+       - Jika hash tersimpan adalah pola heksadesimal 40 karakter (`/^[a-fA-F0-9]{40}$/`): sistem memverifikasi secara langsung menggunakan `crypto.createHash('sha1').update(password).digest('hex').toUpperCase()`.
+       - Jika hash tersimpan berformat standar Scrypt (`salt:key`): sistem memverifikasi menggunakan `defaultVerifyPassword` dari `better-auth/crypto`.
+     - **Hasil:** Semua 7.219 pengguna lama dapat langsung masuk (*login*) menggunakan kata sandi lama mereka tanpa perlu konfirmasi email atau reset kata sandi.
 
+2. **Deduplikasi Cerdas & Skrip Batch Migrasi:**
+   - **`server/scripts/migrate_option2_members.js`**:
+     - Menggunakan streaming parser `readline` untuk efisiensi memori (RAM usage < 100MB).
+     - Mengelompokkan data berdasarkan `LOWER(TRIM(EmailAddress))`, mengambil data pendaftaran paling mutakhir (`CreateDate DESC`).
+     - Menyaring 9.765 baris mentah menjadi **7.219 akun unik terverifikasi**.
+     - Memasukkan data secara batch (500 baris per transaksi database) ke:
+       - Tabel `"user"`: `id`, `name`, `email`, `role = 'pengunjung'`, `status = 'active'`, `emailVerified = true`, `phone`, `instansi`, `alamat_lengkap`, `bio`, timestamps.
+       - Tabel `"account"`: `id`, `accountId`, `userId`, `providerId = 'credential'`, `password = <sha1_hash>`, timestamps.
+     - Dilengkapi klausa proteksi `ON CONFLICT (email) DO NOTHING` guna menjamin seluruh akun Super Admin, Pegawai, Reviewer, dan Penulis yang telah ada tidak akan pernah tertimpa.
 
+---
 
+### C. Hasil Pengujian & Verifikasi
+1. **Statistik Migrasi:**
+   - Waktu eksekusi: **2.6 detik**.
+   - Total akun baru terimpor: **7.219 pengguna** (`"user"` & `"account"`).
+   - Total pengguna terdaftar di SiPena kini: **7.526 pengguna**.
+2. **Pengujian Autentikasi Better-Auth:**
+   - Login dengan kata sandi SHA-1 asli: Berhasil masuk dan sesi (*session*) terbentuk dengan benar.
+   - Login dengan kata sandi salah: Ditolak dengan pesan `Invalid email or password`.
 
+---
 
+## BAB 49: Perbaikan Akurasi Penampilan Buku Karya Penulis (Eliminasi Substring Collisions & Relasi Presisi)
 
+### A. Latar Belakang & Identifikasi Masalah
+1. **Risiko Ketidakakuratan pada Penulis Bernama 1 Kata (*Mononym*):**
+   - Halaman detail penulis (`AuthorProfile.jsx`) dan kueri daftar penulis (`AuthorsPage.jsx` & `FeaturedAuthors.jsx`) sebelumnya mengandalkan pencocokan teks longgar `ILIKE '%${author.name}%'`.
+   - Hal ini menyebabkan masalah *substring collision* yang sangat fatal:
+     - Penulis **"Azizah"** keliru menampilkan buku karya *"Faras Puji Azizah"* dan *"Maryam ' Azizah"*.
+     - Penulis **"AZHAR"** keliru menampilkan buku karya *"Sukron Azhari"* dan *"Ahmad Nazhar Al Salsabila"*.
+     - Penulis **"Sabir"** keliru menampilkan buku karya *"Falah Sabirin"*.
+     - Penulis **"Fitriani"** keliru menampilkan buku karya *"Wini Fitriani"*, *"Dian Novita Fitriani"*, *"Fini Fitriani"*, dsb.
+     - Penulis **"Yulianto"** keliru menampilkan buku karya *"Mukti Yulianto"*.
+     - Penulis **"Dwi Lestari"** keliru menampilkan buku karya *"Endan Dwi Lestariningsih"*.
+2. **Ketiadaan Foreign Key di Basis Data Warisan:**
+   - Basis data lama hanya menyimpan nama pengarang dalam kolom teks bebas `author (VARCHAR(700))` tanpa id relasi ke tabel penulis, sehingga banyak buku antologi dan karya pengarang belum terkunci ke `author_id`.
 
+---
 
+### B. Solusi & Perubahan Implementasi
 
+1. **Pembersihan Database & Smart Auto-Linker (Langkah 3):**
+   - **`server/scripts/fix_and_relink_authors.js`**:
+     - Memindai 258 buku yang sebelumnya tertaut.
+     - Menemukan dan **melepas 41 relasi buku salah** yang diakibatkan oleh `includes()` warisan.
+     - Menjalankan algoritma *Exact Token Matching* yang memecah metadata pengarang berdasarkan pemisah standar (koma `,`, titik koma `;`, kata `dan`, `&`, `/`) dan membersihkan gelar akademik/keagamaan.
+     - Mengunci **217 buku ke `author_id` yang 100% valid dan presisi**.
 
+2. **Perbaikan Logika Query Runtime (Langkah 1):**
+   - **`server/src/controllers/sipenaController.ts`**:
+     - **`SipenaAuthorsController.getOne` (Detail Penulis):**
+       - Memuat buku yang memiliki `author_id = id` sebagai prioritas utama.
+       - Untuk buku dengan `author_id IS NULL`, sistem melakukan normalisasi gelar (`Dr.`, `Prof.`, `M.Pd.`, `S.E.`, dll) dan memeriksa apakah nama penulis muncul sebagai **token independen utuh** di antara pemisah pengarang.
+       - Potongan kata dalam nama orang lain 100% ditolak.
+     - **`SipenaAuthorsController.getAll` (Daftar Penulis):**
+       - Menghitung total buku per penulis dengan ekspresi PostgreSQL *word boundary* regex dengan pembatas:
+         ```sql
+         b.author_name ~* concat('(^|[,;|/&\n]|\bdan\b)[^,;|/&\n]*\y', trim(u.name), '\y[^,;|/&\n]*([,;|/&\n]|\bdan\b|$)')
+         ```
+       - Menghapus pembengkakan jumlah karya akibat *false positive*.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+1. **Verifikasi Kasus Penulis Problematic:**
+   - Penulis **Sabir**: Sebelumnya 2 buku (*Falah Sabirin* + *Sabir*) $\rightarrow$ Kini hanya **1 buku asli** (*Sarung Sutra Wajo*).
+   - Penulis **Azizah**: Sebelumnya 2 buku (*Faras Puji Azizah*, dll) $\rightarrow$ Kini **0 buku** (Buku orang lain bersih).
+   - Penulis **Nur Tria**: Sebelumnya 1 buku (*Nur Trianingsih*) $\rightarrow$ Kini **0 buku**.
+   - Penulis **Azhar Fakhru Rijal**: Sebelumnya tertukar dengan mononim AZHAR $\rightarrow$ Kini tepat **1 buku asli** (*Mengakar di Kuningan*).
+   - Penulis **Rahmat Sopian**: Kini tepat **4 buku asli** (Termasuk karya antologi).
+2. **Kompilasi & Build:**
+   - Backend Server (`npm --prefix server run build`): Lulus tanpa galat (`tsc` exit code 0).
+   - Frontend Vite (`npm run build`): Lulus tanpa galat (`built in 1m 10s`).
+
+---
+
+## BAB 50: Penyelarasan Paritas Fitur Manajemen: Kolaborator Tanpa Batas, Pembagian Poin Rata, Otoritas PJ, & Pengurutan Antrean Review
+
+### A. Latar Belakang & Identifikasi Kebutuhan
+Dalam pengembangan berkelanjutan alur kerja redaksi pada `dasbor-penerbitan2`, terdapat serangkaian peningkatan fitur dan fleksibilitas operasional yang dirancang untuk mendukung kolaborasi tim redaksi Perpusnas Press:
+1. **Penghapusan Batasan Kolaborator (Bebas / Unlimited):**
+   - Sebelumnya, sistem membatasi penugasan kolaborator maksimal hanya 2 orang per tahapan (`.slice(0, 2)` dan validasi `.max(2)`).
+   - Di lapangan, tahapan rumit seperti penyuntingan buku antologi atau penataan tata letak berbobot besar sering kali membutuhkan 3, 4, atau lebih rekan kerja secara bersamaan.
+2. **Skema Pembagian Poin Dibagi Rata (Equal Score Division):**
+   - Sistem poin kinerja sebelumnya belum membagi rata secara dinamis ke seluruh kolaborator.
+   - Diperlukan pembagian adil: $\text{Poin per orang} = \text{Total Poin Tahapan} / (1 \text{ PJ Utama} + N \text{ Kolaborator})$ dengan pembulatan presisi 2 desimal serta proteksi *division by zero*.
+3. **Pemberian Wewenang PJ Utama Tahapan untuk Mengelola Rekan Kerja:**
+   - Sebelumnya, hanya Admin atau Pembuat Proyek yang dapat membuka modal penugasan. PJ Utama tahapan tidak dapat menambah atau mengubah rekan kerja yang membantunya tanpa meminta bantuan admin.
+4. **Penyelarasan Pengurutan Antrean Review (*FIFO Submission Queue*):**
+   - Di dasbor dan halaman proyek, antrean review sebelumnya diurutkan berdasarkan `project.createdAt`. Hal ini tidak adil bagi PJ tahapan yang mengajukan review lebih awal pada proyek yang baru dibuat, atau sebaliknya.
+   - Pengurutan diselaraskan berdasarkan waktu pengajuan (`submittedAt` atau timestamp note `[SUBMITTED]`).
+
+---
+
+### B. Rincian Implementasi & Perubahan Berkas
+
+1. **Backend Server (`server/src/controllers/stageController.ts` & `rankingsController.ts`):**
+   - Menghapus validasi `.max(2)` pada `coPjIds` di `updateStageSchema`.
+   - Memberikan otorisasi kepada `existingStage.pjId === userId` untuk mengelola daftar `coPjIds` tanpa mengizinkan perubahan PJ Utama atau deadline pada kategori terstruktur.
+   - Menghapus pemotongan array `.slice(0, 2)` pada penyimpanan `cleanCoPjIds`.
+   - Pada `rankingsController.ts`, kalkulasi poin kolaborasi diselaraskan menjadi:
+     ```typescript
+     const totalParticipants = 1 + collaboratorIds.length;
+     const equalScore = totalParticipants > 0 ? Math.round((baseScore / totalParticipants) * 100) / 100 : 0;
+     ```
+   - Label riwayat poin otomatis menampilkan: `(Kolaborasi)` jika 1 rekan, atau `(Kolaborasi 1)`, `(Kolaborasi 2)`, dst.
+
+2. **Frontend Alur Kerja (`src/pages/admin/manajemen/ProjectDetail.jsx`):**
+   - Menghapus batasan `.slice(0, 2)` pada pemindaian `activeCoPjIds`, `initCoPjIds`, dan penyimpanan `cleanCoPjIds`.
+   - Memperbarui kartu detail tahapan dengan indikator transparansi poin:
+     `⭐ X Poin (dibagi rata: Y poin / orang)`.
+   - Menambahkan tombol aksi cepat `✎ Kelola` pada header *PENANGGUNG JAWAB & KOLABORATOR* yang dapat diakses oleh Admin, Pembuat Proyek, dan PJ Utama tahapan aktif.
+   - Memperbarui modal penugasan:
+     - Mengubah judul menjadi `Kolaborator / Rekan Kerja` dan `{N} Kolaborator Terpilih`.
+     - Memberikan keterangan pembagian rata poin ke seluruh personil yang terpilih.
+     - Dropdown terus aktif menampilkan kandidat yang belum dipilih hingga seluruh personil habis.
+
+3. **Laporan Kinerja (`src/pages/admin/manajemen/Reports.jsx`):**
+   - Menghapus batasan `.slice(0, 2)` pada akumulasi bobot pengerjaan laporan kinerja tim redaksi.
+
+4. **Dasbor & Proyek (`Dashboard.jsx` & `Projects.jsx`):**
+   - Menambahkan helper `getStageSubmittedTime` dengan prioritas fallback (`submittedAt` $\rightarrow$ note `[SUBMITTED]` $\rightarrow$ `project.createdAt`).
+   - Memberikan akses antrean review lengkap bagi pengguna dengan hak `isReviewer` di samping `isAdmin`.
+   - Mengurutkan daftar antrean review secara *First In, First Out* berdasarkan waktu pengajuan tahapan.
+   - Menyempurnakan tampilan tanggal pengajuan review pada tabel ekspansi dasbor dan kartu proyek.
+
+5. **Manajemen Pengguna & Validasi Admin (`adminController.ts` & `UserManagement.jsx`):**
+   - Memperluas skema pembaruan data pengguna agar menerima nilai fleksibel untuk `role`, `status`, dan `skills: z.array(z.string()).nullable().optional()`.
+   - Menyediakan pesan galat Zod terperinci yang human-readable.
+   - Menormalkan *state* peran (`admin` vs `personil`) dan array *skills* pada modal pengaturan pengguna agar tidak memicu galat *null pointer*.
+
+---
+
+### C. Hasil Pengujian & Verifikasi
+
+1. **Kompilasi TypeScript Backend (`server`):**
+   - `npm --prefix server run build` berhasil 100% tanpa galat (`tsc` code 0).
+2. **Kompilasi Bundler Frontend (`vite build`):**
+   - `npm run build` berhasil mengompilasi seluruh modul client tanpa peringatan maupun galat.
+3. **Penyelarasan Git & Repository:**
+   - Seluruh aset berat (`public/covers/`, `public/file pdf buku/`, `public/foto penulis/`, serta file dump `*.sql`) terlindungi oleh `.gitignore` sehingga repository tetap ramping dan aman untuk operasi push/pull.
 

@@ -29,7 +29,14 @@ dist-ssr
 !.env.example
 *.env
 
-# Uploads
+# Uploads & Media Assets
 uploads/
 server/uploads/
+public/covers/
+public/file pdf buku/
+public/foto penulis/
+
+# Database dumps
+migration/*.sql
+*.sql
 

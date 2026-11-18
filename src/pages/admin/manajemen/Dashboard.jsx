@@ -39,7 +39,7 @@ const STATUS_DOT = {
 }
 
 export default function Dashboard() {
-    const { projects, archivedProjects, isAdmin, notifications, currentUser, categoriesMap } = useApp()
+    const { projects, archivedProjects, isAdmin, isReviewer, notifications, currentUser, categoriesMap } = useApp()
     const navigate = useNavigate()
     const [expandedStat, setExpandedStat] = useState(null)
     const [expandedBursa, setExpandedBursa] = useState({})
@@ -117,17 +117,41 @@ export default function Dashboard() {
         const s = getCurrentStage(p)
         return s && s.status !== 'done' && s.status !== 'archived'
     })
+    // Helper untuk menentukan tanggal pengajuan review (prioritas: submittedAt -> note [SUBMITTED] -> project.createdAt)
+    const getStageSubmittedTime = (item) => {
+        const s = item._reviewStage;
+        if (s?.submittedAt) {
+            const t = new Date(s.submittedAt).getTime();
+            if (!isNaN(t)) return t;
+        }
+        if (Array.isArray(s?.notes)) {
+            const subNote = [...s.notes].reverse().find(n => n.text?.includes('[SUBMITTED]') && n.time);
+            if (subNote) {
+                const t = new Date(subNote.time).getTime();
+                if (!isNaN(t)) return t;
+            }
+        }
+        const fallback = new Date(item.createdAt || 0).getTime();
+        return isNaN(fallback) ? 0 : fallback;
+    };
+
     // Flat list: tahapan berstatus review yang menunggu review/konfirmasi
-    // Jika user ber-role Admin (isAdmin), tampilkan SEMUA tahapan berstatus 'review'
+    // Jika user ber-role Admin (isAdmin) atau Reviewer (isReviewer), tampilkan SEMUA tahapan berstatus 'review'
     // Jika user biasa, tampilkan tahapan berstatus 'review' di mana user adalah PJ / Co-PJ
+    // Diurutkan berdasarkan tanggal yang paling duluan mengajukan (earliest submitted_at di bagian atas list)
     const reviewPending = visibleProjects.flatMap(p =>
         (p.stages || []).filter(s => {
             const isUserInvolved = s.pjId === currentUser?.id || 
                 s.coPjId === currentUser?.id || 
                 (s.coPjIds && Array.isArray(s.coPjIds) && s.coPjIds.includes(currentUser?.id));
-            return s.status === 'review' && (isAdmin || isUserInvolved);
+            return s.status === 'review' && (isAdmin || isReviewer || isUserInvolved);
         }).map(s => ({ ...p, _reviewStage: s }))
-    ).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    ).sort((a, b) => {
+        const timeA = getStageSubmittedTime(a);
+        const timeB = getStageSubmittedTime(b);
+        if (timeA !== timeB) return timeA - timeB;
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+    })
     // Flat list: tahapan berstatus revision yang PJ/Kolaborator-nya adalah user saat ini
     const revisionForUser = visibleProjects.flatMap(p => {
         const stgs = p.stages || []
@@ -499,12 +523,15 @@ export default function Dashboard() {
                                                 </td>
                                                 {expandedStat === 'review' ? (
                                                     <td className="px-4 py-3 text-xs font-mono font-semibold text-amber-700">
-                                                        {stage?.submittedAt ? (
-                                                            <div>
-                                                                <div>{formatDateTime(stage.submittedAt)}</div>
-                                                                <div className="text-[10px] text-slate-400 font-normal">{formatTime(stage.submittedAt)}</div>
-                                                            </div>
-                                                        ) : '—'}
+                                                        {(() => {
+                                                            const subTime = stage?.submittedAt || (Array.isArray(stage?.notes) ? stage.notes.find(n => n.text?.includes('[SUBMITTED]'))?.time : null);
+                                                            return subTime ? (
+                                                                <div>
+                                                                    <div>{formatDateTime(subTime)}</div>
+                                                                    <div className="text-[10px] text-slate-400 font-normal">{formatTime(subTime)}</div>
+                                                                </div>
+                                                            ) : '—';
+                                                        })()}
                                                     </td>
                                                 ) : (
                                                     <td className={`px-4 py-3 text-xs font-mono ${isOverdue ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>

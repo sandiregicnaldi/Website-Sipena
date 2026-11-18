@@ -20,7 +20,7 @@ const updateStageSchema = z.object({
     deadline: z.string().optional(), // Date string
     pjId: z.string().nullable().optional(), // User ID
     coPjId: z.string().nullable().optional(), // User ID (legacy single co-PJ)
-    coPjIds: z.array(z.string()).max(2).optional(), // Array of User IDs (maksimal 2 kolaborator)
+    coPjIds: z.array(z.string()).optional(), // Array of User IDs (bebas berapapun kolaborator)
     resultLink: z.string().optional(),
     notes: z.array(z.object({ from: z.string(), text: z.string(), time: z.string() })).optional(),
     score: z.number().min(0).optional(),
@@ -110,21 +110,22 @@ export const StageController = {
                     }
                 }
 
-                // Non-admin cannot assign PJ or change deadline — EXCEPT for 'lainnya' category projects, Project Creator, or PJ of this stage
-                if (data.pjId !== undefined || data.deadline || data.coPjId !== undefined) {
+                // Non-admin cannot assign PJ or change deadline/collaborators — EXCEPT for 'lainnya' category projects, Project Creator, or PJ of this stage
+                if (data.pjId !== undefined || data.deadline || data.coPjId !== undefined || data.coPjIds !== undefined) {
                     const stageProject = await db.query.projects.findFirst({
                         where: eq(projects.id, existingStage.projectId),
                         columns: { id: true, category: true, createdBy: true },
                     });
                     const isFlexible = !['terbitan', 'medsos', 'keuangan'].includes(stageProject?.category || '');
                     const isCreator = stageProject?.createdBy === userId;
+                    const isStagePj = !!userId && existingStage.pjId === userId;
                     
-                    if (!stageProject || (!isFlexible && !isCreator && !isMyStage)) {
-                        return res.status(403).json({ error: "Forbidden: Hanya admin, pembuat proyek, atau PJ tahapan yang bisa mengubah penugasan" });
+                    if (!stageProject || (!isFlexible && !isCreator && !isStagePj)) {
+                        return res.status(403).json({ error: "Forbidden: Hanya admin, pembuat proyek, atau PJ tahapan yang bisa mengubah penugasan atau kolaborator" });
                     }
-                    if (!isCreator && isMyStage && !isFlexible) {
+                    if (!isCreator && isStagePj && !isFlexible) {
                         if (data.pjId !== undefined && data.pjId !== existingStage.pjId) {
-                            return res.status(403).json({ error: "Forbidden: Anda hanya diizinkan untuk mengubah PJ pendamping (Join PJ)." });
+                            return res.status(403).json({ error: "Forbidden: Anda hanya diizinkan untuk menambah/mengubah kolaborator." });
                         }
                         if (data.deadline && existingStage.deadline && new Date(data.deadline).getTime() !== existingStage.deadline.getTime()) {
                             return res.status(403).json({ error: "Forbidden: Anda tidak diizinkan untuk merubah deadline." });
@@ -161,10 +162,10 @@ export const StageController = {
             if (data.status) updateData.status = data.status;
             if (data.pjId !== undefined) updateData.pjId = data.pjId || null;
             
-            // Kolaborator / Co-PJ handling (maksimal 2 orang)
+            // Kolaborator / Co-PJ handling (bebas berapapun jumlahnya)
             if (data.coPjIds !== undefined) {
                 const targetPjId = data.pjId !== undefined ? data.pjId : existingStage.pjId;
-                const cleanCoPjIds = Array.from(new Set(data.coPjIds.filter(id => id && id !== targetPjId))).slice(0, 2);
+                const cleanCoPjIds = Array.from(new Set(data.coPjIds.filter(id => id && id !== targetPjId)));
                 updateData.coPjIds = cleanCoPjIds;
                 updateData.coPjId = cleanCoPjIds[0] || null; // sync legacy column
             } else if (data.coPjId !== undefined) {

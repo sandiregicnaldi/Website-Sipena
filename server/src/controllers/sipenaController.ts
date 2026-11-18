@@ -1548,7 +1548,13 @@ export const SipenaAuthorsController = {
                     COUNT(DISTINCT b.id)::int AS total_books
                   FROM "user" u
                   LEFT JOIN books b 
-                    ON (b.author_id = u.id OR (u.name IS NOT NULL AND length(trim(u.name)) > 3 AND b.author_name ILIKE '%' || trim(u.name) || '%'))
+                    ON (b.author_id = u.id OR (
+                      b.author_id IS NULL 
+                      AND (
+                        b.author_name = u.name 
+                        OR b.author_name ~* concat('(^|[,;|/&\\n]|\\bdan\\b)[^,;|/&\\n]*\\y', trim(u.name), '\\y[^,;|/&\\n]*([,;|/&\\n]|\\bdan\\b|$)')
+                      )
+                    ))
                   WHERE u.role = 'penulis'
                   GROUP BY u.id, u.name, u.email, u.role, u.bio, u.profesi, u.domisili, u.website, u.image, u.karya_eksternal
                 ),
@@ -1624,12 +1630,34 @@ export const SipenaAuthorsController = {
                 return res.status(404).json({ error: "Author not found" });
             }
 
-            const perpusnasWorks = await db.query.books.findMany({
+            // Normalisasi nama & pembersihan gelar untuk pencocokan token yang aman
+            const cleanTitle = (s: string) => s
+                .replace(/\b(prof|dr|dra|drs|ir|h|hj|s\.pd|m\.pd|s\.e|m\.e|s\.si|m\.si|s\.sos|m\.sos|s\.kom|m\.kom|s\.h|m\.h|s\.ip|m\.ip|m\.hum|ph\.d|s\.sn|m\.sn|s\.pt|m\.pt|apt)\b\.?/gi, '')
+                .replace(/\b(penyadur|editor|penyunting|pengalih[- ]bahasa|penulis|pengarang|alih[- ]aksara|dkk)\b:?/gi, '')
+                .replace(/[^a-z0-9]/gi, '')
+                .toLowerCase()
+                .trim();
+
+            const targetNorm = cleanTitle(author.name);
+
+            // 1. Ambil buku yang sudah terhubung pasti (author_id = id)
+            // 2. Serta buku dengan author_id NULL yang berpotensi memiliki token nama cocok
+            const candidateBooks = await db.query.books.findMany({
                 where: or(
                     eq(books.authorId, id),
-                    ilike(books.authorName, `%${author.name}%`)
+                    sql`${books.authorId} IS NULL`
                 ),
                 orderBy: (b, { desc }) => [desc(b.createdAt)]
+            });
+
+            // Filter secara presisi: Hanya terima jika authorId cocok pasti, ATAU
+            // token pengarang terpisah (koma/titik koma/dan/&) 100% cocok dengan nama penulis (mencegah salah tempel nama 1 kata / substring)
+            const perpusnasWorks = candidateBooks.filter(b => {
+                if (b.authorId === id) return true;
+                if (!b.authorName || !targetNorm || targetNorm.length < 3) return false;
+
+                const tokens = b.authorName.split(/[,;|/&\n]|\bdan\b/gi);
+                return tokens.some(tok => cleanTitle(tok) === targetNorm);
             });
 
             res.json({

@@ -225,7 +225,7 @@ export default function Reports() {
                 const coPjIdsArr = (stage.coPjIds && Array.isArray(stage.coPjIds) && stage.coPjIds.length > 0)
                     ? stage.coPjIds.filter(id => id && id !== stage.pjId)
                     : (stage.coPjId && stage.coPjId !== stage.pjId ? [stage.coPjId] : []);
-                const collaboratorIds = Array.from(new Set(coPjIdsArr)).slice(0, 2);
+                const collaboratorIds = Array.from(new Set(coPjIdsArr));
                 const numCollaborators = collaboratorIds.length;
 
                 let pjPct = 1.0;
